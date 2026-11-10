@@ -1,0 +1,16 @@
+# Build artifacts and binaries
+bin/pi-gomemory-setup
+pi-gomemory
+dist/
+
+# gomemory local cache and state
+.memory/
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
