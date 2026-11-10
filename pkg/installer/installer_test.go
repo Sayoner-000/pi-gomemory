@@ -198,6 +198,26 @@ func TestInstallSkillsFailsWithoutEmbeddedSkills(t *testing.T) {
 	}
 }
 
+func TestSplashResourcesAreInstalledFromEmbeddedAssets(t *testing.T) {
+	opts := sandbox(t)
+	assets := repoAssets(t)
+	if err := InstallTUIExtension(assets, opts.PiAgentDir); err != nil {
+		t.Fatal(err)
+	}
+	for source, destination := range map[string]string{
+		"extensions/gomemory-splash.ts": "gomemory-splash.ts",
+		"config/splash.md":              "gomemory-splash-prompt.md",
+	} {
+		want, err := fs.ReadFile(assets, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := readFile(t, filepath.Join(opts.PiAgentDir, "extensions", destination)); got != string(want) {
+			t.Errorf("%s differs from embedded resource", destination)
+		}
+	}
+}
+
 // D1: si la API falla no se muestran cifras inventadas.
 func TestFetchAndFormatUsageNeverFabricates(t *testing.T) {
 	opts := sandbox(t)

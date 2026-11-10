@@ -39,6 +39,12 @@ Tienes conectados como herramientas directas y CLI en el entorno:
 5. **Modo Plan:**
    - Antes de redactar un plan o estrategia: llama a 'get_plan_context()' o 'mem plan-context'.
    - Entrega el árbol de tareas atómicas y detente sin ejecutar código.
+
+6. **Splash (revisor independiente):**
+   - Ejecuta la herramienta splash_review con la ruta del documento y una lente opcional.
+   - Splash es un rol agnóstico; no depende de ~/.claude/agents ni de otro harness.
+   - No envíes historial ni memoria al revisor. No sustituyas la revisión por una autoevaluación.
+   - Un fallo de ejecución no equivale a una revisión aprobada. Registra el resultado HCD solo después de leer la revisión real.
 `
 
 const (
