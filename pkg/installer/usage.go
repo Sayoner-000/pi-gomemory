@@ -60,50 +60,51 @@ func FetchAndFormatUsage(piAgentDir string) (string, error) {
 		return "", fmt.Errorf("cuenta activa %q no tiene token de acceso", accs.ActiveAccountId)
 	}
 
-	// Consultar retrieveUserQuotaSummary
-	var respData []byte
+	// Consultar retrieveUserQuotaSummary; sin respuesta real se devuelve error,
+	// nunca cifras de relleno.
 	var lastErr error
-
 	for _, ep := range endpoints {
-		url := ep + "/v1internal:retrieveUserQuotaSummary"
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte("{}")))
+		body, err := fetchQuota(ep, account.Access)
 		if err != nil {
 			lastErr = err
 			continue
 		}
-		req.Header.Set("Authorization", "Bearer "+account.Access)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "antigravity/pi-coding-agent")
-
-		client := &http.Client{Timeout: 10 * time.Second}
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
+		var quota QuotaSummaryResponse
+		if err := json.Unmarshal(body, &quota); err != nil {
+			lastErr = fmt.Errorf("respuesta de cuota ilegible en %s: %w", ep, err)
 			continue
 		}
-		defer resp.Body.Close()
-
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == 200 {
-			respData = body
-			lastErr = nil
-			break
-		} else {
-			lastErr = fmt.Errorf("status %d: %s", resp.StatusCode, string(body))
-		}
+		return renderQuotaView(&quota, account.Email), nil
 	}
 
-	if lastErr != nil && len(respData) == 0 {
-		// Fallback amigable simulando vista para no romper la experiencia si el token caducó
-		return renderFallbackUsage(account.Email), nil
-	}
+	return "", fmt.Errorf("no se pudo obtener la cuota (¿token caducado? abre pi para renovarlo): %w", lastErr)
+}
 
-	var quota QuotaSummaryResponse
-	if err := json.Unmarshal(respData, &quota); err != nil {
-		return renderFallbackUsage(account.Email), nil
+// fetchQuota consulta un endpoint de cuota y devuelve el cuerpo si responde 200.
+func fetchQuota(endpoint, accessToken string) ([]byte, error) {
+	req, err := http.NewRequest("POST", endpoint+"/v1internal:retrieveUserQuotaSummary", bytes.NewBufferString("{}"))
+	if err != nil {
+		return nil, err
 	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "antigravity/pi-coding-agent")
 
-	return renderQuotaView(&quota, account.Email), nil
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s: status %d", endpoint, resp.StatusCode)
+	}
+	return body, nil
 }
 
 func renderQuotaView(q *QuotaSummaryResponse, email string) string {
@@ -136,75 +137,6 @@ func renderQuotaView(q *QuotaSummaryResponse, email string) string {
 
 			buf.WriteString(fmt.Sprintf("   %s%s%s %s: %.1f%% left · resets %s\n",
 				barColor, bar, ColorReset, b.DisplayName, remPct, reset))
-		}
-		buf.WriteString("\n")
-	}
-
-	return buf.String()
-}
-
-func renderFallbackUsage(email string) string {
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("%sGoogle AI Pro (g1-pro-tier)%s\n", ColorBrillo, ColorReset))
-	if email != "" {
-		buf.WriteString(fmt.Sprintf("%sCuenta: %s%s\n\n", ColorMuted, email, ColorReset))
-	}
-
-	groups := []struct {
-		name    string
-		buckets []struct {
-			name  string
-			rem   float64
-			reset string
-		}
-	}{
-		{
-			name: "Gemini Models",
-			buckets: []struct {
-				name  string
-				rem   float64
-				reset string
-			}{
-				{"Weekly Limit Remaining", 0.807, "3d 21h"},
-				{"Five Hour Limit Remaining", 0.803, "4h 17m"},
-			},
-		},
-		{
-			name: "Claude and GPT models",
-			buckets: []struct {
-				name  string
-				rem   float64
-				reset string
-			}{
-				{"Weekly Limit Remaining", 1.0, "6d 22h"},
-				{"Five Hour Limit Remaining", 1.0, "5h 0m"},
-			},
-		},
-		{
-			name: "Gemini 4 Argon",
-			buckets: []struct {
-				name  string
-				rem   float64
-				reset string
-			}{
-				{"Gemini 4 Argon Weekly Limit", 0.30, "5d 11h"},
-			},
-		},
-	}
-
-	for _, g := range groups {
-		buf.WriteString(fmt.Sprintf(" %s%s%s\n", ColorCyan, g.name, ColorReset))
-		for _, b := range g.buckets {
-			pct := b.rem * 100
-			bar := progressBar(b.rem, 20)
-			barColor := ColorBrillo
-			if pct < 20 {
-				barColor = ColorError
-			} else if pct < 50 {
-				barColor = ColorWarning
-			}
-			buf.WriteString(fmt.Sprintf("   %s%s%s %s: %.1f%% left · resets %s\n",
-				barColor, bar, ColorReset, b.name, pct, b.reset))
 		}
 		buf.WriteString("\n")
 	}

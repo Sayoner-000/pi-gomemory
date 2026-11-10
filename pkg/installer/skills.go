@@ -46,56 +46,17 @@ func SanitizeFrontmatter(content []byte) []byte {
 	return buf.Bytes()
 }
 
-// InstallSkills copia y sanitiza todas las skills de gomemory a ~/.pi/agent/skills/
-// Si embedFS está disponible, lee directamente del binario embebido.
-func InstallSkills(embedFS fs.FS, packageRootDir, piAgentDir string) (int, error) {
+// InstallSkills copia y sanitiza las skills embebidas en el binario a
+// ~/.pi/agent/skills/. Nunca lee ni modifica skills de otros agentes.
+func InstallSkills(assets fs.FS, piAgentDir string) (int, error) {
+	entries, err := fs.ReadDir(assets, "skills")
+	if err != nil {
+		return 0, fmt.Errorf("leer skills embebidas: %w", err)
+	}
+
 	targetSkillsDir := filepath.Join(piAgentDir, "skills")
 	if err := os.MkdirAll(targetSkillsDir, 0755); err != nil {
 		return 0, fmt.Errorf("crear dir de skills en pi: %w", err)
-	}
-
-	// 1. Intentar desde FS embebido en el binario
-	if embedFS != nil {
-		entries, err := fs.ReadDir(embedFS, "skills")
-		if err == nil && len(entries) > 0 {
-			count := 0
-			for _, entry := range entries {
-				if !entry.IsDir() {
-					continue
-				}
-				skillName := entry.Name()
-				rawContent, err := fs.ReadFile(embedFS, "skills/"+skillName+"/SKILL.md")
-				if err != nil {
-					continue
-				}
-
-				sanitized := SanitizeFrontmatter(rawContent)
-				dstSkillDir := filepath.Join(targetSkillsDir, skillName)
-				if err := os.MkdirAll(dstSkillDir, 0755); err != nil {
-					continue
-				}
-
-				dstSkillFile := filepath.Join(dstSkillDir, "SKILL.md")
-				if err := os.WriteFile(dstSkillFile, sanitized, 0644); err == nil {
-					count++
-				}
-			}
-			if count > 0 {
-				return count, nil
-			}
-		}
-	}
-
-	// 2. Fallback a filesystem en disco
-	sourceDir := filepath.Join(packageRootDir, "skills")
-	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-		home, _ := os.UserHomeDir()
-		sourceDir = filepath.Join(home, ".config", "opencode", "skills")
-	}
-
-	entries, err := os.ReadDir(sourceDir)
-	if err != nil {
-		return 0, fmt.Errorf("leer directorio origen de skills %s: %w", sourceDir, err)
 	}
 
 	count := 0
@@ -104,26 +65,24 @@ func InstallSkills(embedFS fs.FS, packageRootDir, piAgentDir string) (int, error
 			continue
 		}
 		skillName := entry.Name()
-		srcSkillFile := filepath.Join(sourceDir, skillName, "SKILL.md")
-		rawContent, err := os.ReadFile(srcSkillFile)
+		rawContent, err := fs.ReadFile(assets, "skills/"+skillName+"/SKILL.md")
 		if err != nil {
-			continue
+			return count, fmt.Errorf("leer skill embebida %s: %w", skillName, err)
 		}
-
-		sanitized := SanitizeFrontmatter(rawContent)
-		_ = os.WriteFile(srcSkillFile, sanitized, 0644)
 
 		dstSkillDir := filepath.Join(targetSkillsDir, skillName)
 		if err := os.MkdirAll(dstSkillDir, 0755); err != nil {
 			return count, fmt.Errorf("crear dir para skill %s: %w", skillName, err)
 		}
-
 		dstSkillFile := filepath.Join(dstSkillDir, "SKILL.md")
-		if err := os.WriteFile(dstSkillFile, sanitized, 0644); err != nil {
-			return count, fmt.Errorf("escribir SKILL.md sanitizado de %s: %w", skillName, err)
+		if err := os.WriteFile(dstSkillFile, SanitizeFrontmatter(rawContent), 0644); err != nil {
+			return count, fmt.Errorf("escribir SKILL.md de %s: %w", skillName, err)
 		}
 		count++
 	}
 
+	if count == 0 {
+		return 0, fmt.Errorf("el binario no contiene skills embebidas")
+	}
 	return count, nil
 }

@@ -23,7 +23,17 @@ type CheckItem struct {
 	Details string
 }
 
-func RunDoctor(piAgentDir string) []CheckItem {
+// otherAgents son los agentes que gomemory integra por su cuenta (`mem install`,
+// `mem setup-mcp`). pi-gomemory no los configura: solo informa.
+var otherAgents = []struct{ bin, setupName string }{
+	{"claude", "claude"},
+	{"codex", "codex"},
+	{"agy", "agy"},
+	{"opencode", "opencode"},
+}
+
+func RunDoctor(opts *Options) []CheckItem {
+	piAgentDir := opts.PiAgentDir
 	var items []CheckItem
 
 	// 1. Binarios
@@ -195,8 +205,7 @@ func RunDoctor(piAgentDir string) []CheckItem {
 	}
 
 	// 7. Harness launcher
-	homeDir, _ := os.UserHomeDir()
-	launcherPath := filepath.Join(homeDir, ".local", "bin", "pi-gomemory")
+	launcherPath := filepath.Join(opts.LocalBinDir, "pi-gomemory")
 	if info, err := os.Stat(launcherPath); err == nil && info.Mode()&0111 != 0 {
 		items = append(items, CheckItem{
 			Name:    "Launcher Herdr (pi-gomemory)",
@@ -207,7 +216,19 @@ func RunDoctor(piAgentDir string) []CheckItem {
 		items = append(items, CheckItem{
 			Name:    "Launcher Herdr (pi-gomemory)",
 			Status:  "WARN",
-			Details: "no instalado en ~/.local/bin/pi-gomemory",
+			Details: "no instalado en " + launcherPath,
+		})
+	}
+
+	// 8. Otros agentes detectados: los integra gomemory, no este instalador
+	for _, a := range otherAgents {
+		if _, err := exec.LookPath(a.bin); err != nil {
+			continue
+		}
+		items = append(items, CheckItem{
+			Name:    fmt.Sprintf("Agente %s (vía gomemory)", a.bin),
+			Status:  "INFO",
+			Details: "mem setup-mcp --scope global --agents " + a.setupName,
 		})
 	}
 
@@ -228,6 +249,9 @@ func PrintDoctor(items []CheckItem) {
 		case "WARN":
 			symbol = "⚠"
 			color = ColorWarning
+		case "INFO":
+			symbol = "→"
+			color = ColorMuted
 		default:
 			symbol = "✗"
 			color = ColorError

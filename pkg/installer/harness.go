@@ -55,27 +55,14 @@ fi
 `
 }
 
-// InstallHarness instala el ejecutable pi-gomemory en ~/.local/bin y en ./bin/
-func InstallHarness(localBinDir, packageBinDir string) error {
-	script := GenerateHarnessScript()
-
-	// 1. Guardar en local del paquete
-	if err := os.MkdirAll(packageBinDir, 0755); err != nil {
-		return fmt.Errorf("crear dir package bin: %w", err)
-	}
-	packageScript := filepath.Join(packageBinDir, "pi-gomemory")
-	if err := os.WriteFile(packageScript, []byte(script), 0755); err != nil {
-		return fmt.Errorf("escribir script en package: %w", err)
-	}
-
-	// 2. Guardar en ~/.local/bin/pi-gomemory
+// InstallHarness instala el ejecutable pi-gomemory en localBinDir (~/.local/bin).
+func InstallHarness(localBinDir string) error {
 	if err := os.MkdirAll(localBinDir, 0755); err != nil {
 		return fmt.Errorf("crear dir local bin %s: %w", localBinDir, err)
 	}
 	targetScript := filepath.Join(localBinDir, "pi-gomemory")
-	if err := os.WriteFile(targetScript, []byte(script), 0755); err != nil {
+	if err := os.WriteFile(targetScript, []byte(GenerateHarnessScript()), 0755); err != nil {
 		return fmt.Errorf("instalar script en %s: %w", targetScript, err)
 	}
-
 	return nil
 }

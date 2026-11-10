@@ -1,8 +1,12 @@
 package installer
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // GomemoryPiInstructions contiene el protocolo activo de gomemory optimizado para Pi Coding Agent.
@@ -37,8 +41,45 @@ Tienes conectados como herramientas directas y CLI en el entorno:
    - Entrega el árbol de tareas atómicas y detente sin ejecutar código.
 `
 
-// InstallInstructions guarda las instrucciones en ~/.pi/agent/AGENTS.md
+const (
+	instructionsStart = "<!-- pi-gomemory:start -->"
+	instructionsEnd   = "<!-- pi-gomemory:end -->"
+)
+
+// InstallInstructions escribe el protocolo en ~/.pi/agent/AGENTS.md dentro de
+// un bloque delimitado. Si el bloque ya existe lo reemplaza; si no, lo añade
+// al final. El resto del archivo de la persona se conserva intacto.
 func InstallInstructions(piAgentDir string) error {
+	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
+		return fmt.Errorf("crear %s: %w", piAgentDir, err)
+	}
 	agentsPath := filepath.Join(piAgentDir, "AGENTS.md")
-	return os.WriteFile(agentsPath, []byte(GomemoryPiInstructions), 0644)
+
+	existing, err := os.ReadFile(agentsPath)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("leer %s: %w", agentsPath, err)
+	}
+
+	return os.WriteFile(agentsPath, []byte(mergeInstructions(string(existing))), 0644)
+}
+
+// mergeInstructions inserta o reemplaza el bloque de pi-gomemory en content.
+func mergeInstructions(content string) string {
+	block := instructionsStart + "\n" + GomemoryPiInstructions + instructionsEnd + "\n"
+
+	start := strings.Index(content, instructionsStart)
+	end := strings.Index(content, instructionsEnd)
+	if start >= 0 && end > start {
+		return content[:start] + block + strings.TrimPrefix(content[end+len(instructionsEnd):], "\n")
+	}
+
+	// Instalaciones ≤ v1.0.0 escribían el protocolo sin marcadores.
+	if i := strings.Index(content, GomemoryPiInstructions); i >= 0 {
+		return content[:i] + block + strings.TrimPrefix(content[i+len(GomemoryPiInstructions):], "\n")
+	}
+
+	if strings.TrimSpace(content) == "" {
+		return block
+	}
+	return strings.TrimRight(content, "\n") + "\n\n" + block
 }

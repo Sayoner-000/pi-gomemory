@@ -53,45 +53,51 @@ mkdir -p "${INSTALL_DIR}"
 # 2. Obtener o compilar el binario pi-gomemory-setup
 SETUP_BIN="${INSTALL_DIR}/pi-gomemory-setup"
 
-# Opción A: Si estamos dentro del código fuente con go instalado
-if [ -f "./go.mod" ] && [ -f "./main.go" ] && command -v go &>/dev/null; then
+# Opción A: compilar solo si el directorio actual es el código fuente de pi-gomemory
+if [ -f "./go.mod" ] && grep -q '^module pi-gomemory$' ./go.mod && command -v go &>/dev/null; then
   echo -e "${C_MUTED}==> Compilando binario autocontenido desde código fuente local con Go...${C_RESET}"
   go build -ldflags="-s -w" -o "${SETUP_BIN}" .
   echo -e "${C_SUCCESS}✓ Binario compilado en: ${SETUP_BIN}${C_RESET}"
 else
-  # Opción B: Descargar release desde GitHub
+  # Opción B: Descargar release desde GitHub (o desde PI_GOMEMORY_BASE_URL)
   TARBALL="pi-gomemory-setup_${VERSION}_${OS}_${ARCH}.tar.gz"
-  DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${TARBALL}"
+  BASE_URL="${PI_GOMEMORY_BASE_URL:-https://github.com/${REPO}/releases/download/${VERSION}}"
   TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t 'pi-gomemory')"
+  trap 'rm -rf "${TMP_DIR}"' EXIT
 
-  echo -e "${C_MUTED}==> Descargando paquete de instalación (${OS}/${ARCH}) desde GitHub Releases...${C_RESET}"
-  if command -v curl &>/dev/null; then
-    if ! curl -fsSL "${DOWNLOAD_URL}" -o "${TMP_DIR}/${TARBALL}"; then
-      # Fallback a release latest
-      LATEST_URL="https://github.com/${REPO}/releases/latest/download/${TARBALL}"
-      echo -e "${C_MUTED}    Intentando desde última versión (latest)...${C_RESET}"
-      curl -fsSL "${LATEST_URL}" -o "${TMP_DIR}/${TARBALL}" || {
-        echo -e "${C_ERROR}✗ No se pudo descargar el paquete desde ${DOWNLOAD_URL}${C_RESET}" >&2
-        rm -rf "${TMP_DIR}"
-        exit 1
-      }
-    fi
-  elif command -v wget &>/dev/null; then
-    wget -qO "${TMP_DIR}/${TARBALL}" "${DOWNLOAD_URL}" || {
-      echo -e "${C_ERROR}✗ No se pudo descargar con wget desde ${DOWNLOAD_URL}${C_RESET}" >&2
-      rm -rf "${TMP_DIR}"
+  download() { # download <url> <destino>
+    if command -v curl &>/dev/null; then
+      curl -fsSL "$1" -o "$2"
+    elif command -v wget &>/dev/null; then
+      wget -qO "$2" "$1"
+    else
+      echo -e "${C_ERROR}✗ Se requiere 'curl' o 'wget' para descargar el paquete.${C_RESET}" >&2
       exit 1
-    }
+    fi
+  }
+
+  echo -e "${C_MUTED}==> Descargando ${TARBALL} desde ${BASE_URL}...${C_RESET}"
+  if ! download "${BASE_URL}/${TARBALL}" "${TMP_DIR}/${TARBALL}" \
+     || ! download "${BASE_URL}/SHA256SUMS" "${TMP_DIR}/SHA256SUMS"; then
+    echo -e "${C_ERROR}✗ No se pudo descargar el paquete o SHA256SUMS desde ${BASE_URL}${C_RESET}" >&2
+    exit 1
+  fi
+
+  echo -e "${C_MUTED}==> Verificando suma SHA256...${C_RESET}"
+  EXPECTED="$(awk -v f="${TARBALL}" '$2 == f || $2 == "*"f {print $1}' "${TMP_DIR}/SHA256SUMS")"
+  if command -v sha256sum &>/dev/null; then
+    ACTUAL="$(sha256sum "${TMP_DIR}/${TARBALL}" | awk '{print $1}')"
   else
-    echo -e "${C_ERROR}✗ Se requiere 'curl' o 'wget' para descargar el paquete.${C_RESET}" >&2
-    rm -rf "${TMP_DIR}"
+    ACTUAL="$(shasum -a 256 "${TMP_DIR}/${TARBALL}" | awk '{print $1}')"
+  fi
+  if [ -z "${EXPECTED}" ] || [ "${EXPECTED}" != "${ACTUAL}" ]; then
+    echo -e "${C_ERROR}✗ La suma SHA256 de ${TARBALL} no coincide con SHA256SUMS; se aborta.${C_RESET}" >&2
     exit 1
   fi
 
   echo -e "${C_MUTED}==> Extrayendo binario...${C_RESET}"
   tar -xzf "${TMP_DIR}/${TARBALL}" -C "${TMP_DIR}"
   cp "${TMP_DIR}/pi-gomemory-setup" "${SETUP_BIN}"
-  rm -rf "${TMP_DIR}"
   echo -e "${C_SUCCESS}✓ Binario instalado en: ${SETUP_BIN}${C_RESET}"
 fi
 
