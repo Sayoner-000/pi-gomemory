@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 const (
@@ -35,6 +36,8 @@ var otherAgents = []struct{ bin, setupName string }{
 func RunDoctor(opts *Options) []CheckItem {
 	piAgentDir := opts.PiAgentDir
 	var items []CheckItem
+	status, details := clipboardDiagnostic(runtime.GOOS, os.Getenv("DISPLAY"), os.Getenv("WAYLAND_DISPLAY"), exec.LookPath)
+	items = append(items, CheckItem{Name: "Portapapeles del sistema", Status: status, Details: details})
 
 	// 1. Binarios
 	bins := []string{"pi", "mem", "codegraph", "codebase-memory-mcp"}
