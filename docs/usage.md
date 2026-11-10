@@ -26,23 +26,18 @@ También funciona llamando al binario de configuración:
 pi-gomemory-setup usage
 ```
 
-Ejemplo de salida en terminal:
+Ejemplo de salida en terminal (los grupos y cifras los entrega la API de tu cuenta):
 
 ```text
 Google AI Pro (g1-pro-tier)
-Cuenta: sionernet@gmail.com
+Cuenta: tu-cuenta@ejemplo.com
 
  Gemini Models
-   [################----] Weekly Limit Remaining: 80.7% left · resets 3d 21h
-   [################----] Five Hour Limit Remaining: 80.3% left · resets 4h 17m
-
- Claude and GPT models
-   [####################] Weekly Limit Remaining: 100.0% left · resets 6d 22h
-   [####################] Five Hour Limit Remaining: 100.0% left · resets 5h 0m
-
- Gemini 4 Argon
-   [######--------------] Gemini 4 Argon Weekly Limit: 30.0% left · resets 5d 11h
+   [################----] Weekly Limit Remaining: 80.0% left · resets 3d 21h
+   [################----] Five Hour Limit Remaining: 80.0% left · resets 4h 17m
 ```
+
+Si la API no responde o el token caducó, el comando termina con código 1 y un mensaje de error. Nunca muestra cifras aproximadas. Abre `pi` una vez para renovar el token y vuelve a intentarlo.
 
 ## Referencia de comandos CLI
 
@@ -54,7 +49,7 @@ Uso: pi-gomemory-setup [comando]
 Comandos:
   install       Ejecuta la instalación completa (opción por defecto)
   usage         Muestra cuotas y límites de consumo de Google AI Pro
-  doctor        Verifica la salud de binarios, temas, MCPs y plugins
+  doctor        Verifica binarios, tema, MCP, plugins, launcher y otros agentes detectados
   mcp           Registra gomemory, codegraph y codebase-memory en mcp.json
   theme         Instala la paleta gomemory en ~/.pi/agent/themes/
   plugin        Configura pi-antigravity y pi-cc-extensions en settings.json
@@ -62,6 +57,16 @@ Comandos:
   harness       Genera el script ejecutable ~/.local/bin/pi-gomemory
   help          Muestra este mensaje de ayuda
 ```
+
+## Otros agentes (Claude Code, Codex, agy, OpenCode)
+
+pi-gomemory configura solo Pi. La integración de los demás agentes la hace gomemory:
+
+```bash
+mem setup-mcp --scope global --agents claude,codex,agy,opencode
+```
+
+`pi-gomemory-setup doctor` lista los agentes que encuentra en el `PATH` junto con este comando, sin modificar su configuración.
 
 ## Comandos dentro de Pi
 

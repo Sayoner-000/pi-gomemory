@@ -42,7 +42,9 @@ El instalador compila todos sus activos dentro del propio binario mediante `embe
 var EmbeddedAssets embed.FS
 ```
 
-Esto evita depender de carpetas clonadas o rutas relativas en disco. El ejecutable resultante se puede mover a cualquier equipo y conserva intactas las 21 skills, el tema visual y las extensiones de Pi. Si por alguna razón el binario se ejecuta en un contexto donde el sistema de archivos embebido esté vacío, tiene un mecanismo de respaldo que busca en carpetas locales.
+Esto evita depender de carpetas clonadas o rutas relativas en disco. El ejecutable se puede mover a cualquier equipo y conserva intactas las 21 skills, el tema (`themes/gomemory.json`), la configuración por defecto de `pi-cc-extensions` (`config/pi-cc-extensions.json`) y la extensión de estado. El embebido es la única fuente: el instalador no lee carpetas locales ni de otros agentes, y no escribe nada en el directorio desde el que se ejecuta.
+
+Los archivos de la persona se fusionan, nunca se reemplazan: en `mcp.json` solo se tocan las tres entradas propias, en `pi-cc-extensions.json` solo se añaden las claves que falten, y en `AGENTS.md` el protocolo vive entre `<!-- pi-gomemory:start -->` y `<!-- pi-gomemory:end -->`. Si un JSON existente es inválido, el instalador se detiene sin tocarlo.
 
 ## Configuración de servidores MCP
 
