@@ -4,7 +4,7 @@
 # ==============================================================================
 set -euo pipefail
 
-VERSION="${1:-v1.0.0}"
+VERSION="${1:-v1.1.0}"
 DIST_DIR="dist"
 
 echo "==> Generando pack de distribución para pi-gomemory (${VERSION})..."

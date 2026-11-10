@@ -4,6 +4,22 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.1.0] - 2026-11-10
+
+### Fixed
+- `usage` ya no inventa cuotas cuando la API falla: devuelve un error y termina con código 1.
+- `mcp.json`: se conservan todos los campos de los servidores ajenos (`url`, `headers`, `type`…). Un JSON inválido detiene la instalación sin sobrescribirlo. Mismo criterio para `settings.json` y `pi-cc-extensions.json`.
+- `AGENTS.md`: el protocolo se escribe entre marcadores `<!-- pi-gomemory:start/end -->` y conserva el contenido propio. Las instalaciones v1.0.0 se migran sin duplicar.
+- `install` y `harness` ya no crean `./bin/pi-gomemory` en el directorio actual.
+- Se elimina el respaldo que leía y reescribía skills en `~/.config/opencode/skills`.
+- El tema y la configuración de `pi-cc-extensions` se leen de `themes/` y `config/` embebidos, que antes no se usaban. En `pi-cc-extensions.json` solo se añaden las claves que falten.
+- `install.sh` compila desde fuente solo si el directorio es este módulo, y verifica el tarball contra `SHA256SUMS`.
+
+### Added
+- `doctor` lista los otros agentes detectados (Claude Code, Codex, agy, OpenCode) y el comando de gomemory que los integra.
+- Variable `PI_GOMEMORY_BASE_URL` en `install.sh` para probar contra un `dist/` local.
+- Pruebas del instalador en un HOME aislado (`go test ./...`).
+
 ## [v1.0.0] - 2026-11-09
 
 ### Added
