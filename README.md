@@ -1,11 +1,22 @@
-# pi-gomemory
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/gomemory-readme-dark-pi.png">
+    <img src="assets/gomemory-readme-light-pi.png" alt="pi-gomemory" width="280">
+  </picture>
+</p>
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.0.0)
-[![Go Version](https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white)](https://golang.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey)](https://github.com/Sayoner-000/pi-gomemory)
-[![Ecosystem](https://img.shields.io/badge/ecosystem-gomemory-3926e3)](https://github.com/Sayoner-000/gomemory)
-[![Harness](https://img.shields.io/badge/harness-Herdr-22e3f7)](https://github.com/Sayoner-000/pi-gomemory)
+<h3 align="center">Harness e instalador todo-en-uno para Pi Coding Agent en Herdr</h3>
+
+<p align="center">
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version 1.0.0"></a>
+  <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory"><img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform"></a>
+  <a href="https://github.com/Sayoner-000/gomemory"><img src="https://img.shields.io/badge/ecosystem-gomemory-3926e3" alt="Ecosystem"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory"><img src="https://img.shields.io/badge/harness-Herdr-22e3f7" alt="Harness"></a>
+</p>
+
+---
 
 Instalador y lanzador para Pi Coding Agent en Herdr. Empaqueta la configuración de [gomemory](https://github.com/Sayoner-000/gomemory), [CodeGraph](https://github.com/colbymchenry/codegraph), [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp), Google AI Pro y la interfaz TUI estilo Claude Code en un binario Go compilado con recursos embebidos mediante `embed.FS`.
 
