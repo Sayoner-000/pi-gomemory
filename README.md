@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/version-1.1.0-blue" alt="Version 1.1.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.2.0"><img src="https://img.shields.io/badge/version-1.2.0-blue" alt="Version 1.2.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -71,6 +71,15 @@ make install
 | **Launcher** | `pi-gomemory` prepara el entorno de Herdr y carga el contexto del proyecto | `~/.local/bin/` |
 
 `pi-gomemory-setup doctor` comprueba cada pieza y te dice qué falta.
+
+Incluye `splash_review`, que ejecuta una revisión independiente con herramientas de
+lectura y una definición neutral de Splash. Después de actualizar, usa `/reload`
+en Pi para cargar la herramienta. Consulta [Splash](docs/SPLASH.md) para conocer
+su aislamiento y compatibilidad con proveedores.
+
+El diagnóstico también detecta las herramientas del portapapeles de macOS, X11 y
+Wayland. En Linux y WSLg son dependencias del sistema y no van embebidas en el
+binario; consulta [Portapapeles](docs/PORTAPAPELES.md).
 
 ## Cómo funciona
 
