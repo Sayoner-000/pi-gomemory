@@ -39,6 +39,14 @@ func RunDoctor(opts *Options) []CheckItem {
 	status, details := clipboardDiagnostic(runtime.GOOS, os.Getenv("DISPLAY"), os.Getenv("WAYLAND_DISPLAY"), exec.LookPath)
 	items = append(items, CheckItem{Name: "Portapapeles del sistema", Status: status, Details: details})
 
+	if IsUninstalled(opts.HomeDir) {
+		return append(items, CheckItem{
+			Name:    "pi-gomemory",
+			Status:  "INFO",
+			Details: "pi-gomemory no instalado (desinstalado; reinstala con pi-gomemory-setup install)",
+		})
+	}
+
 	// 1. Binarios
 	bins := []string{"pi", "mem", "codegraph", "codebase-memory-mcp"}
 	for _, b := range bins {

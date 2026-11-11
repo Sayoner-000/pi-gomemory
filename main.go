@@ -14,6 +14,7 @@ import (
 var version = "dev"
 
 func main() {
+	installer.Version = version
 	opts, err := installer.DefaultOptions()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error obteniendo rutas base: %v\n", err)
@@ -115,6 +116,29 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%s✗ Falló la actualización: %v%s\n", installer.ColorError, err, installer.ColorReset)
 			os.Exit(1)
 		}
+	case "uninstall":
+		flags := installer.UninstallFlags{}
+		for _, a := range os.Args[2:] {
+			switch a {
+			case "--dry-run":
+				flags.DryRun = true
+			case "--yes", "-y":
+				flags.Yes = true
+			case "--verbose", "-v":
+				flags.Verbose = true
+			case "--packages":
+				flags.Packages = true
+			case "--self":
+				flags.Self = true
+			default:
+				fmt.Fprintf(os.Stderr, "Opción desconocida para uninstall: %s\n", a)
+				os.Exit(2)
+			}
+		}
+		if err := installer.Uninstall(EmbeddedAssets, opts, flags, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "%s✗ %v%s\n", installer.ColorError, err, installer.ColorReset)
+			os.Exit(1)
+		}
 	case "help", "-h", "--help":
 		printHelp()
 	default:
@@ -141,6 +165,8 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup deps-refresh  Consulta las últimas versiones de pi-gomemory y sus dependencias")
 	fmt.Println("  pi-gomemory-setup deps-status   Muestra lo desactualizado según la última consulta (sale con 10)")
 	fmt.Println("  pi-gomemory-setup deps-update   Actualiza los componentes desactualizados")
+	fmt.Println("  pi-gomemory-setup uninstall [--dry-run] [--yes] [--verbose] [--packages] [--self]")
+	fmt.Println("                                Retira lo instalado por pi-gomemory; conserva la memoria de gomemory")
 }
 
 // runUpdate reemplaza el binario por la última release verificada y relanza la instalación con él.

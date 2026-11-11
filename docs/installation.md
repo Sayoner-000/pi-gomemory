@@ -72,6 +72,33 @@ pi-gomemory-setup update        # solo pi-gomemory: descarga la release, verific
 
 Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar la comprobación, exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
 
+## Desinstalar o reinstalar limpio
+
+Para depurar un fallo o descartar restos de una instalación anterior:
+
+```bash
+pi-gomemory-setup uninstall --dry-run     # muestra qué se retiraría, sin tocar nada
+pi-gomemory-setup uninstall               # muestra el plan y pide confirmación
+pi-gomemory-setup uninstall --yes --verbose   # sin preguntar; detalla cada paso en ~/.pi-gomemory/uninstall.log
+pi-gomemory-setup install                 # reinstalación limpia
+```
+
+Qué retira: extensiones `gomemory-*`, tema, launcher, skills embebidas intactas y enlaces de `~/.pi-gomemory/skills`, las entradas MCP `gomemory`, `codegraph` y `codebase-memory`, el bloque de pi-gomemory en `~/.pi/agent/AGENTS.md`, el registro de skills y el tema en `settings.json`, las cachés y el manifiesto.
+
+Solo borra lo que puede demostrar que instaló: compara la huella SHA256 de cada archivo con `~/.pi-gomemory/manifest.json`. Lo que editaste, tus skills, otros servidores MCP y cualquier clave ajena se conservan y aparecen como omitidos.
+
+Nunca toca la memoria de gomemory (`mem`, su base de datos, `.gomemory/` ni `hcd/`) ni desinstala `pi`, `mem`, `codegraph` o `codebase-memory-mcp`.
+
+| Opción | Efecto |
+|---|---|
+| `--dry-run` | Lista el plan sin escribir nada. |
+| `--yes` | Omite la confirmación. Sin terminal interactiva es obligatoria. |
+| `--verbose` | Imprime cada acción y la guarda en `~/.pi-gomemory/uninstall.log`. |
+| `--packages` | Quita también `pi-antigravity` y `pi-cc-extensions` en su versión fijada, y `pi-cc-extensions.json` si no lo personalizaste. |
+| `--self` | Borra también el binario `pi-gomemory-setup` si está en la carpeta de instalación. |
+
+Tras desinstalar queda la marca `~/.pi-gomemory/uninstalled`: un launcher que siga instalado ya no reinstala skills al arrancar, y `pi-gomemory-setup doctor` muestra «pi-gomemory no instalado». `install` retira la marca.
+
 ## Verificación
 
 Ejecuta el diagnóstico integrado para confirmar que cada componente quedó en su lugar:

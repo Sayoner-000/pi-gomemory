@@ -59,6 +59,7 @@ Comandos:
   deps-status   Lista los componentes desactualizados
   deps-update   Actualiza los componentes desactualizados
   update        Actualiza pi-gomemory desde la última release verificada
+  uninstall     Retira lo instalado por pi-gomemory (ver «Desinstalar» en installation.md)
   help          Muestra este mensaje de ayuda
 ```
 

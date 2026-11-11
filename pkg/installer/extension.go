@@ -7,18 +7,21 @@ import (
 	"path/filepath"
 )
 
+// tuiResources son las extensiones embebidas y la definición neutral de Splash.
+var tuiResources = []struct{ source, destination string }{
+	{"extensions/gomemory-status.ts", "gomemory-status.ts"},
+	{"extensions/gomemory-splash.ts", "gomemory-splash.ts"},
+	{"extensions/gomemory-banner.ts", "gomemory-banner.ts"},
+	{"extensions/gomemory-plan.ts", "gomemory-plan.ts"},
+	{"extensions/gomemory-plan-patterns.json", "gomemory-plan-patterns.json"},
+	{"extensions/gomemory-tasks.ts", "gomemory-tasks.ts"},
+	{"extensions/gomemory-sidebar.ts", "gomemory-sidebar.ts"},
+	{"config/splash.md", "gomemory-splash-prompt.md"},
+}
+
 // InstallTUIExtension instala las extensiones embebidas y la definición neutral de Splash.
 func InstallTUIExtension(assets fs.FS, piAgentDir string) error {
-	for _, resource := range []struct{ source, destination string }{
-		{"extensions/gomemory-status.ts", "gomemory-status.ts"},
-		{"extensions/gomemory-splash.ts", "gomemory-splash.ts"},
-		{"extensions/gomemory-banner.ts", "gomemory-banner.ts"},
-		{"extensions/gomemory-plan.ts", "gomemory-plan.ts"},
-		{"extensions/gomemory-plan-patterns.json", "gomemory-plan-patterns.json"},
-		{"extensions/gomemory-tasks.ts", "gomemory-tasks.ts"},
-		{"extensions/gomemory-sidebar.ts", "gomemory-sidebar.ts"},
-		{"config/splash.md", "gomemory-splash-prompt.md"},
-	} {
+	for _, resource := range tuiResources {
 		data, err := fs.ReadFile(assets, resource.source)
 		if err != nil {
 			return fmt.Errorf("leer extensión embebida: %w", err)

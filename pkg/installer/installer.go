@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 )
 
+// Version es la versión del binario en curso; la fija main al arrancar.
+var Version = "dev"
+
 // Options contiene los parámetros de instalación del harness.
 type Options struct {
 	HomeDir     string
@@ -34,6 +37,9 @@ func DefaultOptions() (*Options, error) {
 // InstallAll orquesta la instalación completa a partir de los recursos
 // embebidos en el binario. No escribe nada en el directorio actual.
 func InstallAll(assets fs.FS, opts *Options) error {
+	if err := os.Remove(UninstalledMarkerPath(opts.HomeDir)); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("retirar marca de desinstalado: %w", err)
+	}
 	fmt.Printf("%s==> [1/8] Registrando servidores MCP (gomemory, codegraph, codebase-memory)...%s\n", ColorCyan, ColorReset)
 	if err := InstallMCPServers(opts.PiAgentDir); err != nil {
 		return fmt.Errorf("paso MCP: %w", err)
@@ -74,6 +80,10 @@ func InstallAll(assets fs.FS, opts *Options) error {
 	fmt.Printf("%s==> [8/8] Generando harness launcher pi-gomemory para Herdr...%s\n", ColorCyan, ColorReset)
 	if err := InstallHarness(opts.LocalBinDir); err != nil {
 		return fmt.Errorf("paso Harness: %w", err)
+	}
+
+	if err := WriteManifest(opts, Version); err != nil {
+		return fmt.Errorf("paso Manifiesto: %w", err)
 	}
 
 	fmt.Printf("\n%s✓ Instalación completa.%s\n", ColorBrillo, ColorReset)

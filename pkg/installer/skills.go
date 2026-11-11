@@ -127,6 +127,9 @@ func installEmbeddedSkills(assets fs.FS, dir string) ([]string, error) {
 // InstallSkills reúne las skills embebidas y las del anfitrión en el
 // repositorio central (~/.pi-gomemory/skills) y hace que Pi lo cargue.
 func InstallSkills(assets fs.FS, opts *Options) (SkillRepoResult, error) {
+	if IsUninstalled(opts.HomeDir) {
+		return SkillRepoResult{}, nil
+	}
 	res, err := SyncSkillRepo(assets, opts.HomeDir)
 	if err != nil {
 		return res, err
