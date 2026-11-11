@@ -28,9 +28,11 @@ const (
 	maxDownloadBytes   = 200 << 20
 )
 
-// DefaultReleasesAPI y DefaultReleasesBaseURL apuntan a GitHub Releases del repositorio.
+// DefaultReleasesAPI apunta a la redirección de la última release en github.com,
+// que no consume el cupo de 60 consultas por hora de api.github.com.
+// DefaultReleasesBaseURL es la base de descarga de los tarballs.
 var (
-	DefaultReleasesAPI     = "https://api.github.com/repos/" + updateRepo + "/releases/latest"
+	DefaultReleasesAPI     = "https://github.com/" + updateRepo + "/releases/latest"
 	DefaultReleasesBaseURL = "https://github.com/" + updateRepo + "/releases/download"
 )
 
@@ -153,8 +155,14 @@ func CheckUpdate(current string, cfg UpdateCheckConfig) UpdateCheckResult {
 	return res
 }
 
+// fetchLatestTag obtiene la etiqueta de la última release. Con una URL
+// github.com/<repo>/releases/latest lee la cabecera Location de la redirección
+// (/releases/tag/<tag>) sin seguirla; con una respuesta JSON lee tag_name.
 func fetchLatestTag(apiURL string, timeout time.Duration) (string, error) {
-	client := &http.Client{Timeout: timeout}
+	client := &http.Client{
+		Timeout:       timeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
 	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
 	if err != nil {
 		return "", err
@@ -166,8 +174,17 @@ func fetchLatestTag(apiURL string, timeout time.Duration) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		loc := resp.Header.Get("Location")
+		const marker = "/releases/tag/"
+		i := strings.LastIndex(loc, marker)
+		if i < 0 || loc[i+len(marker):] == "" {
+			return "", fmt.Errorf("releases: redirección sin etiqueta (%q)", loc)
+		}
+		return strings.TrimRight(loc[i+len(marker):], "/"), nil
+	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("releases API: HTTP %d", resp.StatusCode)
+		return "", fmt.Errorf("releases: HTTP %d", resp.StatusCode)
 	}
 	var body struct {
 		TagName string `json:"tag_name"`

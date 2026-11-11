@@ -166,18 +166,15 @@ func npmLatest(pkg string) func(context.Context) (string, error) {
 	}
 }
 
-func githubLatest(apiURL string) func(context.Context) (string, error) {
+// githubLatest devuelve la etiqueta de la última release de un repositorio de
+// GitHub a partir de la redirección de github.com/<repo>/releases/latest.
+func githubLatest(url string) func(context.Context) (string, error) {
 	return func(ctx context.Context) (string, error) {
-		var body struct {
-			TagName string `json:"tag_name"`
+		timeout := depsProbeTimeout
+		if d, ok := ctx.Deadline(); ok {
+			timeout = time.Until(d)
 		}
-		if err := httpJSON(ctx, apiURL, &body); err != nil {
-			return "", err
-		}
-		if body.TagName == "" {
-			return "", fmt.Errorf("tag_name vacío")
-		}
-		return body.TagName, nil
+		return fetchLatestTag(url, timeout)
 	}
 }
 
@@ -218,7 +215,7 @@ func DefaultDepProbes(version, piAgentDir string) []DepProbe {
 		{
 			Name:    "codebase-memory-mcp",
 			Current: versionFromCmd("codebase-memory-mcp", "--version"),
-			Latest:  githubLatest("https://api.github.com/repos/DeusData/codebase-memory-mcp/releases/latest"),
+			Latest:  githubLatest("https://github.com/DeusData/codebase-memory-mcp/releases/latest"),
 			Update:  []string{"bash", "-c", "curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash"},
 		},
 		{
