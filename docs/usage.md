@@ -112,3 +112,23 @@ Auditoría y control de calidad:
 
 Memoria y asistencia técnica:
 `codebase-memory`, `constitution`, `socratica`.
+
+## Supresión y prevención de advertencias (warnings)
+
+El instalador `pi-gomemory-setup` previene y elimina en origen las advertencias habituales de Pi Coding Agent:
+
+1. **Colisiones de nombres de skills (`name "<skill>" collision`):**
+   - Pi emite warnings al inicio si descubre skills con el mismo nombre en múltiples rutas del anfitrión (`~/.agents/skills`, `~/.claude/skills`, `~/.config/opencode/skills`, etc.).
+   - `pi-gomemory-setup` consolida todas las skills en un repositorio central unificado (`~/.pi-gomemory/skills`), resolviendo colisiones mediante prioridad determinista (las 21 de gomemory primero, seguidas por el orden de precedencia del anfitrión) y registrando solo esta ruta única en `~/.pi/agent/settings.json`.
+
+2. **Formato YAML frontmatter en skills (`failed to parse skill file`):**
+   - Si un archivo `SKILL.md` contiene caracteres de dos puntos (`:`) sin comillas en el campo `description:`, el analizador de YAML de Pi emite warnings o descarta la skill.
+   - La función `SanitizeFrontmatter` del instalador detecta descripciones con `:` no entrecomilladas y las asegura automáticamente con comillas dobles.
+
+3. **Dependencias provistas por el host (`host-provided extension packages`):**
+   - Pi advierte si un paquete instalado (como `pi-antigravity`) lista librerías que el runtime de Pi ya provee (`typebox`) bajo `dependencies` en lugar de `peerDependencies`.
+   - El instalador parchea el `package.json` de `pi-antigravity` asegurando `"peerDependencies": { "typebox": "*" }` y retirándolo de `dependencies`.
+
+4. **Superposición de cabecera visual:**
+   - Para impedir que `pi-cc-extensions` tape el banner de gomemory con su propia cabecera de inicio, `pi-gomemory-setup` impone `showStartupHeader: false` en `~/.pi/agent/pi-cc-extensions.json`.
+
