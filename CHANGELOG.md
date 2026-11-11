@@ -4,6 +4,11 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.5.0] - 2026-11-11
+
+### Added
+- El banner de inicio muestra, junto a la versión de pi-gomemory, la de gomemory instalada (`pi - gomemory  v1.5.0 · gomemory v2.54.1`). El launcher la lee de `mem --version` y la exporta en `GOMEMORY_INSTALLED_VERSION`; si `mem` no está, se omite.
+
 ## [v1.4.1] - 2026-11-11
 
 ### Added

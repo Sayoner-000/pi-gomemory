@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.4.1"><img src="https://img.shields.io/badge/version-1.4.1-blue" alt="Version 1.4.1"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.5.0"><img src="https://img.shields.io/badge/version-1.5.0-blue" alt="Version 1.5.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -139,7 +139,7 @@ Con `usage`, si la API no responde o el token caducó, el comando termina con un
 
 ### Banner, modo /plan y repositorio de skills
 
-- **Banner:** al abrir Pi, la cabecera muestra la gota de gomemory, «pi - gomemory» y la versión que pasa el launcher (`PI_GOMEMORY_RUNNING_VERSION`). Con `NO_COLOR` se dibuja sin colores.
+- **Banner:** al abrir Pi, la cabecera muestra la gota de gomemory, «pi - gomemory», la versión de pi-gomemory (`PI_GOMEMORY_RUNNING_VERSION`) y la de gomemory instalada (`GOMEMORY_INSTALLED_VERSION`, leída de `mem --version`), ambas exportadas por el launcher. Con `NO_COLOR` se dibuja sin colores.
 - **`/plan`:** activa el modo plan. Bloquea `edit`, `write` y los comandos de consola que modifican archivos (lista en `~/.pi/agent/extensions/gomemory-plan-patterns.json`), añade al contexto el método de `mem plan-context` y muestra «PLAN» en la barra. `/plan` otra vez o `/plan run` lo desactivan. Con `/plan <petición>` activa el modo y envía la petición en el mismo paso. Es un bloqueo de las modificaciones comunes, no un aislamiento completo.
 - **Panel de tareas (`/tasks`):** encima del editor muestra las tareas de la unidad HCD activa, leídas de `mem hcd show --json`: `✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo. Se actualiza al abrir la sesión, tras cada `mem hcd` y al terminar cada respuesta. `/tasks` lo muestra u oculta.
 - **Repositorio de skills:** `~/.pi-gomemory/skills` reúne las 21 skills de gomemory (copias adaptadas para Pi, que siempre ganan) y enlaces a las skills de los demás agentes, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. Pi carga solo ese repositorio, así que no hay avisos de colisión. Se sincroniza al instalar y en cada arranque de `pi-gomemory`. Nunca modifica las carpetas de otros agentes ni las skills tuyas.
