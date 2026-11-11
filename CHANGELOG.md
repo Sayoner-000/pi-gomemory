@@ -4,6 +4,27 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.7.0] - 2026-11-11
+
+### Added
+- `pi-gomemory-setup uninstall` retira solo lo que instaló pi-gomemory, comprobado con un manifiesto SHA256 que escribe cada `install`. Opciones `--dry-run`, `--verbose` (con log en `~/.pi-gomemory/uninstall.log`), `--yes`, `--packages` y `--self`. Conserva la memoria de gomemory y `doctor` informa «pi-gomemory no instalado».
+
+### Changed
+- El panel lateral (`/sidebar`) muestra los servidores MCP declarados en `mcp.json` como `Configured` y ya no afirma una conexión que no comprueba; sin `mcp.json` válido la lista queda vacía.
+- codebase-memory-mcp ya no se actualiza automáticamente: `deps-status` y `deps-update` indican la URL del release para actualizarlo a mano.
+
+### Fixed
+- `deps-update` ya no dice «Dependencias actualizadas» cuando quedan componentes manuales pendientes.
+- `extractBinary` y `lookupChecksum` leen los datos sin copiarlos a texto.
+
+### Security
+- Se elimina la ejecución de `curl | bash` sin verificar al actualizar codebase-memory-mcp.
+- `deps-update` ejecuta los comandos definidos en el binario y no los guardados en la caché `pi-gomemory-deps.json`.
+- `splash_review` rechaza documentos fuera del repositorio, incluidos `..`, rutas absolutas y enlaces simbólicos.
+- El modo plan bloquea la herramienta `powershell`.
+- El instalador escribe extensiones, tema, launcher, `AGENTS.md`, skills y cachés de forma atómica.
+- Informe completo en `docs/audits/2026-11-11-acr-adm-review.md`; queda como riesgo pendiente que las herramientas de la sesión Splash aceptan rutas absolutas.
+
 ## [v1.6.3] - 2026-11-11
 
 ### Changed
