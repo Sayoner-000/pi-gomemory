@@ -3,12 +3,37 @@ package installer
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// skillMarkerFile marca una carpeta de skill instalada por pi-gomemory y guarda
+// el SHA256 del SKILL.md escrito, para no borrar nunca una skill ajena o editada.
+const skillMarkerFile = ".pi-gomemory"
+
+func contentHash(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+// isPristineEmbeddedCopy indica si dir es una skill instalada por pi-gomemory
+// que la persona no ha modificado.
+func isPristineEmbeddedCopy(dir string) bool {
+	marker, err := os.ReadFile(filepath.Join(dir, skillMarkerFile))
+	if err != nil {
+		return false
+	}
+	content, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(marker)) == contentHash(content)
+}
 
 // SanitizeFrontmatter asegura que los campos de YAML no contengan mappings anidados inválidos.
 func SanitizeFrontmatter(content []byte) []byte {
@@ -46,21 +71,19 @@ func SanitizeFrontmatter(content []byte) []byte {
 	return buf.Bytes()
 }
 
-// InstallSkills copia y sanitiza las skills embebidas en el binario a
-// ~/.pi/agent/skills/. Solo usa el embebido: no copia ni modifica skills de otros
-// agentes (RegisterHostSkills solo registra sus carpetas para que Pi las lea).
-func InstallSkills(assets fs.FS, piAgentDir string) (int, error) {
+// installEmbeddedSkills copia y sanitiza las skills embebidas en dir, cada una
+// con su marca. Sustituye enlaces y copias embebidas intactas; nunca pisa una
+// carpeta propia de la persona ni una copia embebida que haya editado.
+func installEmbeddedSkills(assets fs.FS, dir string) ([]string, error) {
 	entries, err := fs.ReadDir(assets, "skills")
 	if err != nil {
-		return 0, fmt.Errorf("leer skills embebidas: %w", err)
+		return nil, fmt.Errorf("leer skills embebidas: %w", err)
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("crear %s: %w", dir, err)
 	}
 
-	targetSkillsDir := filepath.Join(piAgentDir, "skills")
-	if err := os.MkdirAll(targetSkillsDir, 0755); err != nil {
-		return 0, fmt.Errorf("crear dir de skills en pi: %w", err)
-	}
-
-	count := 0
+	var names []string
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -68,22 +91,45 @@ func InstallSkills(assets fs.FS, piAgentDir string) (int, error) {
 		skillName := entry.Name()
 		rawContent, err := fs.ReadFile(assets, "skills/"+skillName+"/SKILL.md")
 		if err != nil {
-			return count, fmt.Errorf("leer skill embebida %s: %w", skillName, err)
+			return names, fmt.Errorf("leer skill embebida %s: %w", skillName, err)
 		}
+		names = append(names, skillName)
 
-		dstSkillDir := filepath.Join(targetSkillsDir, skillName)
+		dstSkillDir := filepath.Join(dir, skillName)
+		if fi, err := os.Lstat(dstSkillDir); err == nil {
+			switch {
+			case fi.Mode()&os.ModeSymlink != 0:
+				if err := os.Remove(dstSkillDir); err != nil {
+					return names, err
+				}
+			case !isPristineEmbeddedCopy(dstSkillDir):
+				continue
+			}
+		}
 		if err := os.MkdirAll(dstSkillDir, 0755); err != nil {
-			return count, fmt.Errorf("crear dir para skill %s: %w", skillName, err)
+			return names, fmt.Errorf("crear dir para skill %s: %w", skillName, err)
 		}
-		dstSkillFile := filepath.Join(dstSkillDir, "SKILL.md")
-		if err := os.WriteFile(dstSkillFile, SanitizeFrontmatter(rawContent), 0644); err != nil {
-			return count, fmt.Errorf("escribir SKILL.md de %s: %w", skillName, err)
+		content := SanitizeFrontmatter(rawContent)
+		if err := os.WriteFile(filepath.Join(dstSkillDir, "SKILL.md"), content, 0644); err != nil {
+			return names, fmt.Errorf("escribir SKILL.md de %s: %w", skillName, err)
 		}
-		count++
+		if err := os.WriteFile(filepath.Join(dstSkillDir, skillMarkerFile), []byte(contentHash(content)+"\n"), 0644); err != nil {
+			return names, fmt.Errorf("escribir marca de %s: %w", skillName, err)
+		}
 	}
 
-	if count == 0 {
-		return 0, fmt.Errorf("el binario no contiene skills embebidas")
+	if len(names) == 0 {
+		return nil, fmt.Errorf("el binario no contiene skills embebidas")
 	}
-	return count, nil
+	return names, nil
+}
+
+// InstallSkills reúne las skills embebidas y las del anfitrión en el
+// repositorio central (~/.pi-gomemory/skills) y hace que Pi lo cargue.
+func InstallSkills(assets fs.FS, opts *Options) (SkillRepoResult, error) {
+	res, err := SyncSkillRepo(assets, opts.HomeDir)
+	if err != nil {
+		return res, err
+	}
+	return res, RegisterSkillRepo(opts.PiAgentDir, opts.HomeDir)
 }

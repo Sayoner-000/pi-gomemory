@@ -158,37 +158,33 @@ func RunDoctor(opts *Options) []CheckItem {
 		})
 	}
 
-	// 6. Skills en Pi (propias, enlazadas o de las carpetas del anfitrión)
-	skillCount := AvailableSkillCount(piAgentDir, opts.HomeDir)
-	if skillCount >= 20 {
+	// 6. Repositorio central de skills (~/.pi-gomemory/skills)
+	repo := InspectSkillRepo(piAgentDir, opts.HomeDir)
+	switch {
+	case repo.Embedded >= 20 && repo.Registered:
 		items = append(items, CheckItem{
 			Name:    "Skills gomemory en Pi",
 			Status:  "OK",
-			Details: fmt.Sprintf("%d skills cargadas", skillCount),
+			Details: fmt.Sprintf("%d skills cargadas", repo.Total),
 		})
-	} else if skillCount > 0 {
-		items = append(items, CheckItem{
-			Name:    "Skills gomemory en Pi",
-			Status:  "WARN",
-			Details: fmt.Sprintf("%d skills encontradas (se esperan 21)", skillCount),
-		})
-	} else {
+	case repo.Total > 0:
+		details := fmt.Sprintf("%d skills encontradas (se esperan 21 de gomemory)", repo.Embedded)
+		if !repo.Registered {
+			details = SkillRepoSetting + " no está registrado en settings.json"
+		}
+		items = append(items, CheckItem{Name: "Skills gomemory en Pi", Status: "WARN", Details: details})
+	default:
 		items = append(items, CheckItem{
 			Name:    "Skills gomemory en Pi",
 			Status:  "FAIL",
 			Details: "no se encontraron skills instaladas",
 		})
 	}
-
-	for _, dir := range hostSkillDirs {
-		if n, ok := HostSkillCounts(piAgentDir, opts.HomeDir)[dir]; ok {
-			items = append(items, CheckItem{
-				Name:    "Skills del anfitrión",
-				Status:  "INFO",
-				Details: fmt.Sprintf("%s · %d skills (solo lectura)", dir, n),
-			})
-		}
-	}
+	items = append(items, CheckItem{
+		Name:    "Repositorio de skills",
+		Status:  "INFO",
+		Details: fmt.Sprintf("%s · %d de gomemory, %d del anfitrión, %d colisiones resueltas", SkillRepoSetting, repo.Embedded, repo.Linked, repo.Collisions),
+	})
 
 	// 6. Extensión TUI Status Bar
 	extPath := filepath.Join(piAgentDir, "extensions", "gomemory-status.ts")

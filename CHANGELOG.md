@@ -4,6 +4,28 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.4.0] - 2026-11-11
+
+### Added
+- Repositorio central de skills `~/.pi-gomemory/skills`: reúne las 21 skills de gomemory y enlaces a las de `~/.agents`, OpenCode, Claude Code, Codex y Gemini. Pi carga solo ese repositorio y se sincroniza en cada arranque (`pi-gomemory-setup skills-sync`).
+- Comprobación de actualizaciones de pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions` en cada arranque, en segundo plano, con pregunta de 10 s en terminal interactiva. Comandos `deps-refresh`, `deps-status` y `deps-update`.
+
+### Changed
+- `pi-antigravity` y `pi-cc-extensions` se instalan fijados a la versión del catálogo oficial de Pi (0.12.0 y 1.0.16).
+- Las skills de gomemory adaptadas para Pi ganan a las copias de otros agentes; antes ganaba la de OpenCode.
+- `check-update` deja de llamarse desde el launcher; lo sustituye `deps-status`.
+
+### Fixed
+- La instalación ya no borra skills propias de `~/.pi/agent/skills` con el mismo nombre que una del anfitrión.
+- `PI_GOMEMORY_BIN_DIR` se aplica también al launcher, que encuentra `pi-gomemory-setup` en su propio directorio.
+- `install.sh` reemplaza el binario con un renombrado atómico (evita `Killed: 9` en macOS) y la compilación local lleva la versión de git en lugar de `dev`.
+- Las escrituras de `settings.json`, `mcp.json` y `pi-cc-extensions.json` son atómicas.
+- Los fallos de `pi install` dejan de ignorarse en silencio.
+
+### Security
+- Los binarios de la release se compilan con Go 1.27.4, que incluye correcciones de seguridad para cgo, el comando go, el compilador, el enlazador y `net/http`.
+- `build-release.sh` ejecuta `go vet` y `go test`, compila con `-trimpath` y se detiene si no puede generar `SHA256SUMS`.
+
 ## [v1.3.0] - 2026-11-10
 
 ### Added

@@ -13,7 +13,8 @@ build:
 
 install: build
 	@mkdir -p $(HOME)/.local/bin
-	cp $(BIN_DIR)/$(BINARY_NAME)-setup $(HOME)/.local/bin/pi-gomemory-setup
+	cp $(BIN_DIR)/$(BINARY_NAME)-setup $(HOME)/.local/bin/.pi-gomemory-setup.tmp
+	mv -f $(HOME)/.local/bin/.pi-gomemory-setup.tmp $(HOME)/.local/bin/pi-gomemory-setup
 	./$(BIN_DIR)/$(BINARY_NAME)-setup install
 
 doctor: build

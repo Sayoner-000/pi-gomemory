@@ -15,7 +15,7 @@ C_SUCCESS="\033[38;2;46;204;113m"
 
 REPO="Sayoner-000/pi-gomemory"
 INSTALL_DIR="${PI_GOMEMORY_BIN_DIR:-${HOME}/.local/bin}"
-VERSION="${PI_GOMEMORY_VERSION:-v1.3.0}"
+VERSION="${PI_GOMEMORY_VERSION:-v1.4.0}"
 
 echo -e "${C_CYAN}╔════════════════════════════════════════════════════════════════════╗${C_RESET}"
 echo -e "${C_BRILLO}║         INSTALADOR DE PI-GOMEMORY PARA PI CODING AGENT             ║${C_RESET}"
@@ -56,8 +56,13 @@ SETUP_BIN="${INSTALL_DIR}/pi-gomemory-setup"
 # Opción A: compilar solo si el directorio actual es el código fuente de pi-gomemory
 if [ -f "./go.mod" ] && grep -q '^module pi-gomemory$' ./go.mod && command -v go &>/dev/null; then
   echo -e "${C_MUTED}==> Compilando binario autocontenido desde código fuente local con Go...${C_RESET}"
-  go build -ldflags="-s -w" -o "${SETUP_BIN}" .
-  echo -e "${C_SUCCESS}✓ Binario compilado en: ${SETUP_BIN}${C_RESET}"
+  LOCAL_VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+  BUILD_TMP="$(mktemp "${INSTALL_DIR}/.pi-gomemory-setup.XXXXXX")"
+  trap 'rm -f "${BUILD_TMP}"' EXIT
+  go build -trimpath -ldflags="-s -w -X main.version=${LOCAL_VERSION}" -o "${BUILD_TMP}" .
+  chmod +x "${BUILD_TMP}"
+  mv -f "${BUILD_TMP}" "${SETUP_BIN}"
+  echo -e "${C_SUCCESS}✓ Binario ${LOCAL_VERSION} compilado en: ${SETUP_BIN}${C_RESET}"
 else
   # Opción B: Descargar release desde GitHub (o desde PI_GOMEMORY_BASE_URL)
   TARBALL="pi-gomemory-setup_${VERSION}_${OS}_${ARCH}.tar.gz"
@@ -97,7 +102,11 @@ else
 
   echo -e "${C_MUTED}==> Extrayendo binario...${C_RESET}"
   tar -xzf "${TMP_DIR}/${TARBALL}" -C "${TMP_DIR}"
-  cp "${TMP_DIR}/pi-gomemory-setup" "${SETUP_BIN}"
+  # Temporal + rename en el mismo directorio: sobrescribir en su sitio un binario
+  # firmado y ya ejecutado hace que macOS lo mate (Killed: 9).
+  cp "${TMP_DIR}/pi-gomemory-setup" "${SETUP_BIN}.tmp.$$"
+  chmod +x "${SETUP_BIN}.tmp.$$"
+  mv -f "${SETUP_BIN}.tmp.$$" "${SETUP_BIN}"
   echo -e "${C_SUCCESS}✓ Binario instalado en: ${SETUP_BIN}${C_RESET}"
 fi
 
@@ -105,7 +114,7 @@ chmod +x "${SETUP_BIN}"
 
 # 3. Ejecutar la orquestación de instalación completa
 echo ""
-"${SETUP_BIN}" install
+PI_GOMEMORY_BIN_DIR="${INSTALL_DIR}" "${SETUP_BIN}" install
 
 # 4. Verificación de PATH
 echo ""

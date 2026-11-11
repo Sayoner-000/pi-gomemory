@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.3.0"><img src="https://img.shields.io/badge/version-1.3.0-blue" alt="Version 1.3.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.4.0"><img src="https://img.shields.io/badge/version-1.4.0-blue" alt="Version 1.4.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -64,7 +64,7 @@ make install
 |---|---|---|
 | **Memoria persistente** | `gomemory` guarda decisiones, bugs y convenciones y las devuelve en cada sesión | `~/.pi/agent/mcp.json` |
 | **Grafo de código** | `codegraph` y `codebase-memory` responden quién llama a qué y qué rompe un cambio, sin recorrer archivos a ciegas | `~/.pi/agent/mcp.json` |
-| **21 skills** | El ciclo HCD completo (`hcd`, `hcd-define` … `hcd-close`), verificación (`verify-loop`, `search-first`), revisión adversarial y auditoría defensiva | `~/.pi/agent/skills/` |
+| **21 skills** | El ciclo HCD completo (`hcd`, `hcd-define` … `hcd-close`), verificación (`verify-loop`, `search-first`), revisión adversarial y auditoría defensiva | `~/.pi-gomemory/skills/` |
 | **Protocolo de trabajo** | Instrucciones para que Pi consulte la memoria y el grafo antes de buscar con grep, y guarde lo que aprende | `~/.pi/agent/AGENTS.md` |
 | **Modelos de Google AI Pro** | Plugin `pi-antigravity` y el comando `pi-gomemory usage`, que consulta la cuota real de tu cuenta | `~/.pi/agent/settings.json` |
 | **Interfaz** | `pi-cc-extensions` (diffs laterales, `/context`), barra de tokens y coste (`/tokens`), y el tema gomemory en Truecolor | `~/.pi/agent/` |
@@ -127,24 +127,27 @@ pi-gomemory-setup usage       Cuota real de Google AI Pro / Antigravity
 pi-gomemory-setup mcp         Solo los servidores MCP
 pi-gomemory-setup theme       Solo el tema
 pi-gomemory-setup plugin      Solo pi-antigravity y pi-cc-extensions
-pi-gomemory-setup skills      Solo las skills
+pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills
 pi-gomemory-setup harness     Solo el launcher
 pi-gomemory-setup version     Versión instalada
-pi-gomemory-setup check-update  Avisa si hay una release nueva
+pi-gomemory-setup deps-status   Componentes desactualizados según la última consulta
+pi-gomemory-setup deps-update   Actualiza los componentes desactualizados
 pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala
 ```
 
 Con `usage`, si la API no responde o el token caducó, el comando termina con un error. Nunca muestra cifras aproximadas.
 
-### Banner, modo /plan y skills del anfitrión
+### Banner, modo /plan y repositorio de skills
 
 - **Banner:** al abrir Pi, la cabecera muestra la gota de gomemory, «pi - gomemory» y la versión que pasa el launcher (`PI_GOMEMORY_RUNNING_VERSION`). Con `NO_COLOR` se dibuja sin colores.
 - **`/plan`:** activa el modo plan. Bloquea `edit`, `write` y los comandos de consola que modifican archivos (lista en `~/.pi/agent/extensions/gomemory-plan-patterns.json`), añade al contexto el método de `mem plan-context` y muestra «PLAN» en la barra. `/plan` otra vez o `/plan run` lo desactivan. Es un bloqueo de las modificaciones comunes, no un aislamiento completo.
-- **Skills del anfitrión:** `install` registra `~/.config/opencode/skills` y `~/.claude/skills` (si existen) en el array `skills` de `~/.pi/agent/settings.json`, así Pi ve skills como `impeccable` o `gitlab-release` sin copiarlas. `~/.agents/skills` ya la lee Pi por su cuenta. Si un nombre se repite, Pi conserva la primera que encuentra y avisa.
+- **Repositorio de skills:** `~/.pi-gomemory/skills` reúne las 21 skills de gomemory (copias adaptadas para Pi, que siempre ganan) y enlaces a las skills de los demás agentes, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. Pi carga solo ese repositorio, así que no hay avisos de colisión. Se sincroniza al instalar y en cada arranque de `pi-gomemory`. Nunca modifica las carpetas de otros agentes ni las skills tuyas.
 
-### Aviso de nuevas versiones
+### Actualizaciones del meta-harness
 
-Cada vez que abres `pi-gomemory`, el launcher ejecuta `pi-gomemory-setup check-update`. Este comando consulta la última release en GitHub como mucho una vez cada 24 h y guarda el resultado en `~/.pi/agent/pi-gomemory-update.json`. Si hay una versión nueva, muestra un aviso con el comando para actualizar. Si no hay red, no muestra nada y Pi arranca igual. Nunca instala nada por su cuenta: para actualizar, ejecuta `pi-gomemory-setup update`. Para desactivar el aviso, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
+Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa el resultado de la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`). Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar. Para desactivarlo, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
+
+`pi-antigravity` y `pi-cc-extensions` se instalan fijados a la versión del catálogo oficial de Pi (`npm:pi-antigravity@0.12.0`, `npm:pi-cc-extensions@1.0.16`); cambian solo con una release nueva de pi-gomemory.
 
 ## Desarrollo
 

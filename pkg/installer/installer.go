@@ -20,10 +20,14 @@ func DefaultOptions() (*Options, error) {
 		return nil, fmt.Errorf("obtener home: %w", err)
 	}
 
+	binDir := filepath.Join(home, ".local", "bin")
+	if v := os.Getenv("PI_GOMEMORY_BIN_DIR"); v != "" {
+		binDir = v
+	}
 	return &Options{
 		HomeDir:     home,
 		PiAgentDir:  filepath.Join(home, ".pi", "agent"),
-		LocalBinDir: filepath.Join(home, ".local", "bin"),
+		LocalBinDir: binDir,
 	}, nil
 }
 
@@ -55,15 +59,12 @@ func InstallAll(assets fs.FS, opts *Options) error {
 		return fmt.Errorf("paso Instrucciones: %w", err)
 	}
 
-	fmt.Printf("%s==> [6/8] Instalando y sanitizando skills de gomemory en Pi...%s\n", ColorCyan, ColorReset)
-	count, err := InstallSkills(assets, opts.PiAgentDir)
+	fmt.Printf("%s==> [6/8] Reuniendo skills de gomemory y del anfitrión en %s...%s\n", ColorCyan, SkillRepoSetting, ColorReset)
+	res, err := InstallSkills(assets, opts)
 	if err != nil {
 		return fmt.Errorf("paso Skills: %w", err)
 	}
-	fmt.Printf("%s    ✓ %d skills instaladas y sanitizadas en %s%s\n", ColorMuted, count, filepath.Join(opts.PiAgentDir, "skills"), ColorReset)
-	if err := RegisterHostSkills(opts.PiAgentDir, opts.HomeDir); err != nil {
-		return fmt.Errorf("paso Skills del anfitrión: %w", err)
-	}
+	fmt.Printf("%s    ✓ %d skills embebidas y %d enlazadas del anfitrión (%d colisiones resueltas)%s\n", ColorMuted, res.Embedded, res.Linked, len(res.Collisions), ColorReset)
 
 	fmt.Printf("%s==> [7/8] Instalando extensión TUI Status Bar y Monitor de Tokens gomemory...%s\n", ColorCyan, ColorReset)
 	if err := InstallTUIExtension(assets, opts.PiAgentDir); err != nil {

@@ -178,7 +178,7 @@ func TestInstallAllUsesEmbeddedAssetsAndLeavesCwdClean(t *testing.T) {
 	if info, err := os.Stat(filepath.Join(opts.LocalBinDir, "pi-gomemory")); err != nil || info.Mode()&0111 == 0 {
 		t.Errorf("launcher ausente o no ejecutable: %v", err)
 	}
-	skills, _ := os.ReadDir(filepath.Join(opts.PiAgentDir, "skills"))
+	skills, _ := os.ReadDir(SkillRepoDir(opts.HomeDir))
 	if len(skills) != 21 {
 		t.Errorf("skills instaladas = %d, se esperan 21", len(skills))
 	}
@@ -190,7 +190,7 @@ func TestInstallSkillsFailsWithoutEmbeddedSkills(t *testing.T) {
 	other := filepath.Join(opts.HomeDir, ".config", "opencode", "skills", "x", "SKILL.md")
 	writeFile(t, other, "---\ndescription: a: b\n---\n")
 
-	if _, err := InstallSkills(fstest.MapFS{}, opts.PiAgentDir); err == nil {
+	if _, err := InstallSkills(fstest.MapFS{}, opts); err == nil {
 		t.Fatal("se esperaba error sin skills embebidas")
 	}
 	if got := readFile(t, other); got != "---\ndescription: a: b\n---\n" {

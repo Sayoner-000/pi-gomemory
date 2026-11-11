@@ -53,8 +53,12 @@ Comandos:
   mcp           Registra gomemory, codegraph y codebase-memory en mcp.json
   theme         Instala la paleta gomemory en ~/.pi/agent/themes/
   plugin        Configura pi-antigravity y pi-cc-extensions en settings.json
-  skills        Copia y sanitiza las 21 skills en ~/.pi/agent/skills/
-  harness       Genera el script ejecutable ~/.local/bin/pi-gomemory
+  skills        Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills/
+  harness       Genera el launcher pi-gomemory en ~/.local/bin (o PI_GOMEMORY_BIN_DIR)
+  version       Muestra la versión instalada
+  deps-status   Lista los componentes desactualizados
+  deps-update   Actualiza los componentes desactualizados
+  update        Actualiza pi-gomemory desde la última release verificada
   help          Muestra este mensaje de ayuda
 ```
 
@@ -80,7 +84,7 @@ Muestra el desglose de espacio ocupado en la ventana de contexto del modelo para
 
 ## Catálogo de skills instaladas
 
-El instalador copia y sanitiza 21 skills en `~/.pi/agent/skills/`:
+El instalador copia y sanitiza 21 skills en `~/.pi-gomemory/skills/`, junto con enlaces a las skills de los demás agentes:
 
 Harness Continual Development (HCD):
 `hcd`, `hcd-define`, `hcd-clarify`, `hcd-approve`, `hcd-slice`, `hcd-tasks`, `hcd-implement`, `hcd-verify`, `hcd-analyze`, `hcd-close`.

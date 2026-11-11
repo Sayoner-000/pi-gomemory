@@ -4,8 +4,17 @@
 # ==============================================================================
 set -euo pipefail
 
-VERSION="${1:-v1.3.0}"
+VERSION="${1:-v1.4.0}"
 DIST_DIR="dist"
+
+echo "==> Ejecutando go vet y go test antes de empaquetar..."
+go vet ./...
+go test ./...
+
+if ! command -v shasum &>/dev/null && ! command -v sha256sum &>/dev/null; then
+  echo "✗ Se requiere shasum o sha256sum para generar SHA256SUMS" >&2
+  exit 1
+fi
 
 echo "==> Generando pack de distribución para pi-gomemory (${VERSION})..."
 rm -rf "${DIST_DIR}"
@@ -27,7 +36,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
   echo "  -> Compilando ${GOOS}/${GOARCH}..."
   mkdir -p "${TARGET_DIR}"
 
-  CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" go build -ldflags="-s -w -X main.version=${VERSION}" -o "${TARGET_DIR}/pi-gomemory-setup" .
+  CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o "${TARGET_DIR}/pi-gomemory-setup" .
   cp README.md LICENSE install.sh "${TARGET_DIR}/"
 
   echo "  -> Empaquetando ${TARGET_NAME}.tar.gz..."

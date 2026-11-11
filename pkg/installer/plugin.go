@@ -10,11 +10,91 @@ import (
 	"strings"
 )
 
-// Paquetes soportados
+// Paquetes soportados, fijados a la versión publicada en el catálogo oficial de
+// Pi (pi.dev/packages). Pi no reinstala un paquete fijado a una versión exacta.
 const (
-	AntigravityPackageSource = "npm:pi-antigravity"
-	CCExtensionsSource       = "npm:pi-cc-extensions"
+	AntigravityVersion       = "0.12.0"
+	CCExtensionsVersion      = "1.0.16"
+	AntigravityPackageSource = "npm:pi-antigravity@" + AntigravityVersion
+	CCExtensionsSource       = "npm:pi-cc-extensions@" + CCExtensionsVersion
 )
+
+// pinnedPackages relaciona cada paquete con su fuente fijada.
+var pinnedPackages = []struct{ name, source string }{
+	{"pi-antigravity", AntigravityPackageSource},
+	{"pi-cc-extensions", CCExtensionsSource},
+}
+
+// npmPackageName devuelve el nombre de un paquete npm:<nombre>[@versión], o "".
+func npmPackageName(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) != nil || !strings.HasPrefix(s, "npm:") {
+		return ""
+	}
+	s = strings.TrimPrefix(s, "npm:")
+	if i := strings.LastIndex(s, "@"); i > 0 {
+		s = s[:i]
+	}
+	return s
+}
+
+// EnsurePinnedPackages deja en settings.json una sola entrada por paquete
+// soportado, con su versión fijada; el resto de entradas se conserva.
+func EnsurePinnedPackages(piAgentDir string) error {
+	settingsPath := filepath.Join(piAgentDir, "settings.json")
+	settings, err := readJSONObject(settingsPath)
+	if err != nil {
+		return err
+	}
+	var packages []json.RawMessage
+	if raw, ok := settings["packages"]; ok {
+		if err := json.Unmarshal(raw, &packages); err != nil {
+			return fmt.Errorf("%s: packages no es una lista; no se modifica", settingsPath)
+		}
+	}
+	var out []json.RawMessage
+	placed := map[string]bool{}
+	for _, p := range packages {
+		name := npmPackageName(p)
+		pinned := ""
+		for _, pp := range pinnedPackages {
+			if pp.name == name {
+				pinned = pp.source
+			}
+		}
+		if pinned == "" {
+			out = append(out, p)
+			continue
+		}
+		if placed[name] {
+			continue
+		}
+		placed[name] = true
+		entry, _ := json.Marshal(pinned)
+		out = append(out, entry)
+	}
+	for _, pp := range pinnedPackages {
+		if !placed[pp.name] {
+			entry, _ := json.Marshal(pp.source)
+			out = append(out, entry)
+		}
+	}
+	if string(mustJSON(out)) == string(mustJSON(packages)) {
+		return nil
+	}
+	if err := setJSONField(settings, "packages", out); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
+		return err
+	}
+	return writeJSONObject(settingsPath, settings)
+}
+
+func mustJSON(v any) []byte {
+	b, _ := json.Marshal(v)
+	return b
+}
 
 // PatchAntigravityPackageJSON corrige el aviso de TypeBox como host-provided peerDependency en Pi.
 func PatchAntigravityPackageJSON(piAgentDir string) error {
@@ -55,7 +135,7 @@ func PatchAntigravityPackageJSON(piAgentDir string) error {
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(pkgPath, out, 0644); err != nil {
+		if err := writeFileAtomic(pkgPath, out, 0644); err != nil {
 			return err
 		}
 	}
@@ -63,52 +143,17 @@ func PatchAntigravityPackageJSON(piAgentDir string) error {
 	return nil
 }
 
-// InstallAntigravityPlugin instala o asegura el plugin pi-antigravity en Pi y corrige sus peerDependencies.
+// InstallAntigravityPlugin instala pi-antigravity en su versión fijada y corrige sus peerDependencies.
 func InstallAntigravityPlugin(piAgentDir string) error {
-	// 1. Intentar instalar a través de la CLI de pi si está en PATH
 	if piBin, err := exec.LookPath("pi"); err == nil {
-		cmd := exec.Command(piBin, "install", AntigravityPackageSource)
-		out, err := cmd.CombinedOutput()
-		if err == nil || strings.Contains(string(out), "already installed") || strings.Contains(string(out), "updated") {
-			_ = PatchAntigravityPackageJSON(piAgentDir)
-			return nil
+		if out, err := exec.Command(piBin, "install", AntigravityPackageSource).CombinedOutput(); err != nil {
+			fmt.Printf("%s    ⚠ pi install %s falló; se registra en settings.json: %s%s\n", ColorWarning, AntigravityPackageSource, strings.TrimSpace(firstLine(string(out))), ColorReset)
 		}
 	}
-
-	// 2. Fallback declarativo: asegurar que esté listado en ~/.pi/agent/settings.json
-	settingsPath := filepath.Join(piAgentDir, "settings.json")
-	settings, err := readJSONObject(settingsPath)
-	if err != nil {
+	// pi install puede dejar la entrada sin versión o duplicada: se normaliza siempre.
+	if err := EnsurePinnedPackages(piAgentDir); err != nil {
 		return err
 	}
-
-	// Se conservan las entradas tal cual: un paquete puede ser un string o un objeto.
-	var packages []json.RawMessage
-	if raw, ok := settings["packages"]; ok {
-		if err := json.Unmarshal(raw, &packages); err != nil {
-			return fmt.Errorf("%s: packages no es una lista; no se modifica", settingsPath)
-		}
-	}
-
-	found := false
-	for _, p := range packages {
-		if strings.Contains(string(p), "pi-antigravity") {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		entry, _ := json.Marshal(AntigravityPackageSource)
-		packages = append(packages, entry)
-		if err := setJSONField(settings, "packages", packages); err != nil {
-			return err
-		}
-		if err := writeJSONObject(settingsPath, settings); err != nil {
-			return err
-		}
-	}
-
 	_ = PatchAntigravityPackageJSON(piAgentDir)
 	return nil
 }
@@ -135,7 +180,12 @@ func InstallCCExtensions(assets fs.FS, piAgentDir string) error {
 
 	// Instalar paquete vía pi install si pi está disponible
 	if piBin, err := exec.LookPath("pi"); err == nil {
-		_, _ = exec.Command(piBin, "install", CCExtensionsSource).CombinedOutput()
+		if out, err := exec.Command(piBin, "install", CCExtensionsSource).CombinedOutput(); err != nil {
+			fmt.Printf("%s    ⚠ pi install %s falló; se registra en settings.json: %s%s\n", ColorWarning, CCExtensionsSource, strings.TrimSpace(firstLine(string(out))), ColorReset)
+		}
+	}
+	if err := EnsurePinnedPackages(piAgentDir); err != nil {
+		return err
 	}
 
 	for key, value := range defaults {

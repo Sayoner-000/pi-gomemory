@@ -195,18 +195,19 @@ func TestUpdateRejectsBadChecksum(t *testing.T) {
 	}
 }
 
+// HCD-004 sustituye check-update por deps-status/deps-refresh, que incluyen pi-gomemory.
 func TestHarnessCallsCheckUpdate(t *testing.T) {
 	s := GenerateHarnessScript()
-	if !strings.Contains(s, "pi-gomemory-setup check-update") {
-		t.Fatalf("el launcher debe llamar a check-update")
+	if !strings.Contains(s, "pi-gomemory-setup deps-status") {
+		t.Fatalf("el launcher debe llamar a deps-status")
 	}
 	if !strings.Contains(s, "PI_GOMEMORY_NO_UPDATE_CHECK") {
 		t.Fatalf("el launcher debe respetar PI_GOMEMORY_NO_UPDATE_CHECK")
 	}
-	if !strings.Contains(s, "check-update 2>/dev/null || true") {
-		t.Fatalf("un fallo de check-update no debe impedir el arranque")
+	if !strings.Contains(s, "deps-refresh >/dev/null 2>&1 &) || true") {
+		t.Fatalf("deps-refresh debe ir en segundo plano y no impedir el arranque")
 	}
-	if strings.Index(s, "check-update") > strings.Index(s, "exec pi ") {
-		t.Fatalf("check-update debe ejecutarse antes de lanzar pi")
+	if strings.Index(s, "deps-status") > strings.Index(s, "exec pi ") {
+		t.Fatalf("deps-status debe ejecutarse antes de lanzar pi")
 	}
 }

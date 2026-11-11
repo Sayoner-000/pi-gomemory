@@ -42,7 +42,7 @@ El instalador compila todos sus activos dentro del propio binario mediante `embe
 var EmbeddedAssets embed.FS
 ```
 
-Esto evita depender de carpetas clonadas o rutas relativas en disco. El ejecutable se puede mover a cualquier equipo y conserva intactas las 21 skills, el tema (`themes/gomemory.json`), la configuración por defecto de `pi-cc-extensions` (`config/pi-cc-extensions.json`) y la extensión de estado. El embebido es la única fuente de lo que se instala: el instalador no lee carpetas locales y no escribe nada en el directorio desde el que se ejecuta. Con las skills de otros agentes no copia ni modifica nada. Registra en el array `skills` del `settings.json` de Pi solo la primera carpeta del anfitrión que exista (`~/.config/opencode/skills`). De `~/.claude/skills` enlaza en `~/.pi/agent/skills` únicamente las skills que no estén ya en otra carpeta (por ejemplo `semantica`), y retira de `~/.pi/agent/skills` las copias embebidas que el anfitrión ya ofrece. Así Pi no ve dos veces la misma skill y no avisa de colisiones. `doctor` cuenta las skills distintas disponibles.
+Esto evita depender de carpetas clonadas o rutas relativas en disco. El ejecutable se puede mover a cualquier equipo y conserva intactas las 21 skills, el tema (`themes/gomemory.json`), la configuración por defecto de `pi-cc-extensions` (`config/pi-cc-extensions.json`) y la extensión de estado. El embebido es la única fuente de lo que se instala: el instalador no lee carpetas locales y no escribe nada en el directorio desde el que se ejecuta. Con las skills de otros agentes no copia ni modifica nada. Reúne todo en el repositorio central `~/.pi-gomemory/skills`: las skills embebidas como copias (con una marca `.pi-gomemory` que guarda el SHA256 del `SKILL.md`, para no pisar nunca una copia editada) y las del anfitrión como enlaces simbólicos, con prioridad `~/.agents/skills` → `~/.config/opencode/skills` → `~/.claude/skills` → `~/.codex/skills` → `~/.gemini/skills`. Pi registra solo ese repositorio en `settings.json`, así que nunca ve dos veces la misma skill. `doctor` muestra el total y las colisiones resueltas.
 
 Los archivos de la persona se fusionan, nunca se reemplazan: en `mcp.json` solo se tocan las tres entradas propias, en `pi-cc-extensions.json` solo se añaden las claves que falten, y en `AGENTS.md` el protocolo vive entre `<!-- pi-gomemory:start -->` y `<!-- pi-gomemory:end -->`. Si un JSON existente es inválido, el instalador se detiene sin tocarlo.
 
@@ -65,7 +65,7 @@ La función `InstallMCPServers` lee el archivo `mcp.json` existente y solo agreg
 
 ### Plugin pi-antigravity
 
-Para conectar Pi con los modelos de Google AI Pro mediante Antigravity, el instalador registra el paquete `npm:pi-antigravity` en `settings.json`. Además, inyecta la dependencia `typebox: "*"` en la sección `peerDependencies` de la configuración para evitar avisos molestos de npm al resolver tipos.
+Para conectar Pi con los modelos de Google AI Pro mediante Antigravity, el instalador registra el paquete `npm:pi-antigravity@0.12.0` en `settings.json` (junto con `npm:pi-cc-extensions@1.0.16`). Ambos van fijados a la versión del catálogo oficial de Pi: Pi no reinstala un paquete con versión exacta. Además, inyecta la dependencia `typebox: "*"` en la sección `peerDependencies` de la configuración para evitar avisos molestos de npm al resolver tipos.
 
 ### Monitor de cuotas
 
@@ -85,7 +85,7 @@ Extensión en TypeScript que añade al pie de la terminal el conteo de tokens de
 
 Pi utiliza un analizador estricto de YAML para leer el bloque inicial de metadatos (`---`) de cada archivo `SKILL.md`. Si el campo `description:` contiene dos puntos sin comillas, el analizador falla y la skill no se carga.
 
-La función `SanitizeFrontmatter` procesa el contenido antes de copiarlo a `~/.pi/agent/skills/`. Si detecta dos puntos dentro del texto de la descripción, escapa las comillas existentes y envuelve todo el valor entre comillas dobles.
+La función `SanitizeFrontmatter` procesa el contenido antes de copiarlo a `~/.pi-gomemory/skills/`. Si detecta dos puntos dentro del texto de la descripción, escapa las comillas existentes y envuelve todo el valor entre comillas dobles.
 
 ## Lanzador para Herdr
 

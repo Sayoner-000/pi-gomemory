@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 // readJSONObject lee un objeto JSON conservando cada valor sin interpretar.
@@ -29,16 +30,41 @@ func readJSONObject(path string) (map[string]json.RawMessage, error) {
 	return obj, nil
 }
 
-// writeJSONObject serializa el objeto con sangría de dos espacios.
+// writeJSONObject serializa el objeto con sangría de dos espacios y lo escribe
+// de forma atómica (temporal + rename): un corte nunca deja el archivo truncado.
 func writeJSONObject(path string, obj any) error {
 	data, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
 		return fmt.Errorf("serializar %s: %w", path, err)
 	}
-	if err := os.WriteFile(path, append(data, '\n'), 0644); err != nil {
+	if err := writeFileAtomic(path, append(data, '\n'), 0644); err != nil {
 		return fmt.Errorf("escribir %s: %w", path, err)
 	}
 	return nil
+}
+
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	defer os.Remove(name)
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(name, perm); err != nil {
+		return err
+	}
+	return os.Rename(name, path)
 }
 
 // setJSONField asigna obj[key] = value, serializado.

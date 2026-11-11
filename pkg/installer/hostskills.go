@@ -3,14 +3,35 @@ package installer
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// hostSkillDirs son las carpetas de skills de otros agentes que Pi lee en su sitio.
-// ~/.agents/skills no se registra: Pi la descubre por sí mismo.
-var hostSkillDirs = []string{"~/.config/opencode/skills", "~/.claude/skills"}
+// SkillRepoSetting es la ruta del repositorio central tal como se registra en
+// el array `skills` de ~/.pi/agent/settings.json.
+const SkillRepoSetting = "~/.pi-gomemory/skills"
+
+// hostSkillSources son las carpetas de skills de los agentes del anfitrión, en
+// orden de prioridad: ante un mismo nombre gana la primera. Las skills
+// embebidas de pi-gomemory ganan a todas.
+var hostSkillSources = []string{
+	"~/.agents/skills",
+	"~/.config/opencode/skills",
+	"~/.claude/skills",
+	"~/.codex/skills",
+	"~/.gemini/skills",
+}
+
+// legacyHostSettings son las rutas que HCD-002 registraba en settings.json;
+// ahora llegan a Pi a través del repositorio central.
+var legacyHostSettings = []string{"~/.config/opencode/skills", "~/.claude/skills"}
+
+// SkillRepoDir devuelve la ruta absoluta del repositorio central de skills.
+func SkillRepoDir(home string) string {
+	return expandHome(SkillRepoSetting, home)
+}
 
 func expandHome(p, home string) string {
 	if p == "~" {
@@ -22,84 +43,18 @@ func expandHome(p, home string) string {
 	return p
 }
 
-// RegisterHostSkills hace que Pi lea las skills de otros agentes sin colisiones.
-// La primera carpeta del anfitrión que exista se registra en el array `skills` del
-// settings.json. De las siguientes solo se enlazan, en ~/.pi/agent/skills, las
-// skills que no ofrezca ya otra carpeta, y su entrada sale de settings.json: si se
-// registraran enteras, Pi avisaría de una colisión por cada skill repetida. Por
-// último se retiran de ~/.pi/agent/skills las copias embebidas que el anfitrión
-// ya ofrece. No copia ni modifica nada dentro de las carpetas del anfitrión.
-func RegisterHostSkills(piAgentDir, home string) error {
-	path := filepath.Join(piAgentDir, "settings.json")
-	obj, err := readJSONObject(path)
-	if err != nil {
-		return err
-	}
-	var skills []string
-	if raw, ok := obj["skills"]; ok {
-		if err := json.Unmarshal(raw, &skills); err != nil {
-			return fmt.Errorf("%s: `skills` no es una lista de rutas; no se modifica: %w", path, err)
-		}
-	}
-	registered := func(abs string) int {
-		for i, s := range skills {
-			if filepath.Clean(expandHome(s, home)) == filepath.Clean(abs) {
-				return i
-			}
-		}
-		return -1
-	}
+// SkillCollision registra una skill que existe en varias fuentes.
+type SkillCollision struct {
+	Name   string
+	Winner string
+	Loser  string
+}
 
-	linksDir := filepath.Join(piAgentDir, "skills")
-	provided := map[string]bool{} // skills que Pi ya recibe de una carpeta del anfitrión
-	for _, n := range skillNames(filepath.Join(home, ".agents", "skills")) {
-		provided[n] = true
-	}
-	changed, primary := false, false
-	for _, dir := range hostSkillDirs {
-		abs := expandHome(dir, home)
-		if info, err := os.Stat(abs); err != nil || !info.IsDir() {
-			continue
-		}
-		names := skillNames(abs)
-		if !primary {
-			primary = true
-			if registered(abs) < 0 {
-				skills = append(skills, dir)
-				changed = true
-			}
-			for _, n := range names {
-				provided[n] = true
-			}
-			continue
-		}
-		if i := registered(abs); i >= 0 {
-			skills = append(skills[:i], skills[i+1:]...)
-			changed = true
-		}
-		for _, n := range names {
-			if provided[n] {
-				continue
-			}
-			if err := linkHostSkill(filepath.Join(abs, n), filepath.Join(linksDir, n)); err != nil {
-				return err
-			}
-			provided[n] = true
-		}
-	}
-	if err := pruneProvidedCopies(linksDir, provided); err != nil {
-		return err
-	}
-	if !changed {
-		return nil
-	}
-	if err := setJSONField(obj, "skills", skills); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
-		return err
-	}
-	return writeJSONObject(path, obj)
+// SkillRepoResult resume una sincronización del repositorio.
+type SkillRepoResult struct {
+	Embedded   int
+	Linked     int
+	Collisions []SkillCollision
 }
 
 // skillNames devuelve las subcarpetas directas de dir (o enlaces a carpetas) que
@@ -118,86 +73,240 @@ func skillNames(dir string) []string {
 	return names
 }
 
-// linkHostSkill enlaza una skill del anfitrión en Pi. Si ya hay algo con ese
-// nombre, lo deja: puede ser una skill embebida o una del usuario.
-func linkHostSkill(src, dst string) error {
-	if _, err := os.Lstat(dst); err == nil {
-		return nil
+// planHostLinks decide qué skill del anfitrión entra en el repositorio. owner
+// indica, por nombre, quién ocupa ya ese nombre (embebida o carpeta propia).
+// Solo lee.
+func planHostLinks(home string, owner map[string]string) (map[string]string, []SkillCollision) {
+	links := map[string]string{}
+	var collisions []SkillCollision
+	for _, src := range hostSkillSources {
+		abs := expandHome(src, home)
+		for _, n := range skillNames(abs) {
+			if w, ok := owner[n]; ok {
+				collisions = append(collisions, SkillCollision{Name: n, Winner: w, Loser: src})
+				continue
+			}
+			owner[n] = src
+			links[n] = filepath.Join(abs, n)
+		}
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-		return err
-	}
-	return os.Symlink(src, dst)
+	return links, collisions
 }
 
-// pruneProvidedCopies borra de ~/.pi/agent/skills las carpetas reales (no los
-// enlaces) cuya skill ya ofrece una carpeta del anfitrión.
-func pruneProvidedCopies(linksDir string, provided map[string]bool) error {
-	entries, err := os.ReadDir(linksDir)
+// SyncSkillRepo reúne en ~/.pi-gomemory/skills las skills embebidas (copias
+// reales con marca) y las de los agentes del anfitrión (enlaces simbólicos).
+// Nunca modifica las carpetas del anfitrión ni las carpetas reales que la
+// persona tenga en el repositorio; retira los enlaces que ya no corresponden.
+func SyncSkillRepo(assets fs.FS, home string) (SkillRepoResult, error) {
+	var res SkillRepoResult
+	repo := SkillRepoDir(home)
+	if err := os.MkdirAll(repo, 0755); err != nil {
+		return res, fmt.Errorf("crear %s: %w", repo, err)
+	}
+
+	embedded, err := installEmbeddedSkills(assets, repo)
+	if err != nil {
+		return res, err
+	}
+	res.Embedded = len(embedded)
+
+	owner := map[string]string{}
+	for _, n := range embedded {
+		owner[n] = "pi-gomemory"
+	}
+	entries, _ := os.ReadDir(repo)
+	for _, e := range entries {
+		if _, ok := owner[e.Name()]; !ok && e.Type()&os.ModeSymlink == 0 && e.IsDir() {
+			owner[e.Name()] = SkillRepoSetting // carpeta propia de la persona
+		}
+	}
+
+	links, collisions := planHostLinks(home, owner)
+	res.Collisions = collisions
+	for n, target := range links {
+		dst := filepath.Join(repo, n)
+		if cur, err := os.Readlink(dst); err == nil {
+			if cur == target {
+				res.Linked++
+				continue
+			}
+			if err := os.Remove(dst); err != nil {
+				return res, err
+			}
+		} else if _, err := os.Lstat(dst); err == nil {
+			continue // existe algo que no es un enlace: no se toca
+		}
+		if err := os.Symlink(target, dst); err != nil {
+			return res, fmt.Errorf("enlazar %s: %w", n, err)
+		}
+		res.Linked++
+	}
+
+	entries, _ = os.ReadDir(repo)
+	for _, e := range entries {
+		if e.Type()&os.ModeSymlink == 0 {
+			continue
+		}
+		if _, ok := links[e.Name()]; ok {
+			continue
+		}
+		if err := os.Remove(filepath.Join(repo, e.Name())); err != nil {
+			return res, err
+		}
+	}
+	return res, nil
+}
+
+// RegisterSkillRepo hace que Pi cargue el repositorio central: lo registra en
+// settings.json, retira las rutas del anfitrión que registraba HCD-002 y saca
+// de ~/.pi/agent/skills las copias embebidas intactas y los enlaces a carpetas
+// del anfitrión. Las skills propias de la persona se conservan.
+func RegisterSkillRepo(piAgentDir, home string) error {
+	path := filepath.Join(piAgentDir, "settings.json")
+	obj, err := readJSONObject(path)
+	if err != nil {
+		return err
+	}
+	var skills []string
+	if raw, ok := obj["skills"]; ok {
+		if err := json.Unmarshal(raw, &skills); err != nil {
+			return fmt.Errorf("%s: `skills` no es una lista de rutas; no se modifica: %w", path, err)
+		}
+	}
+	isLegacy := func(s string) bool {
+		clean := filepath.Clean(expandHome(strings.TrimPrefix(s, "-"), home))
+		for _, l := range legacyHostSettings {
+			root := filepath.Clean(expandHome(l, home))
+			if clean == root || (strings.HasPrefix(s, "-") && strings.HasPrefix(clean, root+string(filepath.Separator))) {
+				return true
+			}
+		}
+		return false
+	}
+	repoAbs := filepath.Clean(SkillRepoDir(home))
+	var out []string
+	hasRepo := false
+	for _, s := range skills {
+		if isLegacy(s) {
+			continue
+		}
+		if filepath.Clean(expandHome(s, home)) == repoAbs {
+			if hasRepo {
+				continue
+			}
+			hasRepo = true
+		}
+		out = append(out, s)
+	}
+	if !hasRepo {
+		out = append(out, SkillRepoSetting)
+	}
+	if strings.Join(out, "\x00") != strings.Join(skills, "\x00") {
+		if err := setJSONField(obj, "skills", out); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(piAgentDir, 0755); err != nil {
+			return err
+		}
+		if err := writeJSONObject(path, obj); err != nil {
+			return err
+		}
+	}
+	return pruneLegacyPiSkills(filepath.Join(piAgentDir, "skills"), home)
+}
+
+// pruneLegacyPiSkills retira de ~/.pi/agent/skills lo que ahora ofrece el
+// repositorio: copias embebidas intactas y enlaces a carpetas del anfitrión.
+func pruneLegacyPiSkills(dir, home string) error {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
 	for _, e := range entries {
-		if !provided[e.Name()] || e.Type()&os.ModeSymlink != 0 || !e.IsDir() {
-			continue
+		p := filepath.Join(dir, e.Name())
+		remove := false
+		if e.Type()&os.ModeSymlink != 0 {
+			if target, err := os.Readlink(p); err == nil {
+				for _, src := range hostSkillSources {
+					if isUnder(target, expandHome(src, home)) {
+						remove = true
+					}
+				}
+			}
+		} else if e.IsDir() && isPristineEmbeddedCopy(p) {
+			remove = true
 		}
-		if err := os.RemoveAll(filepath.Join(linksDir, e.Name())); err != nil {
-			return err
+		if remove {
+			if err := os.RemoveAll(p); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-// AvailableSkillCount cuenta las skills distintas que Pi ve: las de
-// ~/.pi/agent/skills, las de ~/.agents/skills y las de las carpetas del anfitrión
-// registradas en settings.json.
-func AvailableSkillCount(piAgentDir, home string) int {
-	seen := map[string]bool{}
-	for _, n := range skillNames(filepath.Join(piAgentDir, "skills")) {
-		seen[n] = true
+// isUnder indica si target está dentro de root, comparando también las rutas
+// con los enlaces resueltos (p. ej. ~/.claude enlazado a otro disco).
+func isUnder(target, root string) bool {
+	under := func(t, r string) bool {
+		return strings.HasPrefix(filepath.Clean(t), filepath.Clean(r)+string(filepath.Separator))
 	}
-	for _, n := range skillNames(filepath.Join(home, ".agents", "skills")) {
-		seen[n] = true
+	if under(target, root) {
+		return true
 	}
-	for dir := range HostSkillCounts(piAgentDir, home) {
-		for _, n := range skillNames(expandHome(dir, home)) {
-			seen[n] = true
-		}
+	rr, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false
 	}
-	return len(seen)
+	if under(target, rr) {
+		return true
+	}
+	if rt, err := filepath.EvalSymlinks(filepath.Dir(target)); err == nil {
+		return under(filepath.Join(rt, filepath.Base(target)), rr)
+	}
+	return false
 }
 
-// HostSkillCounts devuelve, para cada carpeta del anfitrión registrada en settings.json,
-// cuántas subcarpetas directas contienen SKILL.md. Solo lee.
-func HostSkillCounts(piAgentDir, home string) map[string]int {
-	counts := map[string]int{}
-	obj, err := readJSONObject(filepath.Join(piAgentDir, "settings.json"))
-	if err != nil {
-		return counts
-	}
-	var skills []string
-	if raw, ok := obj["skills"]; ok {
-		_ = json.Unmarshal(raw, &skills)
-	}
-	registered := map[string]bool{}
-	for _, s := range skills {
-		registered[s] = true
-	}
-	for _, dir := range hostSkillDirs {
-		if !registered[dir] {
+// SkillRepoSummary describe el repositorio para doctor. Solo lee.
+type SkillRepoSummary struct {
+	Total      int
+	Embedded   int
+	Linked     int
+	Collisions int
+	Registered bool
+}
+
+// InspectSkillRepo cuenta lo que Pi recibe del repositorio central.
+func InspectSkillRepo(piAgentDir, home string) SkillRepoSummary {
+	var s SkillRepoSummary
+	repo := SkillRepoDir(home)
+	owner := map[string]string{}
+	entries, _ := os.ReadDir(repo)
+	for _, e := range entries {
+		p := filepath.Join(repo, e.Name())
+		if _, err := os.Stat(filepath.Join(p, "SKILL.md")); err != nil {
 			continue
 		}
-		entries, err := os.ReadDir(expandHome(dir, home))
-		if err != nil {
+		s.Total++
+		if e.Type()&os.ModeSymlink != 0 {
+			s.Linked++
 			continue
 		}
-		n := 0
-		for _, e := range entries {
-			if _, err := os.Stat(filepath.Join(expandHome(dir, home), e.Name(), "SKILL.md")); err == nil {
-				n++
+		if _, err := os.Stat(filepath.Join(p, skillMarkerFile)); err == nil {
+			s.Embedded++
+		}
+		owner[e.Name()] = "repo"
+	}
+	_, collisions := planHostLinks(home, owner)
+	s.Collisions = len(collisions)
+	if obj, err := readJSONObject(filepath.Join(piAgentDir, "settings.json")); err == nil {
+		var skills []string
+		_ = json.Unmarshal(obj["skills"], &skills)
+		for _, x := range skills {
+			if filepath.Clean(expandHome(x, home)) == filepath.Clean(repo) {
+				s.Registered = true
 			}
 		}
-		counts[dir] = n
 	}
-	return counts
+	return s
 }

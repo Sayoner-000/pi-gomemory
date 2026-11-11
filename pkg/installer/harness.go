@@ -21,8 +21,10 @@ export TERM="${TERM:-xterm-256color}"
 export GOMEMORY_THEME="${GOMEMORY_THEME:-dark}"
 export GOMEMORY_CLIENT="pi"
 
-# 2. Asegurar acceso prioritario a binarios locales
-export PATH="${HOME}/.local/bin:${HOME}/.gomemory/bin:${PATH}"
+# 2. Asegurar acceso prioritario a binarios locales (incluido el directorio del
+#    propio launcher, donde también vive pi-gomemory-setup)
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PATH="${SELF_DIR}:${HOME}/.local/bin:${HOME}/.gomemory/bin:${PATH}"
 
 # 3. Subcomando rápido para ver cuota y consumo de Google AI Pro / Antigravity
 if [ "${1:-}" = "usage" ] || [ "${1:-}" = "quota" ] || [ "${1:-}" = "/antigravity.usage" ]; then
@@ -31,12 +33,29 @@ if [ "${1:-}" = "usage" ] || [ "${1:-}" = "quota" ] || [ "${1:-}" = "/antigravit
   fi
 fi
 
-# 3b. Aviso de nuevas releases (caché de 24 h, timeout corto, nunca bloquea)
+# 3b. Actualizaciones del meta-harness y sus dependencias. La consulta en red
+#     corre en segundo plano en cada arranque y nunca retrasa Pi; el aviso usa
+#     el resultado de la consulta anterior. Con TTY se pregunta si actualizar.
 if command -v pi-gomemory-setup &>/dev/null; then
   export PI_GOMEMORY_RUNNING_VERSION="$(pi-gomemory-setup version 2>/dev/null || true)"
 fi
 if [ -z "${PI_GOMEMORY_NO_UPDATE_CHECK:-}" ] && command -v pi-gomemory-setup &>/dev/null; then
-  pi-gomemory-setup check-update 2>/dev/null || true
+  if pi-gomemory-setup deps-status; then :; elif [ $? -eq 10 ] && [ -t 0 ]; then
+    printf "¿Actualizar ahora? [s/N] (10 s) "
+    REPLY=""
+    read -r -t 10 REPLY || true
+    echo ""
+    case "${REPLY}" in
+      s|S|si|SI|sí|y|Y|yes) pi-gomemory-setup deps-update || true ;;
+    esac
+  fi
+  (pi-gomemory-setup deps-refresh >/dev/null 2>&1 &) || true
+fi
+
+# 3c. Repositorio central de skills: reúne las de gomemory y las de los agentes
+#     del anfitrión en ~/.pi-gomemory/skills (solo enlaces, rápido)
+if command -v pi-gomemory-setup &>/dev/null; then
+  pi-gomemory-setup skills-sync >/dev/null 2>&1 || true
 fi
 
 # 3. Comprobar que pi y mem estén presentes

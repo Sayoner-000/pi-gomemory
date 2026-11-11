@@ -21,24 +21,9 @@ func readSettingsSkills(t *testing.T, piAgentDir string) []string {
 	return s.Skills
 }
 
-func TestRegisterHostSkills(t *testing.T) {
-	opts := sandbox(t)
-	writeFile(t, filepath.Join(opts.HomeDir, ".config", "opencode", "skills", "impeccable", "SKILL.md"), "x")
-	writeFile(t, filepath.Join(opts.PiAgentDir, "settings.json"), `{"theme":"gomemory","skills":["/mis/skills"]}`)
-
-	if err := RegisterHostSkills(opts.PiAgentDir, opts.HomeDir); err != nil {
-		t.Fatal(err)
-	}
-	got := readSettingsSkills(t, opts.PiAgentDir)
-	want := []string{"/mis/skills", "~/.config/opencode/skills"}
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Fatalf("skills = %v, want %v (C-06, C-07: ~/.claude/skills no existe)", got, want)
-	}
-	if !strings.Contains(readFile(t, filepath.Join(opts.PiAgentDir, "settings.json")), `"theme": "gomemory"`) {
-		t.Fatal("se perdió una clave del usuario")
-	}
-}
-
+// HCD-006: las carpetas del anfitrión ya no se registran en settings.json; Pi
+// solo carga el repositorio central. La instalación sigue siendo idempotente y
+// no toca las skills del anfitrión.
 func TestInstallAllHostSkillsIdempotent(t *testing.T) {
 	opts := sandbox(t)
 	assets := repoAssets(t)
@@ -53,51 +38,15 @@ func TestInstallAllHostSkillsIdempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if got := readSettingsSkills(t, opts.PiAgentDir); len(got) != 1 || got[0] != "~/.claude/skills" {
-		t.Fatalf("skills = %v, se espera una sola entrada (C-08)", got)
+	if got := readSettingsSkills(t, opts.PiAgentDir); len(got) != 1 || got[0] != SkillRepoSetting {
+		t.Fatalf("skills = %v, se espera solo el repositorio central", got)
+	}
+	if target, err := os.Readlink(filepath.Join(SkillRepoDir(opts.HomeDir), "gitlab-release")); err != nil || target != filepath.Dir(host) {
+		t.Fatalf("gitlab-release debe enlazarse desde Claude: %q %v", target, err)
 	}
 	info, _ := os.Stat(host)
 	if readFile(t, host) != "original" || !info.ModTime().Equal(old) {
 		t.Fatal("se modificó una skill del anfitrión (C-08)")
-	}
-}
-
-// Las skills repetidas entre OpenCode y Claude no deben llegar dos veces a Pi.
-func TestRegisterHostSkillsNoCollisions(t *testing.T) {
-	opts := sandbox(t)
-	oc := filepath.Join(opts.HomeDir, ".config", "opencode", "skills")
-	cl := filepath.Join(opts.HomeDir, ".claude", "skills")
-	for _, n := range []string{"hcd", "verify-loop"} {
-		writeFile(t, filepath.Join(oc, n, "SKILL.md"), "x")
-		writeFile(t, filepath.Join(cl, n, "SKILL.md"), "x")
-	}
-	writeFile(t, filepath.Join(cl, "semantica", "SKILL.md"), "x")
-	writeFile(t, filepath.Join(cl, "synced", "abc", "semantica", "SKILL.md"), "x")
-	writeFile(t, filepath.Join(opts.HomeDir, ".agents", "skills", "humanizer", "SKILL.md"), "x")
-	writeFile(t, filepath.Join(cl, "humanizer", "SKILL.md"), "x")
-	// Copia embebida previa que ya ofrece OpenCode, y una entrada de Claude heredada.
-	writeFile(t, filepath.Join(opts.PiAgentDir, "skills", "hcd", "SKILL.md"), "x")
-	writeFile(t, filepath.Join(opts.PiAgentDir, "settings.json"), `{"skills":["~/.config/opencode/skills","~/.claude/skills"]}`)
-
-	for i := 0; i < 2; i++ {
-		if err := RegisterHostSkills(opts.PiAgentDir, opts.HomeDir); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if got := readSettingsSkills(t, opts.PiAgentDir); strings.Join(got, ",") != "~/.config/opencode/skills" {
-		t.Fatalf("skills = %v, se espera solo OpenCode", got)
-	}
-	piSkills := filepath.Join(opts.PiAgentDir, "skills")
-	if target, err := os.Readlink(filepath.Join(piSkills, "semantica")); err != nil || target != filepath.Join(cl, "semantica") {
-		t.Fatalf("semantica debe enlazarse desde Claude: %q %v", target, err)
-	}
-	for _, n := range []string{"hcd", "verify-loop", "humanizer", "synced"} {
-		if _, err := os.Lstat(filepath.Join(piSkills, n)); err == nil {
-			t.Errorf("%s no debe estar en ~/.pi/agent/skills: ya lo ofrece otra carpeta", n)
-		}
-	}
-	if readFile(t, filepath.Join(cl, "hcd", "SKILL.md")) != "x" {
-		t.Fatal("se modificó una skill del anfitrión")
 	}
 }
 
@@ -106,15 +55,15 @@ func TestDoctorHostSkills(t *testing.T) {
 	for _, n := range []string{"impeccable", "gitlab-release"} {
 		writeFile(t, filepath.Join(opts.HomeDir, ".config", "opencode", "skills", n, "SKILL.md"), "x")
 	}
-	if err := RegisterHostSkills(opts.PiAgentDir, opts.HomeDir); err != nil {
+	if _, err := InstallSkills(repoAssets(t), opts); err != nil {
 		t.Fatal(err)
 	}
 	var host, embedded bool
 	for _, it := range RunDoctor(opts) {
-		if strings.Contains(it.Name, "Skills del anfitrión") && strings.Contains(it.Details, "~/.config/opencode/skills") && strings.Contains(it.Details, "2 skills") {
+		if it.Name == "Repositorio de skills" && strings.Contains(it.Details, "2 del anfitrión") {
 			host = true
 		}
-		if it.Name == "Skills gomemory en Pi" {
+		if it.Name == "Skills gomemory en Pi" && it.Status == "OK" {
 			embedded = true
 		}
 	}

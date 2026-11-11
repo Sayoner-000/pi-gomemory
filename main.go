@@ -61,13 +61,18 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("✓ Plugins pi-antigravity y pi-cc-extensions configurados en Pi.")
-	case "skills":
-		count, err := installer.InstallSkills(EmbeddedAssets, opts.PiAgentDir)
+	case "skills", "skills-sync":
+		res, err := installer.InstallSkills(EmbeddedAssets, opts)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error instalando skills: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error sincronizando skills: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("✓ %d skills de gomemory instaladas en Pi.\n", count)
+		if cmd == "skills" {
+			fmt.Printf("✓ %d skills de gomemory y %d del anfitrión en %s (%d colisiones resueltas).\n", res.Embedded, res.Linked, installer.SkillRepoSetting, len(res.Collisions))
+			for _, c := range res.Collisions {
+				fmt.Printf("    %s: gana %s, se omite %s\n", c.Name, c.Winner, c.Loser)
+			}
+		}
 	case "harness":
 		if err := installer.InstallHarness(opts.LocalBinDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error generando harness launcher: %v\n", err)
@@ -76,6 +81,28 @@ func main() {
 		fmt.Println("✓ Launcher pi-gomemory instalado.")
 	case "version", "-v", "--version":
 		fmt.Println(version)
+	case "deps-refresh":
+		installer.RefreshDeps(installer.DefaultDepProbes(version, opts.PiAgentDir),
+			installer.DefaultDepsCachePath(opts.PiAgentDir), time.Now())
+	case "deps-status":
+		if n := installer.FormatDepsNotice(installer.DepsStatus(installer.DefaultDepsCachePath(opts.PiAgentDir))); n != "" {
+			fmt.Fprint(os.Stderr, n)
+			os.Exit(10)
+		}
+	case "deps-update":
+		cache := installer.DefaultDepsCachePath(opts.PiAgentDir)
+		outdated := installer.DepsStatus(cache)
+		if len(outdated) == 0 {
+			fmt.Println("✓ El meta-harness y sus dependencias están al día.")
+			return
+		}
+		failed := installer.UpdateDeps(outdated, os.Stdout, os.Stderr)
+		_ = os.Remove(cache)
+		if len(failed) > 0 {
+			fmt.Fprintf(os.Stderr, "✗ No se pudieron actualizar: %v\n", failed)
+			os.Exit(1)
+		}
+		fmt.Println("✓ Dependencias actualizadas.")
 	case "check-update":
 		res := installer.CheckUpdate(version, installer.UpdateCheckConfig{
 			CachePath: installer.DefaultUpdateCachePath(opts.PiAgentDir),
@@ -106,11 +133,14 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup mcp         Registra los servidores MCP (gomemory, codegraph, codebase-memory)")
 	fmt.Println("  pi-gomemory-setup theme       Instala y activa el tema gomemory en Pi")
 	fmt.Println("  pi-gomemory-setup plugin      Configura pi-antigravity y pi-cc-extensions")
-	fmt.Println("  pi-gomemory-setup skills      Instala las 21 skills de gomemory en Pi")
+	fmt.Println("  pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills")
 	fmt.Println("  pi-gomemory-setup harness     Instala el launcher pi-gomemory en ~/.local/bin")
 	fmt.Println("  pi-gomemory-setup version     Muestra la versión instalada")
 	fmt.Println("  pi-gomemory-setup check-update  Avisa si hay una release nueva (caché de 24 h)")
 	fmt.Println("  pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala")
+	fmt.Println("  pi-gomemory-setup deps-refresh  Consulta las últimas versiones de pi-gomemory y sus dependencias")
+	fmt.Println("  pi-gomemory-setup deps-status   Muestra lo desactualizado según la última consulta (sale con 10)")
+	fmt.Println("  pi-gomemory-setup deps-update   Actualiza los componentes desactualizados")
 }
 
 // runUpdate reemplaza el binario por la última release verificada y relanza la instalación con él.

@@ -49,26 +49,28 @@ Los binarios de cada versión se publican en [GitHub Releases](https://github.co
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.1.0_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.4.0_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-## Skills de otros agentes
+## Repositorio de skills
 
-`pi-gomemory-setup install` añade al array `skills` de `~/.pi/agent/settings.json` las carpetas `~/.config/opencode/skills` y `~/.claude/skills` que existan, sin duplicarlas y sin tocar el resto de tu configuración. Pi las lee en su sitio: no se copia ni se modifica ninguna skill. `pi-gomemory-setup doctor` muestra cuántas skills ve en cada carpeta.
+`pi-gomemory-setup install` reúne las skills en `~/.pi-gomemory/skills` y registra solo esa carpeta en el array `skills` de `~/.pi/agent/settings.json`, sin tocar el resto de tu configuración. Las 21 skills de gomemory se copian adaptadas para Pi y siempre ganan. Las de los demás agentes se enlazan, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. No se copia ni se modifica ninguna skill de otro agente. El launcher vuelve a sincronizar en cada arranque (`pi-gomemory-setup skills-sync`) y `pi-gomemory-setup doctor` muestra el total y las colisiones resueltas.
 
 ## Actualización
 
-El launcher `pi-gomemory` comprueba al arrancar si hay una release nueva (como mucho una vez cada 24 h, con un tiempo de espera de 2 s) y, si la hay, te avisa. Para actualizar:
+En cada arranque, el launcher `pi-gomemory` comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions`. La consulta corre en segundo plano y el aviso usa el resultado de la anterior. En una terminal interactiva pregunta si quieres actualizar (10 s; sin respuesta, no actualiza).
 
 ```bash
-pi-gomemory-setup version   # versión instalada
-pi-gomemory-setup update    # descarga la última release, verifica SHA256SUMS y reinstala
+pi-gomemory-setup version       # versión instalada
+pi-gomemory-setup deps-status   # lo desactualizado según la última consulta
+pi-gomemory-setup deps-update   # actualiza cada componente con su comando oficial
+pi-gomemory-setup update        # solo pi-gomemory: descarga la release, verifica SHA256SUMS y reinstala
 ```
 
-Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar el aviso, exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
+Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar la comprobación, exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
 
 ## Verificación
 
