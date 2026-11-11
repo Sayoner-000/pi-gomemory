@@ -91,7 +91,20 @@ Pi solo admite una cabecera. Si pi-cc-extensions tiene `showStartupHeader: true`
 Muestra u oculta, encima del editor, las tareas de la unidad HCD activa (`✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo). Se actualiza solo tras cada `mem hcd` y al terminar cada respuesta.
 
 ### Panel lateral estilo OpenCode (`/sidebar`)
-Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste) y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
+Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), cuotas de Google AI Pro o Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
+
+- `/sidebar min` (o alias `/sidebar m`, `/sidebar -`): Alterna el modo minimizado a una sola fila compacta (`[ HCD · ... [+] ]`).
+- `/min`: Alterna de inmediato el estado minimizado/restaurado.
+
+### Inspector de pruebas en tiempo real (`/tdd`)
+Alterna la visibilidad del overlay flotante **TDD Live Inspector** en la esquina superior derecha.
+- Ejecuta y visualiza paso a paso pruebas multi-dominio: **Backend** (pruebas Go en tiempo real vía `-json`), **Frontend** (sintaxis de extensiones TypeScript), **Playwright E2E**, **CI & Static** (`go vet`) y **Data & Graph** (integridad de la unidad HCD y grafo de memoria).
+- Subcomandos:
+  - `/tdd run [suite]`: Ejecuta la suite especificada (`all`, `backend`, `frontend`, `playwright`, `ci`, `data`).
+  - `/tdd min` (o alias `/tdd m`, `/tdd -`): Minimiza el inspector a una sola fila compacta apilada verticalmente bajo el sidebar sin solaparse.
+  - `/tdd watch`: Alterna el modo reactivo que ejecuta las pruebas automáticamente tras cada turno (`turn_end`).
+  - `/tdd report`: Genera un resumen estructurado del estado de las pruebas.
+- Herramienta de agente: Registra la tool `run_test_suite` para que el modelo pueda ejecutar pruebas de forma autónoma durante ciclos TDD.
 
 ### Barra de tokens (`/tokens`)
 Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens de entrada, salida, lecturas de caché y coste estimado.

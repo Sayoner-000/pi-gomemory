@@ -4,6 +4,24 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.9.0] - 2026-11-11
+
+### Added
+- **Inspector de pruebas en tiempo real (`/tdd`):** Nueva extensión `gomemory-tdd.ts` con visualizador reactivo TDD Live Inspector: soporte multi-suite (Backend con `go test -json`, Frontend con chequeo sintáctico TypeScript, Playwright E2E, CI estático con `go vet`, y Data & Graph con estado HCD y memoria), seguimiento de latencia y porcentaje de aprobación, y diagnóstico heurístico de fallos (`code_defect`, `selector_or_timeout`, `env_or_service`).
+- **Tool `run_test_suite`:** Herramienta directa registrada en Pi para que el modelo o subagentes invoquen suites de pruebas de forma programática y reciban resultados estructurados.
+- **Modo minimizado y comando `/min`:** Subcomando `/sidebar min` (y alias `/sidebar m`, `/sidebar -`) y `/tdd min` (alias `/tdd m`, `/tdd -`), además del comando global `/min` para compactar o restaurar ambos paneles a una sola fila enmarcada (`[ HCD · ... [+] ]` y `[ TDD · ... [+] ]`).
+- **Apilamiento vertical sin colisión:** El overlay de TDD minimizado se posiciona con margen vertical coordinado debajo del sidebar para convivir simultáneamente en la esquina superior derecha sin solapamiento visual.
+- **Registro de distribución:** Inclusión de `extensions/gomemory-tdd.ts` en `pkg/installer/extension.go` para empaquetado embebido y despliegue automático.
+
+### Fixed
+- **Crash en `/reload` por stale `ctx`:** Limpieza estricta de temporizadores activos (`setInterval`) y cierre de overlays en el evento `session_shutdown`, evitando excepciones no capturadas al acceder a propiedades de `ctx` invalidado tras recargas o cambios de sesión.
+- **Acceso defensivo a contexto de Pi:** Protección con `try/catch` y fallbacks garantizados (`process.env.PI_PROVIDER`, `process.env.PI_MODEL`, `process.cwd()`) en todas las lecturas de propiedades dinámicas de `ctx` (`ctx.model`, `ctx.cwd`, `ctx.sessionManager`).
+- **Limpieza de buffer residual al minimizar:** Sobreescritura completa con espacios en blanco en las filas inferiores del overlay para que el compositor diferencial de la terminal borre de inmediato los restos del panel expandido.
+- **Eliminado widget superior fijo:** Retirado el widget estático en la cabecera para no ocupar espacio permanente sobre el editor.
+
+### Documentation
+- Actualización de badges de versión, instalador, documentación de instalación (`docs/installation.md`), guía de uso (`docs/usage.md`) y scripts de compilación a `v1.9.0`.
+
 ## [v1.8.1] - 2026-11-11
 
 ### Added
