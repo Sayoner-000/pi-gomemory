@@ -4,6 +4,14 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.5.1] - 2026-11-11
+
+### Added
+- Registro de decisiones de arquitectura en `docs/adr/` (repositorio central de skills, extensiones TUI de HCD y orquestación de dependencias).
+
+### Fixed
+- `pi-gomemory-setup update`, `check-update` y la comprobación de dependencias ya no fallan con HTTP 403 cuando se agota el límite de la API de GitHub (60 consultas por hora y por IP). La última versión de pi-gomemory y de `codebase-memory-mcp` se lee de la redirección de `github.com/<repo>/releases/latest`, sin token.
+
 ## [v1.5.0] - 2026-11-11
 
 ### Added

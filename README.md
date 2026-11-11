@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.5.0"><img src="https://img.shields.io/badge/version-1.5.0-blue" alt="Version 1.5.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.5.1"><img src="https://img.shields.io/badge/version-1.5.1-blue" alt="Version 1.5.1"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">

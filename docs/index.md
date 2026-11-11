@@ -13,6 +13,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, consulta del monitor de cuotas de Google AI Pro y atajos en la terminal interactiva.
 
+[Decisiones de arquitectura (ADR)](adr/README.md)
+Registro de las decisiones vigentes: repositorio central de skills, extensiones TUI de HCD y orquestación de dependencias.
+
 ## Por qué existe este proyecto
 
 Configurar un agente de código como Pi para trabajar en equipo con memoria persistente suele requerir editar varios archivos JSON a mano, registrar plugins de npm, instalar temas y copiar carpetas de skills una por una.
