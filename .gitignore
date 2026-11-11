@@ -3,6 +3,9 @@ bin/pi-gomemory-setup
 pi-gomemory
 dist/
 
+# codegraph
+.codegraph/
+
 # gomemory local cache and state
 .memory/
 
