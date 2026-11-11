@@ -4,6 +4,23 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.8.1] - 2026-11-11
+
+### Added
+- Detección integral de proveedores activos (`detectProvider`) cubriendo Antigravity/Agy (`Google AI Pro`), Claude Code, OpenCode, Codex y OpenAI, combinando `ctx.model` con fallback a variables de entorno del harness (`PI_PROVIDER`, `PI_MODEL`).
+- Tarjeta de conexión y estado (heartbeat en vivo) para proveedores activos no-Antigravity en el panel lateral `/sidebar`.
+
+### Changed
+- Sincronización del heartbeat periódico del panel (`autoRefreshTimer` a 30 s) con refresco forzado en cada tick para mantener actualizados los porcentajes y tiempos de reinicio sin descarte por TTL.
+- Ajuste del TTL de cuota (`QUOTA_TTL_MS`) y telemetría a 30 s con backoff de 15 s ante fallos.
+
+### Fixed
+- **Refresco por turnos en sidebar (HCD-017):** Suscripción al ciclo de vida `turn_end` y actualización forzada en `agent_end` para que cada turno consumido refresque inmediatamente las cuotas y métricas sin quedar bloqueado por TTL.
+- **Cierre formal HCD-016:** Verificación y registro formal de cierre de las 8 tareas de auditoría ACR/ADM followup en el motor HCD y en memoria persistente.
+
+### Documentation
+- Actualización de badges de versión, instalador y referencias documentales de instalación a `v1.8.1`.
+
 ## [v1.8.0] - 2026-11-11
 
 ### Added

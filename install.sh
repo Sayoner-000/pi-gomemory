@@ -15,7 +15,7 @@ C_SUCCESS="\033[38;2;46;204;113m"
 
 REPO="Sayoner-000/pi-gomemory"
 INSTALL_DIR="${PI_GOMEMORY_BIN_DIR:-${HOME}/.local/bin}"
-VERSION="${PI_GOMEMORY_VERSION:-v1.8.0}"
+VERSION="${PI_GOMEMORY_VERSION:-v1.8.1}"
 
 echo -e "${C_CYAN}╔════════════════════════════════════════════════════════════════════╗${C_RESET}"
 echo -e "${C_BRILLO}║         INSTALADOR DE PI-GOMEMORY PARA PI CODING AGENT             ║${C_RESET}"
