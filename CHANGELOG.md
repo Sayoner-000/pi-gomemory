@@ -4,10 +4,15 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
-## [v1.7.2] - 2026-11-11
+## [v1.7.3] - 2026-11-11
 
 ### Fixed
 - `pruneLegacyPiSkills` retira de `~/.pi/agent/skills` las copias heredadas de versiones previas que no tenían la marca `.pi-gomemory` cuando su contenido coincide con el del repositorio central. Esto erradica por completo los avisos `[Skill warnings] collision` al iniciar Pi.
+
+### Documentation
+- Actualiza badges de versión y referencias documentales de instalación a `v1.7.3`.
+
+## [v1.7.2] - 2026-11-11
 
 ### Documentation
 - Documenta en `docs/usage.md` el mecanismo de supresión y saneamiento de advertencias (warnings) de Pi Coding Agent implementado en el instalador: resolución previa de colisiones de skills vía repositorio centralizado `~/.pi-gomemory/skills`, saneamiento de YAML frontmatter en `SKILL.md` (`SanitizeFrontmatter`), y normalización de dependencias de host (`peerDependencies` en `pi-antigravity`).
