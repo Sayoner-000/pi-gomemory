@@ -166,6 +166,17 @@ func RunDoctor(opts *Options) []CheckItem {
 		})
 	}
 
+	// 5b. Banner gomemory: pi-cc-extensions lo sustituye si su cabecera está activa.
+	banner := CheckItem{Name: "Banner gomemory", Status: "OK", Details: "cabecera gomemory activa"}
+	if cc, err := readJSONObject(cfgCC); err == nil {
+		var show bool
+		if raw, ok := cc["showStartupHeader"]; ok && json.Unmarshal(raw, &show) == nil && show {
+			banner.Status = "WARN"
+			banner.Details = "showStartupHeader=true en pi-cc-extensions.json tapa el banner; ejecuta pi-gomemory-setup install"
+		}
+	}
+	items = append(items, banner)
+
 	// 6. Repositorio central de skills (~/.pi-gomemory/skills)
 	repo := InspectSkillRepo(piAgentDir, opts.HomeDir)
 	switch {

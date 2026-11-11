@@ -19,6 +19,10 @@ const (
 	CCExtensionsSource       = "npm:pi-cc-extensions@" + CCExtensionsVersion
 )
 
+// managedCCKeys son las claves de pi-cc-extensions.json que pi-gomemory
+// impone en cada instalación, no solo cuando faltan.
+var managedCCKeys = []string{"showStartupHeader"}
+
 // pinnedPackages relaciona cada paquete con su fuente fijada.
 var pinnedPackages = []struct{ name, source string }{
 	{"pi-antigravity", AntigravityPackageSource},
@@ -190,6 +194,13 @@ func InstallCCExtensions(assets fs.FS, piAgentDir string) error {
 
 	for key, value := range defaults {
 		if _, exists := config[key]; !exists {
+			config[key] = value
+		}
+	}
+	// El header de pi-cc-extensions sustituye al banner de gomemory: ambos usan
+	// el único hueco de setHeader. Se fuerza aunque una instalación anterior lo dejara activo.
+	for _, key := range managedCCKeys {
+		if value, ok := defaults[key]; ok {
 			config[key] = value
 		}
 	}

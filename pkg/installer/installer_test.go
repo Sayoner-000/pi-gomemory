@@ -149,7 +149,7 @@ func TestInstallAllUsesEmbeddedAssetsAndLeavesCwdClean(t *testing.T) {
 	t.Chdir(cwd)
 
 	ccPath := filepath.Join(opts.PiAgentDir, "pi-cc-extensions.json")
-	writeFile(t, ccPath, `{"diffViewMode":"split","miClave":true}`)
+	writeFile(t, ccPath, `{"diffViewMode":"split","miClave":true,"showStartupHeader":true}`)
 
 	if err := InstallAll(assets, opts); err != nil {
 		t.Fatal(err)
@@ -170,6 +170,9 @@ func TestInstallAllUsesEmbeddedAssetsAndLeavesCwdClean(t *testing.T) {
 	}
 	if cc["diffViewMode"] != "split" || cc["miClave"] != true {
 		t.Errorf("se pisaron claves propias de pi-cc-extensions: %v", cc)
+	}
+	if cc["showStartupHeader"] != false {
+		t.Error("showStartupHeader activo: el header de pi-cc-extensions tapa el banner de gomemory")
 	}
 	if cc["stickyUserMessage"] != true {
 		t.Error("no se añadieron los valores por defecto embebidos")
