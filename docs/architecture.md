@@ -81,6 +81,12 @@ Configura el formato visual de los diffs de edición y escritura en Pi con barra
 gomemory-status.ts:
 Extensión en TypeScript que añade al pie de la terminal el conteo de tokens de entrada, salida, lecturas de caché y coste acumulado. Se puede activar o desactivar con el comando `/tokens`.
 
+gomemory-tasks.ts:
+Extensión en TypeScript que muestra sobre el editor de Pi las tareas de la unidad HCD activa con su estado de verificación (`✓`, `○`, `◌`, `✗`), actualizándose reactivamente tras cada comando `mem hcd`. Se activa o desactiva con `/tasks`.
+
+gomemory-sidebar.ts:
+Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral derecho (`anchor: "top-right"`, 36 cols, responsive) con la sesión/HCD activo, métricas de contexto en vivo (tokens, porcentaje y coste) y conectividad de servidores MCP. Se activa o desactiva con `/sidebar`.
+
 ## Sanitización de skills
 
 Pi utiliza un analizador estricto de YAML para leer el bloque inicial de metadatos (`---`) de cada archivo `SKILL.md`. Si el campo `description:` contiene dos puntos sin comillas, el analizador falla y la skill no se carga.

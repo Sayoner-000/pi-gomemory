@@ -4,6 +4,11 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.6.0] - 2026-11-11
+
+### Added
+- Panel lateral de estado inspirado en OpenCode para Pi (`gomemory-sidebar.ts`): overlay interactivo en la esquina superior derecha (`anchor: "top-right"`, 36 columnas, responsive $\ge 100$ columnas) que consolida la sesión/HCD activo, métricas de contexto en tiempo real (tokens usados, porcentaje de ventana y gasto acumulado en USD) y lista de servidores MCP (`codebase-memory-mcp`, `codegraph`, `context7`, `gomemory`) con estado de conexión. Se activa y desactiva con el comando `/sidebar`.
+
 ## [v1.5.1] - 2026-11-11
 
 ### Added
