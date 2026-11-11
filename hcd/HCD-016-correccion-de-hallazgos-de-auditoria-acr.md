@@ -132,46 +132,86 @@ Ignorar los hallazgos o corregirlos de forma no atómica sin verificación repro
       --- PASS: TestH09SyncSkillRepoAndUninstallPackages (0.11s)
       PASS
       ok  	pi-gomemory/pkg/installer	(cached)
-- 2026-11-11 11:56 -05:00 · tarea 8 · verde · vigente · `go test -v ./pkg/installer -run TestH11HarnessTTLAndPromptCap` (salida 0)
+- 2026-11-11 11:56 -05:00 · tarea 8 · verde · caducada · `go test -v ./pkg/installer -run TestH11HarnessTTLAndPromptCap` (salida 0)
       === RUN   TestH11HarnessTTLAndPromptCap
       --- PASS: TestH11HarnessTTLAndPromptCap (0.01s)
       PASS
       ok  	pi-gomemory/pkg/installer	(cached)
-- 2026-11-11 11:56 -05:00 · tarea 1 · verde · vigente · `go test -v ./pkg/installer -run TestH01PruneLegacyPreservesUserData` (salida 0)
+- 2026-11-11 11:56 -05:00 · tarea 1 · verde · caducada · `go test -v ./pkg/installer -run TestH01PruneLegacyPreservesUserData` (salida 0)
       === RUN   TestH01PruneLegacyPreservesUserData
       --- PASS: TestH01PruneLegacyPreservesUserData (0.00s)
       PASS
       ok  	pi-gomemory/pkg/installer	0.005s
-- 2026-11-11 11:56 -05:00 · tarea 2 · verde · vigente · `go test -v ./pkg/installer -run TestH02UninstallFailsWhenActionFail` (salida 0)
+- 2026-11-11 11:56 -05:00 · tarea 2 · verde · caducada · `go test -v ./pkg/installer -run TestH02UninstallFailsWhenActionFail` (salida 0)
       === RUN   TestH02UninstallFailsWhenActionFail
       --- PASS: TestH02UninstallFailsWhenActionFail (0.00s)
       PASS
       ok  	pi-gomemory/pkg/installer	0.007s
-- 2026-11-11 11:56 -05:00 · tarea 3 · verde · vigente · `go test -v ./pkg/installer -run TestH03DoctorTimeoutAndWarn` (salida 0)
+- 2026-11-11 11:56 -05:00 · tarea 3 · verde · caducada · `go test -v ./pkg/installer -run TestH03DoctorTimeoutAndWarn` (salida 0)
       === RUN   TestH03DoctorTimeoutAndWarn
       --- PASS: TestH03DoctorTimeoutAndWarn (0.00s)
       PASS
       ok  	pi-gomemory/pkg/installer	0.006s
-- 2026-11-11 11:56 -05:00 · tarea 4 · verde · vigente · `go test -v ./pkg/installer -run TestH04PlanEvasionsBlocked` (salida 0)
+- 2026-11-11 11:56 -05:00 · tarea 4 · verde · caducada · `go test -v ./pkg/installer -run TestH04PlanEvasionsBlocked` (salida 0)
       === RUN   TestH04PlanEvasionsBlocked
       --- PASS: TestH04PlanEvasionsBlocked (0.06s)
       PASS
       ok  	pi-gomemory/pkg/installer	0.066s
-- 2026-11-11 11:56 -05:00 · tarea 5 · verde · vigente · `go test -v ./pkg/installer -run TestH05H06ClaudeUsageDeterministicAndLocal` (salida 0)
+- 2026-11-11 11:56 -05:00 · tarea 5 · verde · caducada · `go test -v ./pkg/installer -run TestH05H06ClaudeUsageDeterministicAndLocal` (salida 0)
       === RUN   TestH05H06ClaudeUsageDeterministicAndLocal
       --- PASS: TestH05H06ClaudeUsageDeterministicAndLocal (0.00s)
       PASS
       ok  	pi-gomemory/pkg/installer	0.004s
-- 2026-11-11 11:56 -05:00 · tarea 6 · verde · vigente · `go test -v ./pkg/installer -run TestH08SidebarErrorAndInflight` (salida 0)
+- 2026-11-11 11:56 -05:00 · tarea 6 · verde · caducada · `go test -v ./pkg/installer -run TestH08SidebarErrorAndInflight` (salida 0)
       === RUN   TestH08SidebarErrorAndInflight
       --- PASS: TestH08SidebarErrorAndInflight (0.07s)
       PASS
       ok  	pi-gomemory/pkg/installer	0.071s
-- 2026-11-11 11:56 -05:00 · tarea 7 · verde · vigente · `go test -v ./pkg/installer -run TestH09SyncSkillRepoAndUninstallPackages` (salida 0)
+- 2026-11-11 11:56 -05:00 · tarea 7 · verde · caducada · `go test -v ./pkg/installer -run TestH09SyncSkillRepoAndUninstallPackages` (salida 0)
       === RUN   TestH09SyncSkillRepoAndUninstallPackages
       --- PASS: TestH09SyncSkillRepoAndUninstallPackages (0.12s)
       PASS
       ok  	pi-gomemory/pkg/installer	0.126s
+- 2026-11-11 13:09 -05:00 · tarea 1 · verde · vigente · `go test -v ./pkg/installer -run TestH01PruneLegacyPreservesUserData` (salida 0)
+      === RUN   TestH01PruneLegacyPreservesUserData
+      --- PASS: TestH01PruneLegacyPreservesUserData (0.00s)
+      PASS
+      ok  	pi-gomemory/pkg/installer	(cached)
+- 2026-11-11 13:09 -05:00 · tarea 2 · verde · vigente · `go test -v ./pkg/installer -run TestH02UninstallFailsWhenActionFail` (salida 0)
+      === RUN   TestH02UninstallFailsWhenActionFail
+      --- PASS: TestH02UninstallFailsWhenActionFail (0.00s)
+      PASS
+      ok  	pi-gomemory/pkg/installer	0.004s
+- 2026-11-11 13:09 -05:00 · tarea 3 · verde · vigente · `go test -v ./pkg/installer -run TestH03DoctorTimeoutAndWarn` (salida 0)
+      === RUN   TestH03DoctorTimeoutAndWarn
+      --- PASS: TestH03DoctorTimeoutAndWarn (0.00s)
+      PASS
+      ok  	pi-gomemory/pkg/installer	(cached)
+- 2026-11-11 13:09 -05:00 · tarea 4 · verde · vigente · `go test -v ./pkg/installer -run TestH04PlanEvasionsBlocked` (salida 0)
+      === RUN   TestH04PlanEvasionsBlocked
+      --- PASS: TestH04PlanEvasionsBlocked (0.06s)
+      PASS
+      ok  	pi-gomemory/pkg/installer	(cached)
+- 2026-11-11 13:09 -05:00 · tarea 5 · verde · vigente · `go test -v ./pkg/installer -run TestH05H06ClaudeUsageDeterministicAndLocal` (salida 0)
+      === RUN   TestH05H06ClaudeUsageDeterministicAndLocal
+      --- PASS: TestH05H06ClaudeUsageDeterministicAndLocal (0.00s)
+      PASS
+      ok  	pi-gomemory/pkg/installer	(cached)
+- 2026-11-11 13:09 -05:00 · tarea 6 · verde · vigente · `go test -v ./pkg/installer -run TestH08SidebarErrorAndInflight` (salida 0)
+      === RUN   TestH08SidebarErrorAndInflight
+      --- PASS: TestH08SidebarErrorAndInflight (0.07s)
+      PASS
+      ok  	pi-gomemory/pkg/installer	0.074s
+- 2026-11-11 13:09 -05:00 · tarea 7 · verde · vigente · `go test -v ./pkg/installer -run TestH09SyncSkillRepoAndUninstallPackages` (salida 0)
+      === RUN   TestH09SyncSkillRepoAndUninstallPackages
+      --- PASS: TestH09SyncSkillRepoAndUninstallPackages (0.12s)
+      PASS
+      ok  	pi-gomemory/pkg/installer	(cached)
+- 2026-11-11 13:09 -05:00 · tarea 8 · verde · vigente · `go test -v ./pkg/installer -run TestH11HarnessTTLAndPromptCap` (salida 0)
+      === RUN   TestH11HarnessTTLAndPromptCap
+      --- PASS: TestH11HarnessTTLAndPromptCap (0.01s)
+      PASS
+      ok  	pi-gomemory/pkg/installer	(cached)
 
 ## Siguiente
-pendiente
+Cerrada con aprobación sobre la revisión 12560f862087.
