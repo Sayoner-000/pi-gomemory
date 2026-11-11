@@ -55,6 +55,21 @@ mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
+## Skills de otros agentes
+
+`pi-gomemory-setup install` añade al array `skills` de `~/.pi/agent/settings.json` las carpetas `~/.config/opencode/skills` y `~/.claude/skills` que existan, sin duplicarlas y sin tocar el resto de tu configuración. Pi las lee en su sitio: no se copia ni se modifica ninguna skill. `pi-gomemory-setup doctor` muestra cuántas skills ve en cada carpeta.
+
+## Actualización
+
+El launcher `pi-gomemory` comprueba al arrancar si hay una release nueva (como mucho una vez cada 24 h, con un tiempo de espera de 2 s) y, si la hay, te avisa. Para actualizar:
+
+```bash
+pi-gomemory-setup version   # versión instalada
+pi-gomemory-setup update    # descarga la última release, verifica SHA256SUMS y reinstala
+```
+
+Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar el aviso, exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
+
 ## Verificación
 
 Ejecuta el diagnóstico integrado para confirmar que cada componente quedó en su lugar:

@@ -4,7 +4,7 @@
 # ==============================================================================
 set -euo pipefail
 
-VERSION="${1:-v1.2.0}"
+VERSION="${1:-v1.3.0}"
 DIST_DIR="dist"
 
 echo "==> Generando pack de distribución para pi-gomemory (${VERSION})..."
@@ -27,7 +27,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
   echo "  -> Compilando ${GOOS}/${GOARCH}..."
   mkdir -p "${TARGET_DIR}"
 
-  CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" go build -ldflags="-s -w" -o "${TARGET_DIR}/pi-gomemory-setup" .
+  CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" go build -ldflags="-s -w -X main.version=${VERSION}" -o "${TARGET_DIR}/pi-gomemory-setup" .
   cp README.md LICENSE install.sh "${TARGET_DIR}/"
 
   echo "  -> Empaquetando ${TARGET_NAME}.tar.gz..."

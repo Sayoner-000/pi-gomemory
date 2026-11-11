@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.2.0"><img src="https://img.shields.io/badge/version-1.2.0-blue" alt="Version 1.2.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.3.0"><img src="https://img.shields.io/badge/version-1.3.0-blue" alt="Version 1.3.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -129,9 +129,22 @@ pi-gomemory-setup theme       Solo el tema
 pi-gomemory-setup plugin      Solo pi-antigravity y pi-cc-extensions
 pi-gomemory-setup skills      Solo las skills
 pi-gomemory-setup harness     Solo el launcher
+pi-gomemory-setup version     Versión instalada
+pi-gomemory-setup check-update  Avisa si hay una release nueva
+pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala
 ```
 
 Con `usage`, si la API no responde o el token caducó, el comando termina con un error. Nunca muestra cifras aproximadas.
+
+### Banner, modo /plan y skills del anfitrión
+
+- **Banner:** al abrir Pi, la cabecera muestra la gota de gomemory, «pi - gomemory» y la versión que pasa el launcher (`PI_GOMEMORY_RUNNING_VERSION`). Con `NO_COLOR` se dibuja sin colores.
+- **`/plan`:** activa el modo plan. Bloquea `edit`, `write` y los comandos de consola que modifican archivos (lista en `~/.pi/agent/extensions/gomemory-plan-patterns.json`), añade al contexto el método de `mem plan-context` y muestra «PLAN» en la barra. `/plan` otra vez o `/plan run` lo desactivan. Es un bloqueo de las modificaciones comunes, no un aislamiento completo.
+- **Skills del anfitrión:** `install` registra `~/.config/opencode/skills` y `~/.claude/skills` (si existen) en el array `skills` de `~/.pi/agent/settings.json`, así Pi ve skills como `impeccable` o `gitlab-release` sin copiarlas. `~/.agents/skills` ya la lee Pi por su cuenta. Si un nombre se repite, Pi conserva la primera que encuentra y avisa.
+
+### Aviso de nuevas versiones
+
+Cada vez que abres `pi-gomemory`, el launcher ejecuta `pi-gomemory-setup check-update`. Este comando consulta la última release en GitHub como mucho una vez cada 24 h y guarda el resultado en `~/.pi/agent/pi-gomemory-update.json`. Si hay una versión nueva, muestra un aviso con el comando para actualizar. Si no hay red, no muestra nada y Pi arranca igual. Nunca instala nada por su cuenta: para actualizar, ejecuta `pi-gomemory-setup update`. Para desactivar el aviso, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
 
 ## Desarrollo
 

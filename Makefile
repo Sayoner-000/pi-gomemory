@@ -9,7 +9,7 @@ all: build
 
 build:
 	@mkdir -p $(BIN_DIR)
-	go build -ldflags="-s -w" -o $(BIN_DIR)/$(BINARY_NAME)-setup .
+	go build -ldflags="-s -w -X main.version=$(VERSION)" -o $(BIN_DIR)/$(BINARY_NAME)-setup .
 
 install: build
 	@mkdir -p $(HOME)/.local/bin

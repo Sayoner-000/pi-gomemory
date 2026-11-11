@@ -158,19 +158,8 @@ func RunDoctor(opts *Options) []CheckItem {
 		})
 	}
 
-	// 6. Skills en Pi
-	skillsDir := filepath.Join(piAgentDir, "skills")
-	skillEntries, err := os.ReadDir(skillsDir)
-	skillCount := 0
-	if err == nil {
-		for _, e := range skillEntries {
-			if e.IsDir() {
-				if _, err := os.Stat(filepath.Join(skillsDir, e.Name(), "SKILL.md")); err == nil {
-					skillCount++
-				}
-			}
-		}
-	}
+	// 6. Skills en Pi (propias, enlazadas o de las carpetas del anfitrión)
+	skillCount := AvailableSkillCount(piAgentDir, opts.HomeDir)
 	if skillCount >= 20 {
 		items = append(items, CheckItem{
 			Name:    "Skills gomemory en Pi",
@@ -189,6 +178,16 @@ func RunDoctor(opts *Options) []CheckItem {
 			Status:  "FAIL",
 			Details: "no se encontraron skills instaladas",
 		})
+	}
+
+	for _, dir := range hostSkillDirs {
+		if n, ok := HostSkillCounts(piAgentDir, opts.HomeDir)[dir]; ok {
+			items = append(items, CheckItem{
+				Name:    "Skills del anfitrión",
+				Status:  "INFO",
+				Details: fmt.Sprintf("%s · %d skills (solo lectura)", dir, n),
+			})
+		}
 	}
 
 	// 6. Extensión TUI Status Bar

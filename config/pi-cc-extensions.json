@@ -12,7 +12,7 @@
   "expandedOutputMaxLines": 10,
   "expandedPreviewMaxLines": 40,
   "toolLabelClip": 0,
-  "showStartupHeader": true,
+  "showStartupHeader": false,
   "stickyUserMessage": true,
   "scrollButtonMode": "dock",
   "diffViewMode": "auto",

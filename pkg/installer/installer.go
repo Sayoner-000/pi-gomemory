@@ -61,6 +61,9 @@ func InstallAll(assets fs.FS, opts *Options) error {
 		return fmt.Errorf("paso Skills: %w", err)
 	}
 	fmt.Printf("%s    ✓ %d skills instaladas y sanitizadas en %s%s\n", ColorMuted, count, filepath.Join(opts.PiAgentDir, "skills"), ColorReset)
+	if err := RegisterHostSkills(opts.PiAgentDir, opts.HomeDir); err != nil {
+		return fmt.Errorf("paso Skills del anfitrión: %w", err)
+	}
 
 	fmt.Printf("%s==> [7/8] Instalando extensión TUI Status Bar y Monitor de Tokens gomemory...%s\n", ColorCyan, ColorReset)
 	if err := InstallTUIExtension(assets, opts.PiAgentDir); err != nil {

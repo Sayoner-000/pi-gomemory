@@ -1,0 +1,16 @@
+{
+  "tools": ["edit", "write"],
+  "strip": [
+    "\\d?>>?\\s*/dev/null",
+    "\\d>&\\d"
+  ],
+  "block": [
+    "(^|[;&|(]|&&|\\|\\|)\\s*(sudo\\s+)?(rm|mv|cp|mkdir|touch|chmod|chown|ln|tee|rmdir|truncate)(\\s|$)",
+    "\\|\\s*(sudo\\s+)?tee(\\s|$)",
+    "(^|[^<>&0-9])>>?\\s*[^\\s&>]",
+    "(^|[;&|(]|&&|\\|\\|)\\s*sed\\s+(-[a-zA-Z]*i|--in-place)",
+    "(^|[;&|(]|&&|\\|\\|)\\s*git\\s+(commit|push|reset|checkout|switch|merge|rebase|add|rm|mv|restore|stash|cherry-pick|tag)(\\s|$)",
+    "(^|[;&|(]|&&|\\|\\|)\\s*(npm|pnpm|yarn|bun)\\s+(install|i|add|remove|uninstall|update|ci)(\\s|$)",
+    "(^|[;&|(]|&&|\\|\\|)\\s*go\\s+(mod\\s+tidy|get|install)(\\s|$)"
+  ]
+}

@@ -3,9 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
 
 	"pi-gomemory/pkg/installer"
 )
+
+// version se inyecta al compilar con -ldflags "-X main.version=vX.Y.Z".
+var version = "dev"
 
 func main() {
 	opts, err := installer.DefaultOptions()
@@ -68,6 +74,20 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("✓ Launcher pi-gomemory instalado.")
+	case "version", "-v", "--version":
+		fmt.Println(version)
+	case "check-update":
+		res := installer.CheckUpdate(version, installer.UpdateCheckConfig{
+			CachePath: installer.DefaultUpdateCachePath(opts.PiAgentDir),
+		})
+		if n := res.Notice(); n != "" {
+			fmt.Fprintln(os.Stderr, n)
+		}
+	case "update":
+		if err := runUpdate(opts); err != nil {
+			fmt.Fprintf(os.Stderr, "%s✗ Falló la actualización: %v%s\n", installer.ColorError, err, installer.ColorReset)
+			os.Exit(1)
+		}
 	case "help", "-h", "--help":
 		printHelp()
 	default:
@@ -88,4 +108,38 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup plugin      Configura pi-antigravity y pi-cc-extensions")
 	fmt.Println("  pi-gomemory-setup skills      Instala las 21 skills de gomemory en Pi")
 	fmt.Println("  pi-gomemory-setup harness     Instala el launcher pi-gomemory en ~/.local/bin")
+	fmt.Println("  pi-gomemory-setup version     Muestra la versión instalada")
+	fmt.Println("  pi-gomemory-setup check-update  Avisa si hay una release nueva (caché de 24 h)")
+	fmt.Println("  pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala")
+}
+
+// runUpdate reemplaza el binario por la última release verificada y relanza la instalación con él.
+func runUpdate(opts *installer.Options) error {
+	res := installer.CheckUpdate(version, installer.UpdateCheckConfig{Timeout: 10 * time.Second})
+	if res.Err != nil {
+		return fmt.Errorf("consultar la última release: %w", res.Err)
+	}
+	if !res.Newer {
+		fmt.Printf("✓ pi-gomemory-setup ya está al día (%s).\n", version)
+		return nil
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
+	fmt.Printf("==> Actualizando %s → %s...\n", version, res.Latest)
+	if err := installer.DownloadAndReplace(installer.UpdateConfig{Tag: res.Latest, Target: exe}); err != nil {
+		return err
+	}
+	_ = os.Remove(installer.DefaultUpdateCachePath(opts.PiAgentDir))
+	cmd := exec.Command(exe, "install")
+	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("reinstalar con %s: %w", res.Latest, err)
+	}
+	fmt.Printf("✓ pi-gomemory actualizado a %s.\n", res.Latest)
+	return nil
 }

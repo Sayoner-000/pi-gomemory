@@ -31,6 +31,14 @@ if [ "${1:-}" = "usage" ] || [ "${1:-}" = "quota" ] || [ "${1:-}" = "/antigravit
   fi
 fi
 
+# 3b. Aviso de nuevas releases (caché de 24 h, timeout corto, nunca bloquea)
+if command -v pi-gomemory-setup &>/dev/null; then
+  export PI_GOMEMORY_RUNNING_VERSION="$(pi-gomemory-setup version 2>/dev/null || true)"
+fi
+if [ -z "${PI_GOMEMORY_NO_UPDATE_CHECK:-}" ] && command -v pi-gomemory-setup &>/dev/null; then
+  pi-gomemory-setup check-update 2>/dev/null || true
+fi
+
 # 3. Comprobar que pi y mem estén presentes
 if ! command -v pi &>/dev/null; then
   echo -e "\033[38;2;255;119;127m[ERROR]\033[0m No se encontró 'pi' en PATH." >&2

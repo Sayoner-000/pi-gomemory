@@ -4,6 +4,22 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.3.0] - 2026-11-10
+
+### Added
+- Banner de inicio con el logo de gomemory y la versión en ejecución (`gomemory-banner.ts`).
+- Modo de planificación `/plan` (`gomemory-plan.ts`): bloquea las herramientas y comandos que modifican archivos mientras se planifica.
+- Aviso de nuevas releases en el launcher (consulta como máximo cada 24 h, sin bloquear) y comandos `pi-gomemory-setup version`, `check-update` y `update`, este último con verificación de checksum.
+- Pi carga las skills de OpenCode y Claude Code instaladas en el equipo.
+
+### Changed
+- El binario lleva su versión, inyectada al compilar con `-X main.version`.
+- `doctor` cuenta todas las skills distintas que Pi tiene disponibles.
+
+### Fixed
+- Pi ya no avisa de colisiones de skills: se registra solo `~/.config/opencode/skills`, las skills que solo existen en `~/.claude/skills` se enlazan en `~/.pi/agent/skills` y se retiran las copias que ya ofrece el anfitrión.
+- La cabecera de `pi-cc-extensions` ya no tapa el banner de gomemory (`showStartupHeader: false` por defecto).
+
 ## [v1.2.0] - 2026-11-10
 
 ### Added

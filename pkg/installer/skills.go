@@ -47,7 +47,8 @@ func SanitizeFrontmatter(content []byte) []byte {
 }
 
 // InstallSkills copia y sanitiza las skills embebidas en el binario a
-// ~/.pi/agent/skills/. Nunca lee ni modifica skills de otros agentes.
+// ~/.pi/agent/skills/. Solo usa el embebido: no copia ni modifica skills de otros
+// agentes (RegisterHostSkills solo registra sus carpetas para que Pi las lea).
 func InstallSkills(assets fs.FS, piAgentDir string) (int, error) {
 	entries, err := fs.ReadDir(assets, "skills")
 	if err != nil {
