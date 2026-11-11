@@ -86,7 +86,7 @@ Al abrir Pi con `pi-gomemory`, la cabecera muestra la versión de pi-gomemory y 
 Muestra u oculta, encima del editor, las tareas de la unidad HCD activa (`✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo). Se actualiza solo tras cada `mem hcd` y al terminar cada respuesta.
 
 ### Panel lateral estilo OpenCode (`/sidebar`)
-Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste) y la conectividad de los servidores MCP (`Connected` / `Disconnected`). Se auto-oculta si el terminal mide menos de 100 columnas o pulsando `Esc`.
+Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste) y la conectividad de los servidores MCP (`Connected` / `Disconnected`). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
 
 ### Barra de tokens (`/tokens`)
 Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens de entrada, salida, lecturas de caché y coste estimado.

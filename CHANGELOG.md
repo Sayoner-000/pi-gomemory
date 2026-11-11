@@ -4,6 +4,12 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.6.1] - 2026-11-11
+
+### Fixed
+- El panel lateral (`/sidebar`) ya no captura el teclado: flota sin quitar el foco al editor, se oculta con `/sidebar` y refresca tokens y coste al terminar cada respuesta.
+- El banner y el panel lateral muestran la versión instalada aunque Pi se lance con `pi` en lugar del launcher `pi-gomemory`: si faltan las variables de entorno, la consultan con `pi-gomemory-setup version` y `mem --version`.
+
 ## [v1.6.0] - 2026-11-11
 
 ### Added

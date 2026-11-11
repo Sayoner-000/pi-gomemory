@@ -85,7 +85,7 @@ gomemory-tasks.ts:
 Extensión en TypeScript que muestra sobre el editor de Pi las tareas de la unidad HCD activa con su estado de verificación (`✓`, `○`, `◌`, `✗`), actualizándose reactivamente tras cada comando `mem hcd`. Se activa o desactiva con `/tasks`.
 
 gomemory-sidebar.ts:
-Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral derecho (`anchor: "top-right"`, 36 cols, responsive) con la sesión/HCD activo, métricas de contexto en vivo (tokens, porcentaje y coste) y conectividad de servidores MCP. Se activa o desactiva con `/sidebar`.
+Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral derecho (`anchor: "top-right"`, 36 cols, responsive) con la sesión/HCD activo, métricas de contexto en vivo (tokens, porcentaje y coste) y conectividad de servidores MCP. Se activa o desactiva con `/sidebar` y no captura el teclado (`nonCapturing`).
 
 ## Sanitización de skills
 
