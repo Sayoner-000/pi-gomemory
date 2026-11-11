@@ -63,6 +63,7 @@ export interface SidebarState {
 	contextLimit: number;
 	cost: number;
 	servers: MCPServerInfo[];
+	providerName?: string;
 	quota?: QuotaSummaryInfo | null;
 	quotaError?: string;
 	isAntigravityProvider?: boolean;
@@ -247,9 +248,18 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 		}
 	}
 
+	// 5. Sección Proveedor genérico (si no es Antigravity ni Claude, ej. OpenCode, Codex, etc.)
+	if (!state.isAntigravityProvider && !state.isClaudeProvider && state.providerName) {
+		lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
+		const provHeader = theme.style(`▼ ${state.providerName}`, { fg: "success", bold: true });
+		lines.push(border("│") + padLine(` ${provHeader}`) + border("│"));
+		const statusLine = theme.fg("text", "  Estado: Conectado (live)");
+		lines.push(border("│") + padLine(statusLine) + border("│"));
+	}
+
 	lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
 
-	// 5. Sección MCP
+	// 6. Sección MCP
 	const mcpHeader = theme.style("▼ MCP", { fg: "success", bold: true });
 	lines.push(border("│") + padLine(` ${mcpHeader}`) + border("│"));
 
@@ -270,6 +280,61 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 
 	lines.push(border(`╰${"─".repeat(innerW)}╯`));
 	return lines;
+}
+
+export function shouldRefreshQuota(
+	now: number,
+	lastFetchTime: number,
+	force = false,
+	hasError = false,
+	ttlMs = 30000,
+	backoffMs = 15000,
+): boolean {
+	if (force) return true;
+	const minInterval = hasError ? backoffMs : ttlMs;
+	return now - lastFetchTime >= minInterval;
+}
+
+export function detectProvider(ctx: any): "antigravity" | "claude" | "opencode" | "codex" | "openai" | "other" {
+	const provider = ((ctx?.model?.provider || process.env.PI_PROVIDER || "") as string).toLowerCase();
+	const modelId = ((ctx?.model?.id || process.env.PI_MODEL || "") as string).toLowerCase();
+	if (
+		provider.includes("antigravity") ||
+		provider.includes("agy") ||
+		modelId.includes("antigravity") ||
+		modelId.includes("agy")
+	) {
+		return "antigravity";
+	}
+	if (
+		provider.includes("anthropic") ||
+		provider.includes("claude") ||
+		modelId.includes("claude") ||
+		provider.includes("claude-code")
+	) {
+		return "claude";
+	}
+	if (provider.includes("opencode") || modelId.includes("opencode")) {
+		return "opencode";
+	}
+	if (provider.includes("codex") || modelId.includes("codex")) {
+		return "codex";
+	}
+	if (provider.includes("openai") || modelId.includes("openai")) {
+		return "openai";
+	}
+	return "other";
+}
+
+export function formatProviderDisplayName(ctx: any): string {
+	const detected = detectProvider(ctx);
+	if (detected === "antigravity") return "Google AI Pro";
+	if (detected === "claude") return "Claude Code";
+	if (detected === "opencode") return "OpenCode";
+	if (detected === "codex") return "Codex";
+	if (detected === "openai") return "OpenAI";
+	const raw = (ctx?.model?.provider || process.env.PI_PROVIDER || "").trim();
+	return raw ? raw.toUpperCase() : "Provider";
 }
 
 export function parseCleanQuotaError(rawStderr: string): string {
@@ -309,34 +374,21 @@ export default function (pi: ExtensionAPI) {
 	let cachedQuotaError: string | undefined = undefined;
 	let lastQuotaFetchTime = 0;
 	let quotaInflight = false;
-	const QUOTA_TTL_MS = 60 * 1000;
-	const QUOTA_ERROR_BACKOFF_MS = 30 * 1000;
+	const QUOTA_TTL_MS = 30 * 1000;
+	const QUOTA_ERROR_BACKOFF_MS = 15 * 1000;
+	const HEARTBEAT_INTERVAL_MS = 30 * 1000;
 
 	let cachedClaudeUsage: ClaudeUsageInfo | null = null;
 	let lastClaudeFetchTime = 0;
 	let claudeInflight = false;
-	const CLAUDE_TTL_MS = 60 * 1000;
+	const CLAUDE_TTL_MS = 30 * 1000;
 
 	function isAntigravity(ctx: any): boolean {
-		const provider = (ctx?.model?.provider || "").toLowerCase();
-		const modelId = (ctx?.model?.id || "").toLowerCase();
-		return (
-			provider.includes("antigravity") ||
-			provider.includes("agy") ||
-			modelId.includes("antigravity") ||
-			modelId.includes("agy")
-		);
+		return detectProvider(ctx) === "antigravity";
 	}
 
 	function isClaude(ctx: any): boolean {
-		const provider = (ctx?.model?.provider || "").toLowerCase();
-		const modelId = (ctx?.model?.id || "").toLowerCase();
-		return (
-			provider.includes("anthropic") ||
-			provider.includes("claude") ||
-			modelId.includes("claude") ||
-			provider.includes("claude-code")
-		);
+		return detectProvider(ctx) === "claude";
 	}
 
 	async function refreshClaudeUsageIfNeeded(ctx: any, force = false) {
@@ -344,7 +396,7 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 		const now = Date.now();
-		if (!force && cachedClaudeUsage && now - lastClaudeFetchTime < CLAUDE_TTL_MS) {
+		if (!shouldRefreshQuota(now, lastClaudeFetchTime, force, false, CLAUDE_TTL_MS, 15000)) {
 			return;
 		}
 
@@ -353,7 +405,7 @@ export default function (pi: ExtensionAPI) {
 			const r = await pi.exec("pi-gomemory-setup", ["claude-usage"], { timeout: 5000 });
 			if (r.code === 0 && r.stdout) {
 				cachedClaudeUsage = JSON.parse(r.stdout) as ClaudeUsageInfo;
-				lastClaudeFetchTime = now;
+				lastClaudeFetchTime = Date.now();
 			}
 		} catch {
 			// Silencioso
@@ -368,15 +420,14 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 		const now = Date.now();
-		const minInterval = cachedQuotaError ? QUOTA_ERROR_BACKOFF_MS : QUOTA_TTL_MS;
-		if (!force && now - lastQuotaFetchTime < minInterval) {
+		if (!shouldRefreshQuota(now, lastQuotaFetchTime, force, !!cachedQuotaError, QUOTA_TTL_MS, QUOTA_ERROR_BACKOFF_MS)) {
 			return;
 		}
 
 		quotaInflight = true;
 		try {
 			const r = await pi.exec("pi-gomemory-setup", ["usage", "--json"], { timeout: 10000 });
-			lastQuotaFetchTime = now;
+			lastQuotaFetchTime = Date.now();
 			if (r.code === 0 && r.stdout) {
 				const validated = validateQuotaSummary(JSON.parse(r.stdout));
 				if (validated) {
@@ -389,7 +440,7 @@ export default function (pi: ExtensionAPI) {
 				cachedQuotaError = parseCleanQuotaError(r.stderr);
 			}
 		} catch (err: any) {
-			lastQuotaFetchTime = now;
+			lastQuotaFetchTime = Date.now();
 			cachedQuotaError = err?.message || "No disponible";
 		} finally {
 			quotaInflight = false;
@@ -434,15 +485,16 @@ export default function (pi: ExtensionAPI) {
 
 		visible = true;
 
-		// Timer de refresco periódico cuando el sidebar está abierto
+		// Heartbeat periódico cada 30s mientras el panel está visible
 		if (autoRefreshTimer) {
 			clearInterval(autoRefreshTimer);
 		}
 		autoRefreshTimer = setInterval(() => {
 			if (!visible) return;
-			void refreshQuotaIfNeeded(ctx);
-			void refreshClaudeUsageIfNeeded(ctx);
-		}, 30 * 1000);
+			// Heartbeat forzado para mantener actualizados los % y tiempos de reinicio sin bloqueo de TTL
+			void refreshQuotaIfNeeded(ctx, true);
+			void refreshClaudeUsageIfNeeded(ctx, true);
+		}, HEARTBEAT_INTERVAL_MS);
 
 		// nonCapturing: el panel flota sin quitar el teclado al editor. No se espera
 		// la promesa para no bloquear el comando; se cierra con /sidebar.
@@ -456,12 +508,14 @@ export default function (pi: ExtensionAPI) {
 						const servers = getRegisteredMCPServers();
 						const antigravityActive = isAntigravity(ctx);
 						const claudeActive = isClaude(ctx);
+						const providerName = formatProviderDisplayName(ctx);
 						const state: SidebarState = {
 							title: cachedTitle,
 							tokens: metrics.tokens,
 							contextLimit: metrics.contextLimit,
 							cost: metrics.cost,
 							servers,
+							providerName,
 							isAntigravityProvider: antigravityActive,
 							quota: cachedQuota,
 							quotaError: cachedQuotaError,
@@ -513,10 +567,19 @@ export default function (pi: ExtensionAPI) {
 		void refreshClaudeUsageIfNeeded(ctx);
 	});
 
-	pi.on("agent_end", async (_event: any, ctx: any) => {
+	pi.on("turn_end", async (_event: any, ctx: any) => {
+		// Turno individual consumido: refresca con fuerza las cuotas y métricas de contexto
 		cachedTitle = await fetchTitle(ctx);
-		void refreshQuotaIfNeeded(ctx);
-		void refreshClaudeUsageIfNeeded(ctx);
+		void refreshQuotaIfNeeded(ctx, true);
+		void refreshClaudeUsageIfNeeded(ctx, true);
+		requestRender?.();
+	});
+
+	pi.on("agent_end", async (_event: any, ctx: any) => {
+		// Fin de corrida de agente: refresca con fuerza el balance final
+		cachedTitle = await fetchTitle(ctx);
+		void refreshQuotaIfNeeded(ctx, true);
+		void refreshClaudeUsageIfNeeded(ctx, true);
 		requestRender?.();
 	});
 
