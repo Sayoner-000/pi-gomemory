@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -222,6 +223,7 @@ func pruneLegacyPiSkills(dir, home string) error {
 	if err != nil {
 		return nil
 	}
+	repoDir := SkillRepoDir(home)
 	for _, e := range entries {
 		p := filepath.Join(dir, e.Name())
 		remove := false
@@ -233,8 +235,22 @@ func pruneLegacyPiSkills(dir, home string) error {
 					}
 				}
 			}
-		} else if e.IsDir() && isPristineEmbeddedCopy(p) {
-			remove = true
+		} else if e.IsDir() {
+			if isPristineEmbeddedCopy(p) {
+				remove = true
+			} else {
+				// También retira copias heredadas de versiones previas que no tenían .pi-gomemory
+				// pero cuyo contenido en SKILL.md es idéntico al del repositorio central.
+				repoSkillFile := filepath.Join(repoDir, e.Name(), "SKILL.md")
+				piSkillFile := filepath.Join(p, "SKILL.md")
+				if repoContent, err := os.ReadFile(repoSkillFile); err == nil {
+					if piContent, err := os.ReadFile(piSkillFile); err == nil {
+						if bytes.Equal(bytes.TrimSpace(repoContent), bytes.TrimSpace(piContent)) {
+							remove = true
+						}
+					}
+				}
+			}
 		}
 		if remove {
 			if err := os.RemoveAll(p); err != nil {

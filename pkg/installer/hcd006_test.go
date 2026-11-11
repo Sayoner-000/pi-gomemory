@@ -134,6 +134,22 @@ func TestSkillRepoPiSettings(t *testing.T) {
 	}
 }
 
+func TestSkillRepoPiSettingsLegacyWithoutMarker(t *testing.T) {
+	opts := sandbox(t)
+	piSkills := filepath.Join(opts.PiAgentDir, "skills")
+	// Copia embebida antigua sin marker pero con contenido idéntico al repo central
+	writeFile(t, filepath.Join(piSkills, "hcd", "SKILL.md"), "contenido-identico")
+	if _, err := SyncSkillRepo(fstest.MapFS{"skills/hcd/SKILL.md": {Data: []byte("contenido-identico")}}, opts.HomeDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := RegisterSkillRepo(opts.PiAgentDir, opts.HomeDir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(piSkills, "hcd")); err == nil {
+		t.Fatal("hcd sin marker pero idéntico debía retirarse de ~/.pi/agent/skills")
+	}
+}
+
 func TestHarnessSyncsSkills(t *testing.T) {
 	s := GenerateHarnessScript()
 	if !strings.Contains(s, "pi-gomemory-setup skills-sync") {
