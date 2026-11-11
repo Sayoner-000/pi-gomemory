@@ -167,6 +167,18 @@ func TestPlanExtensionEmbedded(t *testing.T) {
 	}
 }
 
+func TestPlanWithPrompt(t *testing.T) {
+	s := readAsset(t, "extensions/gomemory-plan.ts")
+	for _, want := range []string{"sendUserMessage(arg", `deliverAs: "followUp"`, "isIdle"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("gomemory-plan.ts no contiene %q", want)
+		}
+	}
+	if strings.Contains(s, "Argumento desconocido") {
+		t.Error("/plan <texto> no debe rechazarse como argumento desconocido")
+	}
+}
+
 func TestPlanExtensionFallbackMarker(t *testing.T) {
 	s := readAsset(t, "extensions/gomemory-plan.ts")
 	for _, want := range []string{"before_agent_start", `"plan-context"`, "timeout: 5000", "[gomemory-plan:fallback]", ".trim()"} {

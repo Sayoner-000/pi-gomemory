@@ -3,7 +3,8 @@
  *
  * /plan alterna un modo que bloquea las modificaciones comunes (edit, write y
  * comandos bash de gomemory-plan-patterns.json) e inyecta en el system prompt el
- * método de descomposición atómica de `mem plan-context`. /plan run solo desactiva.
+ * método de descomposición atómica de `mem plan-context`. /plan <texto> activa el
+ * modo y envía el texto como solicitud. /plan run solo desactiva.
  */
 
 import { readFileSync } from "node:fs";
@@ -71,7 +72,17 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 			if (arg !== "") {
-				ctx.ui.notify(`Argumento desconocido: ${arg}. Usa /plan o /plan run`, "warning");
+				// /plan <texto>: activa el modo (si hace falta) y envía la solicitud.
+				if (!active) {
+					method = await loadMethod(ctx.cwd);
+					setActive(ctx, true);
+					ctx.ui.notify("Modo plan activo: edit, write y comandos que modifican están bloqueados", "info");
+				}
+				if (ctx.isIdle?.() === false) {
+					pi.sendUserMessage(arg, { deliverAs: "followUp" });
+				} else {
+					pi.sendUserMessage(arg);
+				}
 				return;
 			}
 			if (active) {
