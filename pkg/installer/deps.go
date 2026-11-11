@@ -238,8 +238,20 @@ func DefaultDepProbes(version, piAgentDir string) []DepProbe {
 }
 
 // RefreshDeps consulta en paralelo cada componente y guarda el resultado en
-// cachePath. Un fallo en un componente queda en su Error y no afecta al resto.
+// cachePath. Si la caché existe y tiene menos de 24h (depsCacheTTL), se omite
+// la consulta en red para no saturar en cada arranque.
 func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState {
+	if cachePath != "" {
+		if data, err := os.ReadFile(cachePath); err == nil {
+			var c depsCache
+			if json.Unmarshal(data, &c) == nil && !c.CheckedAt.IsZero() {
+				if now.Sub(c.CheckedAt) < 24*time.Hour {
+					return c.Deps
+				}
+			}
+		}
+	}
+
 	states := make([]DepState, len(probes))
 	var wg sync.WaitGroup
 	for i, p := range probes {

@@ -73,18 +73,18 @@ func TestHCD011Plan(t *testing.T) {
 		t.Fatal(err)
 	}
 	expect := map[string]string{
-		filepath.Join(ext, "gomemory-status.ts"):                ActionRemove,
-		filepath.Join(ext, "gomemory-tasks.ts"):                 ActionSkip,
-		filepath.Join(opts.PiAgentDir, "themes", "gomemory.json"): ActionRemove,
-		filepath.Join(opts.LocalBinDir, "pi-gomemory"):          ActionRemove,
-		filepath.Join(repo, "hcd"):                              ActionRemove,
-		filepath.Join(repo, "adversarial-consensus-review"):     ActionSkip,
-		filepath.Join(repo, "mia"):                              ActionSkip,
-		filepath.Join(repo, "enlace-propio"):                    ActionSkip,
-		filepath.Join(repo, "anfitriona"):                       ActionRemove,
-		mcp + " › mcpServers.gomemory":                          ActionRemove,
-		mcp + " › mcpServers.codegraph":                         ActionSkip,
-		agents + " › bloque pi-gomemory":                        ActionRemove,
+		filepath.Join(ext, "gomemory-status.ts"):                     ActionRemove,
+		filepath.Join(ext, "gomemory-tasks.ts"):                      ActionSkip,
+		filepath.Join(opts.PiAgentDir, "themes", "gomemory.json"):    ActionRemove,
+		filepath.Join(opts.LocalBinDir, "pi-gomemory"):               ActionRemove,
+		filepath.Join(repo, "hcd"):                                   ActionRemove,
+		filepath.Join(repo, "adversarial-consensus-review"):          ActionSkip,
+		filepath.Join(repo, "mia"):                                   ActionSkip,
+		filepath.Join(repo, "enlace-propio"):                         ActionSkip,
+		filepath.Join(repo, "anfitriona"):                            ActionRemove,
+		mcp + " › mcpServers.gomemory":                               ActionRemove,
+		mcp + " › mcpServers.codegraph":                              ActionSkip,
+		agents + " › bloque pi-gomemory":                             ActionRemove,
 		filepath.Join(opts.PiAgentDir, "settings.json") + " › theme": ActionRemove,
 	}
 	for target, kind := range expect {

@@ -38,8 +38,97 @@ type QuotaSummaryResponse struct {
 }
 
 var endpoints = []string{
-	"https://cloudaicompanion.googleapis.com",
-	"https://daily-cloudaicompanion.sandbox.googleapis.com",
+	"https://daily-cloudcode-pa.googleapis.com",
+	"https://daily-cloudcode-pa.sandbox.googleapis.com",
+	"https://cloudcode-pa.googleapis.com",
+}
+
+// QuotaCleanGroup representa un grupo de cuotas simplificado para JSON
+type QuotaCleanGroup struct {
+	DisplayName string             `json:"displayName"`
+	Buckets     []QuotaCleanBucket `json:"buckets"`
+}
+
+// QuotaCleanBucket representa un bucket de cuota procesado
+type QuotaCleanBucket struct {
+	DisplayName       string  `json:"displayName"`
+	RemainingFraction float64 `json:"remainingFraction"`
+	RemainingPercent  float64 `json:"remainingPercent"`
+	ResetTime         string  `json:"resetTime"`
+	ResetIn           string  `json:"resetIn"`
+}
+
+// QuotaCleanData es el payload JSON que consume el sidebar u otras herramientas
+type QuotaCleanData struct {
+	PlanLabel string            `json:"planLabel"`
+	Email     string            `json:"email,omitempty"`
+	Groups    []QuotaCleanGroup `json:"groups"`
+}
+
+// FetchQuotaSummary consulta las cuotas reales de Antigravity estructuradas
+func FetchQuotaSummary(piAgentDir string) (*QuotaCleanData, error) {
+	accPath := filepath.Join(piAgentDir, "antigravity-accounts.json")
+	data, err := os.ReadFile(accPath)
+	if err != nil {
+		return nil, fmt.Errorf("no se encontró cuenta de Antigravity en %s", accPath)
+	}
+
+	var accs AntigravityAccounts
+	if err := json.Unmarshal(data, &accs); err != nil {
+		return nil, fmt.Errorf("parsear accounts: %w", err)
+	}
+
+	account, ok := accs.Accounts[accs.ActiveAccountId]
+	if !ok || account.Access == "" {
+		return nil, fmt.Errorf("cuenta activa %q no tiene token de acceso", accs.ActiveAccountId)
+	}
+
+	var lastErr error
+	for _, ep := range endpoints {
+		body, err := fetchQuota(ep, account.Access)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		var quota QuotaSummaryResponse
+		if err := json.Unmarshal(body, &quota); err != nil {
+			lastErr = fmt.Errorf("respuesta de cuota ilegible en %s: %w", ep, err)
+			continue
+		}
+
+		plan := quota.PlanLabel
+		if plan == "" {
+			plan = "Google AI Pro (g1-pro-tier)"
+		}
+
+		clean := &QuotaCleanData{
+			PlanLabel: plan,
+			Email:     account.Email,
+			Groups:    make([]QuotaCleanGroup, 0, len(quota.Groups)),
+		}
+
+		for _, g := range quota.Groups {
+			cg := QuotaCleanGroup{
+				DisplayName: g.DisplayName,
+				Buckets:     make([]QuotaCleanBucket, 0, len(g.Buckets)),
+			}
+			for _, b := range g.Buckets {
+				remPct := math.Round(b.RemainingFraction*1000) / 10
+				cg.Buckets = append(cg.Buckets, QuotaCleanBucket{
+					DisplayName:       b.DisplayName,
+					RemainingFraction: b.RemainingFraction,
+					RemainingPercent:  remPct,
+					ResetTime:         b.ResetTime,
+					ResetIn:           formatResetTime(b.ResetTime),
+				})
+			}
+			clean.Groups = append(clean.Groups, cg)
+		}
+
+		return clean, nil
+	}
+
+	return nil, fmt.Errorf("no se pudo obtener la cuota: %w", lastErr)
 }
 
 // FetchAndFormatUsage consulta las cuotas reales de Antigravity (Google AI Pro) y las formatea.
@@ -88,7 +177,8 @@ func fetchQuota(endpoint, accessToken string) ([]byte, error) {
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "antigravity/pi-coding-agent")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "antigravity/cli/1.4.0 (aidev_client; os_type=linux; arch=amd64; cl=982146307; auth_method=consumer)")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

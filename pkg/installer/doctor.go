@@ -1,12 +1,14 @@
 package installer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 const (
@@ -83,41 +85,47 @@ func RunDoctor(opts *Options) []CheckItem {
 	}
 
 	// 3. MCPs en Pi
-	mcpListCmd := exec.Command("pi", "mcp", "list", "--json")
+	ctxMCP, cancelMCP := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelMCP()
+	mcpListCmd := exec.CommandContext(ctxMCP, "pi", "mcp", "list", "--json")
 	out, err := mcpListCmd.Output()
-	if err == nil {
-		var listResp struct {
-			Servers []struct {
-				Name  string `json:"name"`
-				State string `json:"state"`
-			} `json:"servers"`
+	var listResp struct {
+		Servers []struct {
+			Name  string `json:"name"`
+			State string `json:"state"`
+		} `json:"servers"`
+	}
+	if err != nil || json.Unmarshal(out, &listResp) != nil {
+		items = append(items, CheckItem{
+			Name:    "MCP en Pi",
+			Status:  "WARN",
+			Details: "no se pudo consultar `pi mcp list`",
+		})
+	} else {
+		states := make(map[string]string)
+		for _, s := range listResp.Servers {
+			states[s.Name] = s.State
 		}
-		if jsonErr := json.Unmarshal(out, &listResp); jsonErr == nil {
-			states := make(map[string]string)
-			for _, s := range listResp.Servers {
-				states[s.Name] = s.State
-			}
-			for _, req := range []string{"gomemory", "codegraph", "codebase-memory"} {
-				st, found := states[req]
-				if found && st == "connected" {
-					items = append(items, CheckItem{
-						Name:    fmt.Sprintf("MCP %s", req),
-						Status:  "OK",
-						Details: "conectado",
-					})
-				} else if found {
-					items = append(items, CheckItem{
-						Name:    fmt.Sprintf("MCP %s", req),
-						Status:  "WARN",
-						Details: fmt.Sprintf("estado: %s", st),
-					})
-				} else {
-					items = append(items, CheckItem{
-						Name:    fmt.Sprintf("MCP %s", req),
-						Status:  "FAIL",
-						Details: "no registrado en Pi",
-					})
-				}
+		for _, req := range []string{"gomemory", "codegraph", "codebase-memory"} {
+			st, found := states[req]
+			if found && st == "connected" {
+				items = append(items, CheckItem{
+					Name:    fmt.Sprintf("MCP %s", req),
+					Status:  "OK",
+					Details: "conectado",
+				})
+			} else if found {
+				items = append(items, CheckItem{
+					Name:    fmt.Sprintf("MCP %s", req),
+					Status:  "WARN",
+					Details: fmt.Sprintf("estado: %s", st),
+				})
+			} else {
+				items = append(items, CheckItem{
+					Name:    fmt.Sprintf("MCP %s", req),
+					Status:  "FAIL",
+					Details: "no registrado en Pi",
+				})
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // Tipos de acción de un plan de desinstalación.
@@ -48,9 +50,14 @@ func (p *UninstallPlan) add(kind, target, reason string, apply func() error) {
 
 // Pending cuenta las acciones que retirarían algo.
 func (p *UninstallPlan) Pending() int {
+	return p.Count(ActionRemove)
+}
+
+// Count cuenta las acciones de un tipo dado en el plan.
+func (p *UninstallPlan) Count(kind string) int {
 	n := 0
 	for _, a := range p.Actions {
-		if a.Kind == ActionRemove {
+		if a.Kind == kind {
 			n++
 		}
 	}
@@ -388,7 +395,11 @@ func (p *UninstallPlan) planPackages(assets fs.FS, piAgentDir string) {
 				src := pp.source
 				p.add(ActionRemove, settings+" › packages."+pp.name, "paquete fijado por pi-gomemory", func() error {
 					if piBin, err := exec.LookPath("pi"); err == nil {
-						_ = exec.Command(piBin, "remove", src).Run()
+						ctxRem, cancelRem := context.WithTimeout(context.Background(), 15*time.Second)
+						defer cancelRem()
+						if err := exec.CommandContext(ctxRem, piBin, "remove", src).Run(); err != nil {
+							return fmt.Errorf("pi remove %s: %w", src, err)
+						}
 					}
 					return editJSON(settings, func(o map[string]json.RawMessage) error {
 						var cur []json.RawMessage
@@ -465,9 +476,16 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) e
 		fmt.Fprintln(w, "Plan de desinstalación (dry-run: no se modifica nada):")
 		PrintPlan(w, plan)
 		fmt.Fprintf(w, "%d acciones retirarían algo.\n", plan.Pending())
+		if n := plan.Count(ActionFail); n > 0 {
+			return fmt.Errorf("%d comprobaciones fallaron en plan de desinstalación", n)
+		}
 		return nil
 	}
 	if plan.Pending() == 0 {
+		if n := plan.Count(ActionFail); n > 0 {
+			PrintPlan(w, plan)
+			return fmt.Errorf("%d comprobaciones fallaron; no se puede confirmar que no quede nada", n)
+		}
 		fmt.Fprintln(w, "✓ No queda nada que retirar de pi-gomemory.")
 		return nil
 	}

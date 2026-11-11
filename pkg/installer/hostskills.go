@@ -151,7 +151,22 @@ func SyncSkillRepo(assets fs.FS, home string) (SkillRepoResult, error) {
 		if _, ok := links[e.Name()]; ok {
 			continue
 		}
-		if err := os.Remove(filepath.Join(repo, e.Name())); err != nil {
+		// Solo borrar enlaces huérfanos cuyo destino esté bajo las fuentes del anfitrión (hostSkillSources),
+		// nunca enlaces creados voluntariamente por la persona apuntando a otros lugares.
+		p := filepath.Join(repo, e.Name())
+		if target, err := os.Readlink(p); err == nil {
+			isHostSource := false
+			for _, src := range hostSkillSources {
+				if isUnder(target, expandHome(src, home)) {
+					isHostSource = true
+					break
+				}
+			}
+			if !isHostSource {
+				continue
+			}
+		}
+		if err := os.Remove(p); err != nil {
 			return res, err
 		}
 	}
@@ -216,6 +231,21 @@ func RegisterSkillRepo(piAgentDir, home string) error {
 	return pruneLegacyPiSkills(filepath.Join(piAgentDir, "skills"), home)
 }
 
+// onlySkillFile devuelve true si dir sólo contiene SKILL.md y opcionalmente
+// la marca .pi-gomemory. Si contiene scripts, notas o carpetas del usuario, false.
+func onlySkillFile(dir string) bool {
+	es, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range es {
+		if e.Name() != "SKILL.md" && e.Name() != skillMarkerFile {
+			return false
+		}
+	}
+	return true
+}
+
 // pruneLegacyPiSkills retira de ~/.pi/agent/skills lo que ahora ofrece el
 // repositorio: copias embebidas intactas y enlaces a carpetas del anfitrión.
 func pruneLegacyPiSkills(dir, home string) error {
@@ -240,12 +270,13 @@ func pruneLegacyPiSkills(dir, home string) error {
 				remove = true
 			} else {
 				// También retira copias heredadas de versiones previas que no tenían .pi-gomemory
-				// pero cuyo contenido en SKILL.md es idéntico al del repositorio central.
+				// pero cuyo contenido en SKILL.md es idéntico al del repositorio central
+				// Y no contienen ningún otro archivo o carpeta del usuario.
 				repoSkillFile := filepath.Join(repoDir, e.Name(), "SKILL.md")
 				piSkillFile := filepath.Join(p, "SKILL.md")
 				if repoContent, err := os.ReadFile(repoSkillFile); err == nil {
 					if piContent, err := os.ReadFile(piSkillFile); err == nil {
-						if bytes.Equal(bytes.TrimSpace(repoContent), bytes.TrimSpace(piContent)) {
+						if bytes.Equal(bytes.TrimSpace(repoContent), bytes.TrimSpace(piContent)) && onlySkillFile(p) {
 							remove = true
 						}
 					}

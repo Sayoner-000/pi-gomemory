@@ -72,6 +72,11 @@ GOMEMORY_ARGS=()
 if [ -f ".gomemory/memories.db" ] && command -v mem &>/dev/null; then
   CTX="$(mem context 2>/dev/null || true)"
   if [ -n "${CTX}" ]; then
+    # Evitar desbordar el límite de tamaño de argumentos del kernel (≈128 KiB).
+    # Si excede 64 KiB, se trunca de forma segura para no romper 'exec pi'.
+    if [ "${#CTX}" -gt 65536 ]; then
+      CTX="${CTX:0:65536}"
+    fi
     GOMEMORY_ARGS+=(--append-system-prompt "${CTX}")
   fi
 fi

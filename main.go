@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -34,12 +35,31 @@ func main() {
 	case "doctor", "status", "check":
 		installer.PrintDoctor(installer.RunDoctor(opts))
 	case "usage", "quota", "antigravity.usage":
+		if len(os.Args) > 2 && os.Args[2] == "--json" {
+			summary, err := installer.FetchQuotaSummary(opts.PiAgentDir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "{\"error\": %q}\n", err.Error())
+				os.Exit(1)
+			}
+			data, _ := json.MarshalIndent(summary, "", "  ")
+			fmt.Println(string(data))
+			return
+		}
 		out, err := installer.FetchAndFormatUsage(opts.PiAgentDir)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%sError consultando cuota: %v%s\n", installer.ColorWarning, err, installer.ColorReset)
 			os.Exit(1)
 		}
 		fmt.Print(out)
+	case "claude-usage", "claude.usage":
+		summary, err := installer.FetchClaudeUsage("")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "{\"error\": %q}\n", err.Error())
+			os.Exit(1)
+		}
+		data, _ := json.MarshalIndent(summary, "", "  ")
+		fmt.Println(string(data))
+		return
 	case "theme":
 		if err := installer.InstallTheme(EmbeddedAssets, opts.PiAgentDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error instalando tema: %v\n", err)

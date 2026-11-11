@@ -257,4 +257,12 @@ func TestFetchAndFormatUsageNeverFabricates(t *testing.T) {
 	if !strings.Contains(out, "Grupo real") || !strings.Contains(out, "42.0%") {
 		t.Errorf("salida sin los datos reales: %q", out)
 	}
+
+	clean, err := FetchQuotaSummary(opts.PiAgentDir)
+	if err != nil {
+		t.Fatalf("FetchQuotaSummary fallo: %v", err)
+	}
+	if clean.PlanLabel != "Plan X" || len(clean.Groups) != 1 || clean.Groups[0].Buckets[0].RemainingPercent != 42.0 {
+		t.Errorf("FetchQuotaSummary devolvio datos inesperados: %+v", clean)
+	}
 }
