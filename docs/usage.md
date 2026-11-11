@@ -48,7 +48,8 @@ Uso: pi-gomemory-setup [comando]
 
 Comandos:
   install       Ejecuta la instalación completa (opción por defecto)
-  usage         Muestra cuotas y límites de consumo de Google AI Pro
+  usage         Muestra cuotas y límites de consumo de Google AI Pro (--json disponible)
+  claude-usage  Muestra telemetría agregada de tokens de Claude Code (hoy, semana, total)
   doctor        Verifica binarios, tema, MCP, plugins, launcher y otros agentes detectados
   mcp           Registra gomemory, codegraph y codebase-memory en mcp.json
   theme         Instala la paleta gomemory en ~/.pi/agent/themes/

@@ -4,6 +4,32 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.8.0] - 2026-11-11
+
+### Added
+- Integración en el panel lateral (`/sidebar`) de cuotas de Antigravity (Google AI Pro) con barras continuas Unicode (`████░░░░`), porcentajes restantes y tiempos de reinicio.
+- Telemetría agregada de Claude Code en el panel lateral (`/sidebar`) y comando CLI `claude-usage` (`--json`), calculando consumo de hoy, semana y total acumulado con porcentaje de ahorro de lectura en caché a partir de `~/.claude/token-usage-cache.json`.
+- Comando CLI `usage --json` para consumir la cuota de Antigravity estructurada.
+- Enmienda en `constitution.md` formalizando los 5 principios de diseño SOLID (SRP, OCP, LSP, ISP, DIP).
+- Timer periódico en background (30 s) dentro de `gomemory-sidebar.ts` para refrescar métricas automáticamente mientras el sidebar está visible.
+
+### Changed
+- Endpoints de consulta de cuota de Antigravity actualizados al servicio oficial de Google Cloud Code PA (`daily-cloudcode-pa.googleapis.com`) con User-Agent de Antigravity CLI 1.4.0.
+- `RefreshDeps` en `deps.go` respeta un TTL de 24 horas sobre la caché de dependencias para evitar consultas de red innecesarias en cada arranque del launcher.
+- El lanzador `pi-gomemory` (`harness.go`) trunca el contexto inyectado de gomemory a 64 KiB para no desbordar los límites del kernel de Linux.
+
+### Fixed
+- **Integridad de datos (H-01):** `pruneLegacyPiSkills` en `hostskills.go` no elimina carpetas de skills si contienen archivos o scripts adicionales del usuario además de `SKILL.md`.
+- **Desinstalador (H-02):** `pi-gomemory-setup uninstall` y `--dry-run` devuelven código de error si existen acciones fallidas (`ActionFail`), aun cuando `Pending()` sea 0.
+- **Diagnóstico (H-03):** `pi-gomemory-setup doctor` invoca `pi mcp list` con timeout de 10 segundos y emite advertencia `[WARN]` si la consulta falla o el JSON es ilegible.
+- **Guardarraíl Modo Plan (H-04):** `gomemory-plan-patterns.json` bloquea evasiones de comandos mediante intérpretes (`bash -c`, `sh -c`, `zsh -c`, `python -c`, `node -e`, `perl -e`, `ruby -e`) y herramientas mutables (`make`, `xargs`, `env`, `find -delete/-exec`, `dd of=`, `git apply/clean/pull`, `patch`, `curl -o`, `wget -O`, `install`, `rsync`, `unlink`, `go build -o`).
+- **Telemetría Claude Code (H-05, H-06):** Fechas comparadas en zona horaria local mediante parseo RFC3339 y ordenamiento determinista de claves de caché para evitar variaciones en el ranking de proyectos.
+- **Sidebar (H-08):** Saneamiento de mensajes de error de stderr en JSON, guarda contra llamadas concurrentes (`inflight`), backoff ante fallos y validación defensiva de la estructura de cuota.
+- **Sincronización y paquetes (H-09):** `SyncSkillRepo` solo elimina symlinks huérfanos cuyo destino apunte a fuentes del host, conservando enlaces personalizados del usuario; `planPackages` invoca `pi remove` con timeout y propaga errores.
+
+### Documentation
+- Actualiza badges de versión y referencias documentales de instalación y uso a `v1.8.0`.
+
 ## [v1.7.4] - 2026-11-11
 
 ### Documentation
