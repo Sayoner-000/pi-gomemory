@@ -105,10 +105,17 @@ export function gomemoryVersion(raw: string | undefined): string {
   return v === "" || v === "dev" ? "" : v.startsWith("v") ? v : "v" + v;
 }
 
+export const HCD_TAGLINE = "HCD · Harness Continual Development";
+
 export function bannerTitle(width: number, noColor: boolean, version: string, gomemory = ""): string {
-  const text = "pi - gomemory" + (version ? "  " + version : "") + (gomemory ? " · gomemory " + gomemory : "");
+  const text = "HCD · pi - gomemory" + (version ? "  " + version : "") + (gomemory ? " · gomemory " + gomemory : "");
   const margin = " ".repeat(Math.max(0, Math.floor((width - text.length) / 2)));
   return noColor ? margin + text : margin + "\x1b[1;38;2;34;227;247m" + text + "\x1b[0m";
+}
+
+export function bannerTagline(width: number, noColor: boolean): string {
+  const margin = " ".repeat(Math.max(0, Math.floor((width - HCD_TAGLINE.length) / 2)));
+  return noColor ? margin + HCD_TAGLINE : margin + "\x1b[2;38;2;145;169;197m" + HCD_TAGLINE + "\x1b[0m";
 }
 
 export default function (pi: ExtensionAPI) {
@@ -127,7 +134,7 @@ export default function (pi: ExtensionAPI) {
     const version = bannerVersion(process.env.PI_GOMEMORY_RUNNING_VERSION || (await ask("pi-gomemory-setup", ["version"])));
     const gomemory = gomemoryVersion(process.env.GOMEMORY_INSTALLED_VERSION || (await ask("mem", ["--version"])));
     ctx.ui.setHeader(() => ({
-      render: (width: number) => [...renderBanner(width, noColor), bannerTitle(width, noColor, version, gomemory)],
+      render: (width: number) => [...renderBanner(width, noColor), bannerTitle(width, noColor, version, gomemory), bannerTagline(width, noColor)],
       invalidate() {},
     }));
   });

@@ -180,7 +180,7 @@ export default function (pi: ExtensionAPI) {
 			}
 		}
 		const suffix = version && version !== "dev" ? ` · ${version}` : "";
-		return (await fetchUnitTitle(ctx)) + suffix;
+		return "HCD · " + (await fetchUnitTitle(ctx)) + suffix;
 	}
 
 	async function fetchUnitTitle(ctx: any): Promise<string> {
