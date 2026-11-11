@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.7.3"><img src="https://img.shields.io/badge/version-1.7.3-blue" alt="Version 1.7.3"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.7.4"><img src="https://img.shields.io/badge/version-1.7.4-blue" alt="Version 1.7.4"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -128,6 +128,7 @@ pi-gomemory-setup mcp         Solo los servidores MCP
 pi-gomemory-setup theme       Solo el tema
 pi-gomemory-setup plugin      Solo pi-antigravity y pi-cc-extensions
 pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills
+pi-gomemory-setup skills-sync Sincroniza el repositorio central de skills y purga copias legadas
 pi-gomemory-setup harness     Solo el launcher
 pi-gomemory-setup version     Versión instalada
 pi-gomemory-setup deps-status   Componentes desactualizados según la última consulta

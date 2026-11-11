@@ -150,6 +150,7 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup theme       Instala y activa el tema gomemory en Pi")
 	fmt.Println("  pi-gomemory-setup plugin      Configura pi-antigravity y pi-cc-extensions")
 	fmt.Println("  pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills")
+	fmt.Println("  pi-gomemory-setup skills-sync Sincroniza el repositorio central y purga copias legadas")
 	fmt.Println("  pi-gomemory-setup harness     Instala el launcher pi-gomemory en ~/.local/bin")
 	fmt.Println("  pi-gomemory-setup version     Muestra la versión instalada")
 	fmt.Println("  pi-gomemory-setup check-update  Avisa si hay una release nueva (caché de 24 h)")

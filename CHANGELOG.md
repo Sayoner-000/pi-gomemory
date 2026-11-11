@@ -4,6 +4,12 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.7.4] - 2026-11-11
+
+### Documentation
+- Agrega el comando `skills-sync` a la lista de comandos CLI en `README.md`, `docs/usage.md` y a la ayuda interactiva del binario instalador (`main.go`).
+- Actualiza badges de versión y referencias documentales de instalación a `v1.7.4`.
+
 ## [v1.7.3] - 2026-11-11
 
 ### Fixed

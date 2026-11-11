@@ -54,6 +54,7 @@ Comandos:
   theme         Instala la paleta gomemory en ~/.pi/agent/themes/
   plugin        Configura pi-antigravity y pi-cc-extensions en settings.json
   skills        Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills/
+  skills-sync   Sincroniza el repositorio central de skills y purga copias legadas
   harness       Genera el launcher pi-gomemory en ~/.local/bin (o PI_GOMEMORY_BIN_DIR)
   version       Muestra la versión instalada
   deps-status   Lista los componentes desactualizados
