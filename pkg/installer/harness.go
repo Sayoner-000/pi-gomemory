@@ -39,6 +39,9 @@ fi
 if command -v pi-gomemory-setup &>/dev/null; then
   export PI_GOMEMORY_RUNNING_VERSION="$(pi-gomemory-setup version 2>/dev/null || true)"
 fi
+if command -v mem &>/dev/null; then
+  export GOMEMORY_INSTALLED_VERSION="$(mem --version 2>/dev/null || true)"
+fi
 if [ -z "${PI_GOMEMORY_NO_UPDATE_CHECK:-}" ] && command -v pi-gomemory-setup &>/dev/null; then
   if pi-gomemory-setup deps-status; then :; elif [ $? -eq 10 ] && [ -t 0 ]; then
     printf "¿Actualizar ahora? [s/N] (10 s) "

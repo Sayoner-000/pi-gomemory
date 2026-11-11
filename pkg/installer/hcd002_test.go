@@ -83,6 +83,12 @@ func TestHarnessExportsRunningVersion(t *testing.T) {
 	if strings.Index(s, "PI_GOMEMORY_RUNNING_VERSION") > strings.Index(s, "exec pi ") {
 		t.Fatal("la variable debe exportarse antes de lanzar pi")
 	}
+	if !strings.Contains(s, `export GOMEMORY_INSTALLED_VERSION="$(mem --version`) {
+		t.Fatal("el launcher debe exportar GOMEMORY_INSTALLED_VERSION desde mem --version")
+	}
+	if strings.Index(s, "GOMEMORY_INSTALLED_VERSION") > strings.Index(s, "exec pi ") {
+		t.Fatal("GOMEMORY_INSTALLED_VERSION debe exportarse antes de lanzar pi")
+	}
 }
 
 func readAsset(t *testing.T, name string) string {
@@ -92,7 +98,7 @@ func readAsset(t *testing.T, name string) string {
 
 func TestBannerExtensionEmbedded(t *testing.T) {
 	s := readAsset(t, "extensions/gomemory-banner.ts")
-	for _, want := range []string{"setHeader", "session_start", "pi - gomemory", "PI_GOMEMORY_RUNNING_VERSION", "NO_COLOR", `"dev"`} {
+	for _, want := range []string{"setHeader", "session_start", "pi - gomemory", "PI_GOMEMORY_RUNNING_VERSION", "GOMEMORY_INSTALLED_VERSION", "NO_COLOR", `"dev"`} {
 		if !strings.Contains(s, want) {
 			t.Errorf("gomemory-banner.ts no contiene %q", want)
 		}

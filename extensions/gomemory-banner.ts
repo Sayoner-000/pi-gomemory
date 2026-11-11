@@ -99,8 +99,14 @@ export function bannerVersion(raw: string | undefined): string {
   return v === "" || v === "dev" ? "" : v;
 }
 
-export function bannerTitle(width: number, noColor: boolean, version: string): string {
-  const text = "pi - gomemory" + (version ? "  " + version : "");
+// `mem --version` imprime "gomemory 2.54.1"; se queda con el número.
+export function gomemoryVersion(raw: string | undefined): string {
+  const v = (raw ?? "").trim().replace(/^gomemory\s+/i, "");
+  return v === "" || v === "dev" ? "" : v.startsWith("v") ? v : "v" + v;
+}
+
+export function bannerTitle(width: number, noColor: boolean, version: string, gomemory = ""): string {
+  const text = "pi - gomemory" + (version ? "  " + version : "") + (gomemory ? " · gomemory " + gomemory : "");
   const margin = " ".repeat(Math.max(0, Math.floor((width - text.length) / 2)));
   return noColor ? margin + text : margin + "\x1b[1;38;2;34;227;247m" + text + "\x1b[0m";
 }
@@ -110,8 +116,9 @@ export default function (pi: ExtensionAPI) {
     if (ctx.mode !== "tui") return;
     const noColor = Boolean(process.env.NO_COLOR);
     const version = bannerVersion(process.env.PI_GOMEMORY_RUNNING_VERSION);
+    const gomemory = gomemoryVersion(process.env.GOMEMORY_INSTALLED_VERSION);
     ctx.ui.setHeader(() => ({
-      render: (width: number) => [...renderBanner(width, noColor), bannerTitle(width, noColor, version)],
+      render: (width: number) => [...renderBanner(width, noColor), bannerTitle(width, noColor, version, gomemory)],
       invalidate() {},
     }));
   });
