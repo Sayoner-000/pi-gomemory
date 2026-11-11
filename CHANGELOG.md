@@ -4,6 +4,14 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.7.1] - 2026-11-11
+
+### Fixed
+- El banner de gomemory vuelve a verse tras `install` o `update` en cualquier sistema. El instalador ahora impone `showStartupHeader: false` en `~/.pi/agent/pi-cc-extensions.json`; antes solo añadía claves ausentes y una configuración previa con `true` dejaba la cabecera de pi-cc-extensions encima del banner. El resto de preferencias de pi-cc-extensions se conserva.
+
+### Added
+- `pi-gomemory-setup doctor` incluye la comprobación «Banner gomemory», que avisa si la cabecera de pi-cc-extensions está tapando el banner.
+
 ## [v1.7.0] - 2026-11-11
 
 ### Added

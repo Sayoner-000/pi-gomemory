@@ -80,6 +80,8 @@ Durante una sesión interactiva de Pi:
 ### Banner de inicio
 Al abrir Pi con `pi-gomemory`, la cabecera muestra la versión de pi-gomemory y la de gomemory instalada. El launcher las exporta en `PI_GOMEMORY_RUNNING_VERSION` (de `pi-gomemory-setup version`) y `GOMEMORY_INSTALLED_VERSION` (de `mem --version`). Si falta alguna, se omite. Con `NO_COLOR` se dibuja sin colores.
 
+Pi solo admite una cabecera. Si pi-cc-extensions tiene `showStartupHeader: true`, su cabecera sustituye al banner; por eso `pi-gomemory-setup install` (y `update`) fija esa clave en `false` en cada instalación, y `pi-gomemory-setup doctor` avisa en «Banner gomemory» si vuelve a activarse (por ejemplo desde `/ccstyle`).
+
 ### Modo plan (`/plan`)
 `/plan` activa o desactiva el modo plan, que bloquea las modificaciones; `/plan run` lo desactiva. `/plan <petición>` activa el modo y envía la petición en el mismo paso.
 
