@@ -16,6 +16,7 @@ var tuiResources = []struct{ source, destination string }{
 	{"extensions/gomemory-plan-patterns.json", "gomemory-plan-patterns.json"},
 	{"extensions/gomemory-tasks.ts", "gomemory-tasks.ts"},
 	{"extensions/gomemory-sidebar.ts", "gomemory-sidebar.ts"},
+	{"extensions/gomemory-tdd.ts", "gomemory-tdd.ts"},
 	{"config/splash.md", "gomemory-splash-prompt.md"},
 }
 

@@ -126,9 +126,10 @@ export function collectContextMetrics(ctx: any): { tokens: number; contextLimit:
 	let tokens = 0;
 	let cost = 0;
 	let lastTurnTokens = 0;
+	let contextLimit = 200000;
 
 	try {
-		if (ctx.sessionManager?.getBranch) {
+		if (ctx?.sessionManager?.getBranch) {
 			for (const entry of ctx.sessionManager.getBranch()) {
 				if (entry.type === "message" && entry.message?.role === "assistant") {
 					const msg = entry.message as AssistantMessage;
@@ -140,13 +141,32 @@ export function collectContextMetrics(ctx: any): { tokens: number; contextLimit:
 				}
 			}
 		}
+		if (ctx?.model?.contextWindow) {
+			contextLimit = ctx.model.contextWindow;
+		}
 	} catch {
-		// Silencioso
+		// Silencioso ante stale ctx o sesión en transición
 	}
 
-	const contextLimit = ctx.model?.contextWindow || 200000;
 	const activeTokens = lastTurnTokens > 0 ? lastTurnTokens : tokens;
 	return { tokens: activeTokens, contextLimit, cost };
+}
+
+/**
+ * Modo minimizado: una sola fila con el uso de contexto y el indicador [+] para restaurar.
+ */
+export function renderSidebarMinimized(state: SidebarState, width: number, theme: Theme): string[] {
+	const innerW = Math.max(10, width);
+	const border = (c: string) => theme.fg("border", c);
+	const pct = state.contextLimit > 0 ? Math.round((state.tokens / state.contextLimit) * 100) : 0;
+	const left = ` HCD · ${formatCompactNumber(state.tokens)} (${pct}%) $${state.cost.toFixed(2)}`;
+	const right = `[+] (/sidebar min) `;
+	const leftLen = visibleWidth(left);
+	const rightLen = visibleWidth(right);
+	const space = Math.max(1, innerW - leftLen - rightLen - 2);
+	const content = theme.fg("accent", left) + " ".repeat(space) + theme.fg("dim", right);
+	const row = border("[") + content + border("]");
+	return [truncateToWidth(row, innerW, "…", true)];
 }
 
 /**
@@ -160,10 +180,15 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 	const lines: string[] = [];
 	lines.push(border(`╭${"─".repeat(innerW)}╮`));
 
-	// 1. Título principal
+	// 1. Título principal con indicador de minimizado [- min]
 	const titleWords = state.title.replace(/\s+/g, " ").trim();
 	const titleStyled = theme.style(titleWords || "pi-gomemory", { fg: "success", bold: true });
-	lines.push(border("│") + padLine(` ${titleStyled}`) + border("│"));
+	const minHint = theme.fg("dim", "[- min] ");
+	const titleLen = visibleWidth(titleWords || "pi-gomemory");
+	const minLen = visibleWidth("[- min] ");
+	const space = Math.max(1, innerW - titleLen - minLen - 1);
+	const headerRow = ` ${titleStyled}${" ".repeat(space)}${minHint}`;
+	lines.push(border("│") + padLine(headerRow) + border("│"));
 
 	lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
 
@@ -278,6 +303,8 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 		lines.push(border("│") + truncateToWidth(row, innerW, "…", true) + border("│"));
 	}
 
+	lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
+	lines.push(border("│") + padLine(theme.fg("dim", " /sidebar min: compactar / restaurar")) + border("│"));
 	lines.push(border(`╰${"─".repeat(innerW)}╯`));
 	return lines;
 }
@@ -296,8 +323,15 @@ export function shouldRefreshQuota(
 }
 
 export function detectProvider(ctx: any): "antigravity" | "claude" | "opencode" | "codex" | "openai" | "other" {
-	const provider = ((ctx?.model?.provider || process.env.PI_PROVIDER || "") as string).toLowerCase();
-	const modelId = ((ctx?.model?.id || process.env.PI_MODEL || "") as string).toLowerCase();
+	let provider = "";
+	let modelId = "";
+	try {
+		provider = ((ctx?.model?.provider || process.env.PI_PROVIDER || "") as string).toLowerCase();
+		modelId = ((ctx?.model?.id || process.env.PI_MODEL || "") as string).toLowerCase();
+	} catch {
+		provider = (process.env.PI_PROVIDER || "").toLowerCase();
+		modelId = (process.env.PI_MODEL || "").toLowerCase();
+	}
 	if (
 		provider.includes("antigravity") ||
 		provider.includes("agy") ||
@@ -333,7 +367,12 @@ export function formatProviderDisplayName(ctx: any): string {
 	if (detected === "opencode") return "OpenCode";
 	if (detected === "codex") return "Codex";
 	if (detected === "openai") return "OpenAI";
-	const raw = (ctx?.model?.provider || process.env.PI_PROVIDER || "").trim();
+	let raw = "";
+	try {
+		raw = ((ctx?.model?.provider || process.env.PI_PROVIDER || "") as string).trim();
+	} catch {
+		raw = (process.env.PI_PROVIDER || "").trim();
+	}
 	return raw ? raw.toUpperCase() : "Provider";
 }
 
@@ -365,10 +404,12 @@ export function validateQuotaSummary(data: any): QuotaSummaryInfo | null {
 
 export default function (pi: ExtensionAPI) {
 	let visible = false;
+	let overlayMinimized = false;
 	let closeSidebar: (() => void) | null = null;
 	let requestRender: (() => void) | null = null;
 	let autoRefreshTimer: ReturnType<typeof setInterval> | null = null;
 	let cachedTitle = "Instalación de binario con componentes";
+	let activeCtx: any = null;
 
 	let cachedQuota: QuotaSummaryInfo | null = null;
 	let cachedQuotaError: string | undefined = undefined;
@@ -464,7 +505,13 @@ export default function (pi: ExtensionAPI) {
 
 	async function fetchUnitTitle(ctx: any): Promise<string> {
 		try {
-			const r = await pi.exec("mem", ["hcd", "show", "--json"], { cwd: ctx.cwd, timeout: 3000 });
+			let workingDir: string | undefined;
+			try {
+				workingDir = ctx?.cwd;
+			} catch {
+				workingDir = process.cwd();
+			}
+			const r = await pi.exec("mem", ["hcd", "show", "--json"], { cwd: workingDir || process.cwd(), timeout: 3000 });
 			if (r.code === 0 && r.stdout) {
 				const u = JSON.parse(r.stdout);
 				if (u.unit_id) {
@@ -479,6 +526,7 @@ export default function (pi: ExtensionAPI) {
 
 	async function openSidebar(ctx: ExtensionCommandContext) {
 		if (!ctx.hasUI) return;
+		activeCtx = ctx;
 		cachedTitle = await fetchTitle(ctx);
 		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
@@ -489,11 +537,18 @@ export default function (pi: ExtensionAPI) {
 		if (autoRefreshTimer) {
 			clearInterval(autoRefreshTimer);
 		}
-		autoRefreshTimer = setInterval(() => {
+		autoRefreshTimer = setInterval(async () => {
 			if (!visible) return;
-			// Heartbeat forzado para mantener actualizados los % y tiempos de reinicio sin bloqueo de TTL
-			void refreshQuotaIfNeeded(ctx, true);
-			void refreshClaudeUsageIfNeeded(ctx, true);
+			try {
+				// Heartbeat forzado para mantener actualizados los % y tiempos de reinicio sin bloqueo de TTL
+				await refreshQuotaIfNeeded(activeCtx || ctx, true);
+				await refreshClaudeUsageIfNeeded(activeCtx || ctx, true);
+			} catch {
+				if (autoRefreshTimer) {
+					clearInterval(autoRefreshTimer);
+					autoRefreshTimer = null;
+				}
+			}
 		}, HEARTBEAT_INTERVAL_MS);
 
 		// nonCapturing: el panel flota sin quitar el teclado al editor. No se espera
@@ -522,7 +577,22 @@ export default function (pi: ExtensionAPI) {
 							isClaudeProvider: claudeActive,
 							claudeUsage: cachedClaudeUsage,
 						};
-						return renderSidebar(state, width, theme);
+						if (!overlayMinimized) {
+							return renderSidebar(state, width, theme);
+						}
+						const minLines = renderSidebarMinimized(state, width, theme);
+						while (minLines.length < 26) {
+							minLines.push(" ".repeat(Math.max(1, width)));
+						}
+						return minLines;
+					},
+					handleMouse(event: any) {
+						if (event.type === "click" || event.type === "press") {
+							overlayMinimized = !overlayMinimized;
+							tui.requestRender();
+							return { handled: true, render: true };
+						}
+						return undefined;
 					},
 					invalidate() {},
 				};
@@ -549,8 +619,19 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	pi.registerCommand("sidebar", {
-		description: "Muestra u oculta el panel lateral de estado gomemory/OpenCode en la esquina superior derecha",
-		handler: async (_args, ctx) => {
+		description: "Muestra u oculta el panel lateral (/sidebar min o /sidebar m compacta a una fila)",
+		handler: async (args, ctx) => {
+			const sub = (args || "").trim().split(/\s+/)[0];
+			if (sub === "min" || sub === "m" || sub === "-" || sub === "+") {
+				overlayMinimized = !overlayMinimized;
+				if (!visible) {
+					await openSidebar(ctx);
+				} else if (requestRender) {
+					requestRender();
+				}
+				ctx.ui?.notify?.(`Panel lateral ${overlayMinimized ? "minimizado" : "restaurado"}`, "info");
+				return;
+			}
 			if (visible && closeSidebar) {
 				closeSidebar();
 				ctx.ui?.notify?.("Panel lateral oculto", "info");
@@ -561,13 +642,41 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	pi.registerCommand("min", {
+		description: "Alterna el modo minimizado/expandido de los paneles (/min)",
+		handler: async (_args, ctx) => {
+			overlayMinimized = !overlayMinimized;
+			if (!visible) {
+				await openSidebar(ctx);
+			} else if (requestRender) {
+				requestRender();
+			}
+			ctx.ui?.notify?.(`Panel lateral ${overlayMinimized ? "minimizado" : "restaurado"}`, "info");
+		},
+	});
+
 	pi.on("session_start", async (_event: any, ctx: any) => {
 		cachedTitle = await fetchTitle(ctx);
 		void refreshQuotaIfNeeded(ctx);
 		void refreshClaudeUsageIfNeeded(ctx);
 	});
 
+	pi.on("session_shutdown", async (_event: any, _ctx: any) => {
+		if (autoRefreshTimer) {
+			clearInterval(autoRefreshTimer);
+			autoRefreshTimer = null;
+		}
+		if (closeSidebar) {
+			closeSidebar();
+			closeSidebar = null;
+		}
+		activeCtx = null;
+		requestRender = null;
+		visible = false;
+	});
+
 	pi.on("turn_end", async (_event: any, ctx: any) => {
+		activeCtx = ctx;
 		// Turno individual consumido: refresca con fuerza las cuotas y métricas de contexto
 		cachedTitle = await fetchTitle(ctx);
 		void refreshQuotaIfNeeded(ctx, true);
