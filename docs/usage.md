@@ -76,6 +76,12 @@ mem setup-mcp --scope global --agents claude,codex,agy,opencode
 
 Durante una sesión interactiva de Pi:
 
+### Modo plan (`/plan`)
+`/plan` activa o desactiva el modo plan, que bloquea las modificaciones; `/plan run` lo desactiva. `/plan <petición>` activa el modo y envía la petición en el mismo paso.
+
+### Panel de tareas (`/tasks`)
+Muestra u oculta, encima del editor, las tareas de la unidad HCD activa (`✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo). Se actualiza solo tras cada `mem hcd` y al terminar cada respuesta.
+
 ### Barra de tokens (`/tokens`)
 Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens de entrada, salida, lecturas de caché y coste estimado.
 

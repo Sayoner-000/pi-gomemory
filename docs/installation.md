@@ -49,7 +49,7 @@ Los binarios de cada versión se publican en [GitHub Releases](https://github.co
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.4.0_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.4.1_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install

@@ -15,6 +15,7 @@ func InstallTUIExtension(assets fs.FS, piAgentDir string) error {
 		{"extensions/gomemory-banner.ts", "gomemory-banner.ts"},
 		{"extensions/gomemory-plan.ts", "gomemory-plan.ts"},
 		{"extensions/gomemory-plan-patterns.json", "gomemory-plan-patterns.json"},
+		{"extensions/gomemory-tasks.ts", "gomemory-tasks.ts"},
 		{"config/splash.md", "gomemory-splash-prompt.md"},
 	} {
 		data, err := fs.ReadFile(assets, resource.source)

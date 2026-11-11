@@ -4,6 +4,14 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.4.1] - 2026-11-11
+
+### Added
+- Panel de tareas HCD en Pi (`gomemory-tasks.ts`): muestra sobre el editor las tareas de la unidad activa con su estado, leídas de `mem hcd show --json`, y se actualiza tras cada `mem hcd` y al terminar cada respuesta. `/tasks` lo muestra u oculta.
+
+### Fixed
+- `/plan <petición>` ya no se rechaza como argumento desconocido: activa el modo plan y envía la petición.
+
 ## [v1.4.0] - 2026-11-11
 
 ### Added
