@@ -115,8 +115,17 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     if (ctx.mode !== "tui") return;
     const noColor = Boolean(process.env.NO_COLOR);
-    const version = bannerVersion(process.env.PI_GOMEMORY_RUNNING_VERSION);
-    const gomemory = gomemoryVersion(process.env.GOMEMORY_INSTALLED_VERSION);
+    // Si Pi se lanzó sin el launcher pi-gomemory, las variables no existen: se consultan.
+    const ask = async (cmd: string, args: string[]) => {
+      try {
+        const r = await pi.exec(cmd, args, { timeout: 2000 });
+        return r.code === 0 ? r.stdout : "";
+      } catch {
+        return "";
+      }
+    };
+    const version = bannerVersion(process.env.PI_GOMEMORY_RUNNING_VERSION || (await ask("pi-gomemory-setup", ["version"])));
+    const gomemory = gomemoryVersion(process.env.GOMEMORY_INSTALLED_VERSION || (await ask("mem", ["--version"])));
     ctx.ui.setHeader(() => ({
       render: (width: number) => [...renderBanner(width, noColor), bannerTitle(width, noColor, version, gomemory)],
       invalidate() {},

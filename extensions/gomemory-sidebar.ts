@@ -14,8 +14,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
-import type { OverlayHandle, TUI } from "@earendil-works/pi-tui";
-import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 const EXTENSION_NAME = "gomemory-sidebar";
 const OVERLAY_WIDTH = 36;
@@ -166,10 +165,25 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 
 export default function (pi: ExtensionAPI) {
 	let visible = false;
-	let currentHandle: OverlayHandle | null = null;
+	let closeSidebar: (() => void) | null = null;
+	let requestRender: (() => void) | null = null;
 	let cachedTitle = "Instalación de binario con componentes";
 
 	async function fetchTitle(ctx: any): Promise<string> {
+		let version = (process.env.PI_GOMEMORY_RUNNING_VERSION || "").trim();
+		if (!version) {
+			try {
+				const r = await pi.exec("pi-gomemory-setup", ["version"], { timeout: 2000 });
+				if (r.code === 0) version = r.stdout.trim();
+			} catch {
+				// pi-gomemory-setup no disponible
+			}
+		}
+		const suffix = version && version !== "dev" ? ` · ${version}` : "";
+		return (await fetchUnitTitle(ctx)) + suffix;
+	}
+
+	async function fetchUnitTitle(ctx: any): Promise<string> {
 		try {
 			const r = await pi.exec("mem", ["hcd", "show", "--json"], { cwd: ctx.cwd, timeout: 3000 });
 			if (r.code === 0 && r.stdout) {
@@ -189,8 +203,12 @@ export default function (pi: ExtensionAPI) {
 		cachedTitle = await fetchTitle(ctx);
 
 		visible = true;
-		await ctx.ui.custom<void>(
+		// nonCapturing: el panel flota sin quitar el teclado al editor. No se espera
+		// la promesa para no bloquear el comando; se cierra con /sidebar.
+		void ctx.ui.custom<void>(
 			(tui, theme, _kb, done) => {
+				closeSidebar = done;
+				requestRender = () => tui.requestRender();
 				return {
 					render(width: number): string[] {
 						const metrics = collectContextMetrics(ctx);
@@ -204,11 +222,6 @@ export default function (pi: ExtensionAPI) {
 						};
 						return renderSidebar(state, width, theme);
 					},
-					handleInput(data: string) {
-						if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
-							done();
-						}
-					},
 					invalidate() {},
 				};
 			},
@@ -219,26 +232,25 @@ export default function (pi: ExtensionAPI) {
 					width: OVERLAY_WIDTH,
 					margin: { top: 1, right: 1 },
 					visible: (w) => w >= 100,
-				},
-				onHandle: (handle) => {
-					currentHandle = handle;
+					nonCapturing: true,
 				},
 			},
-		);
-		currentHandle = null;
-		visible = false;
+		).finally(() => {
+			closeSidebar = null;
+			requestRender = null;
+			visible = false;
+		});
 	}
 
 	pi.registerCommand("sidebar", {
 		description: "Muestra u oculta el panel lateral de estado gomemory/OpenCode en la esquina superior derecha",
 		handler: async (_args, ctx) => {
-			if (visible && currentHandle) {
-				currentHandle.setHidden(true);
-				visible = false;
+			if (visible && closeSidebar) {
+				closeSidebar();
 				ctx.ui?.notify?.("Panel lateral oculto", "info");
 				return;
 			}
-			ctx.ui?.notify?.("Panel lateral visible (/sidebar para alternar, Esc para cerrar)", "info");
+			ctx.ui?.notify?.("Panel lateral visible (/sidebar para ocultarlo)", "info");
 			await openSidebar(ctx);
 		},
 	});
@@ -249,5 +261,6 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("agent_end", async (_event: any, ctx: any) => {
 		cachedTitle = await fetchTitle(ctx);
+		requestRender?.();
 	});
 }
