@@ -3,6 +3,7 @@ package installer
 import (
 	"archive/tar"
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
@@ -145,7 +146,7 @@ func CheckUpdate(current string, cfg UpdateCheckConfig) UpdateCheckResult {
 		if cfg.CachePath != "" {
 			if data, err := json.Marshal(cache); err == nil {
 				_ = os.MkdirAll(filepath.Dir(cfg.CachePath), 0755)
-				_ = os.WriteFile(cfg.CachePath, data, 0644)
+				_ = writeFileAtomic(cfg.CachePath, data, 0644)
 			}
 		}
 	}
@@ -298,7 +299,7 @@ func httpGet(client *http.Client, url string, limit int64) ([]byte, error) {
 }
 
 func lookupChecksum(sums []byte, name string) (string, error) {
-	sc := bufio.NewScanner(strings.NewReader(string(sums)))
+	sc := bufio.NewScanner(bytes.NewReader(sums))
 	for sc.Scan() {
 		fields := strings.Fields(sc.Text())
 		if len(fields) == 2 && strings.TrimPrefix(fields[1], "*") == name {
@@ -309,7 +310,7 @@ func lookupChecksum(sums []byte, name string) (string, error) {
 }
 
 func extractBinary(tarball []byte, name string) ([]byte, error) {
-	gz, err := gzip.NewReader(strings.NewReader(string(tarball)))
+	gz, err := gzip.NewReader(bytes.NewReader(tarball))
 	if err != nil {
 		return nil, fmt.Errorf("abrir tarball: %w", err)
 	}

@@ -28,6 +28,9 @@ type DepProbe struct {
 	Current func(ctx context.Context) (string, error)
 	Latest  func(ctx context.Context) (string, error)
 	Update  []string
+	// Manual, si no está vacío, es la instrucción para actualizar a mano: el
+	// componente no tiene comando automático seguro.
+	Manual string
 }
 
 // DepState es el resultado guardado en caché para un componente.
@@ -36,6 +39,7 @@ type DepState struct {
 	Current string   `json:"current,omitempty"`
 	Latest  string   `json:"latest,omitempty"`
 	Update  []string `json:"update,omitempty"`
+	Manual  string   `json:"manual,omitempty"`
 	Error   string   `json:"error,omitempty"`
 }
 
@@ -216,7 +220,7 @@ func DefaultDepProbes(version, piAgentDir string) []DepProbe {
 			Name:    "codebase-memory-mcp",
 			Current: versionFromCmd("codebase-memory-mcp", "--version"),
 			Latest:  githubLatest("https://github.com/DeusData/codebase-memory-mcp/releases/latest"),
-			Update:  []string{"bash", "-c", "curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash"},
+			Manual:  "https://github.com/DeusData/codebase-memory-mcp/releases/latest",
 		},
 		{
 			Name:    "pi-antigravity",
@@ -244,7 +248,7 @@ func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState 
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(context.Background(), depsProbeTimeout)
 			defer cancel()
-			st := DepState{Name: p.Name, Update: p.Update}
+			st := DepState{Name: p.Name, Update: p.Update, Manual: p.Manual}
 			cur, err := p.Current(ctx)
 			if err != nil {
 				st.Error = err.Error()
@@ -290,6 +294,55 @@ func DepsStatus(cachePath string) []DepState {
 	return out
 }
 
+// DepsStatusFor devuelve lo desactualizado según la caché, pero con el comando
+// y la instrucción manual del probe actual del mismo nombre: la caché es un
+// archivo editable y nunca decide qué se ejecuta. Los nombres sin probe se omiten.
+func DepsStatusFor(cachePath string, probes []DepProbe) []DepState {
+	byName := make(map[string]DepProbe, len(probes))
+	for _, p := range probes {
+		byName[p.Name] = p
+	}
+	var out []DepState
+	for _, d := range DepsStatus(cachePath) {
+		p, ok := byName[d.Name]
+		if !ok {
+			continue
+		}
+		d.Update, d.Manual = p.Update, p.Manual
+		out = append(out, d)
+	}
+	return out
+}
+
+// RunDepsUpdate actualiza lo desactualizado con los comandos de los probes y
+// devuelve el código de salida. Los componentes manuales solo se anuncian.
+func RunDepsUpdate(cachePath string, probes []DepProbe, stdout, stderr io.Writer) int {
+	outdated := DepsStatusFor(cachePath, probes)
+	if len(outdated) == 0 {
+		fmt.Fprintln(stdout, "✓ El meta-harness y sus dependencias están al día.")
+		return 0
+	}
+	var manual []string
+	for _, d := range outdated {
+		if len(d.Update) == 0 && d.Manual != "" {
+			fmt.Fprintf(stdout, "==> %s (%s → %s): actualízalo manualmente: %s\n", d.Name, d.Current, d.Latest, d.Manual)
+			manual = append(manual, d.Name)
+		}
+	}
+	failed := UpdateDeps(outdated, stdout, stderr)
+	_ = os.Remove(cachePath)
+	if len(failed) > 0 {
+		fmt.Fprintf(stderr, "✗ No se pudieron actualizar: %v\n", failed)
+		return 1
+	}
+	if len(manual) > 0 {
+		fmt.Fprintf(stdout, "⚠ Pendientes de actualización manual: %v\n", manual)
+		return 0
+	}
+	fmt.Fprintln(stdout, "✓ Dependencias actualizadas.")
+	return 0
+}
+
 // FormatDepsNotice compone el aviso de componentes desactualizados.
 func FormatDepsNotice(outdated []DepState) string {
 	if len(outdated) == 0 {
@@ -298,7 +351,11 @@ func FormatDepsNotice(outdated []DepState) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s↑ Actualizaciones disponibles del meta-harness:%s\n", ColorBrillo, ColorReset)
 	for _, d := range outdated {
-		fmt.Fprintf(&b, "  %-20s %s → %s   %s(%s)%s\n", d.Name, d.Current, d.Latest, ColorMuted, strings.Join(d.Update, " "), ColorReset)
+		how := strings.Join(d.Update, " ")
+		if how == "" && d.Manual != "" {
+			how = "actualízalo manualmente: " + d.Manual
+		}
+		fmt.Fprintf(&b, "  %-20s %s → %s   %s(%s)%s\n", d.Name, d.Current, d.Latest, ColorMuted, how, ColorReset)
 	}
 	return b.String()
 }

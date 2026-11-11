@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile, realpath } from "node:fs/promises";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { Type } from "@earendil-works/pi-ai";
 import {
   createAgentSession, createExtensionRuntime, defineTool, ModelRuntime,
@@ -18,6 +18,12 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_id, params, signal, _update, ctx) {
       const document = resolve(ctx.cwd, params.document);
+      // Confine to the repository, resolving symlinks, before reading anything.
+      const root = await realpath(ctx.cwd);
+      const rel = relative(root, await realpath(document));
+      if (rel === ".." || rel.startsWith(".." + sep) || isAbsolute(rel)) {
+        throw new Error(`Splash: '${params.document}' queda fuera del repositorio`);
+      }
       // Fail before contacting the provider when the requested artifact is missing.
       await readFile(document, "utf8");
       const prompt = await readFile(new URL("./gomemory-splash-prompt.md", import.meta.url), "utf8");

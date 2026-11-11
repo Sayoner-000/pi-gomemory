@@ -66,7 +66,7 @@ func InstallInstructions(piAgentDir string) error {
 		return fmt.Errorf("leer %s: %w", agentsPath, err)
 	}
 
-	return os.WriteFile(agentsPath, []byte(mergeInstructions(string(existing))), 0644)
+	return writeFileAtomic(agentsPath, []byte(mergeInstructions(string(existing))), 0644)
 }
 
 // mergeInstructions inserta o reemplaza el bloque de pi-gomemory en content.

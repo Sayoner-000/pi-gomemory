@@ -135,7 +135,7 @@ func TestPlanPatterns(t *testing.T) {
 	if err := json.Unmarshal([]byte(readAsset(t, "extensions/gomemory-plan-patterns.json")), &p); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(p.Tools, ",") != "edit,write" {
+	if strings.Join(p.Tools, ",") != "edit,write,powershell" {
 		t.Errorf("tools = %v", p.Tools)
 	}
 	block := []string{"rm x", "mv a b", "cp a b", "mkdir d", "touch f", "chmod +x f", "ln -s a b", "echo x | tee f",

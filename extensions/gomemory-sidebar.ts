@@ -4,7 +4,7 @@
  * Muestra un overlay superior derecho con:
  *  1. Título de la sesión o unidad HCD activa (mem hcd show --json).
  *  2. Métricas de contexto (tokens usados, % de ventana y gasto acumulado en USD).
- *  3. Estado de conexión de servidores MCP (codebase-memory-mcp, codegraph, context7, gomemory).
+ *  3. Servidores MCP declarados en mcp.json (estado "Configured"; no se comprueba la conexión).
  *
  * Comando: /sidebar para alternar visibilidad.
  */
@@ -21,7 +21,7 @@ const OVERLAY_WIDTH = 36;
 
 export interface MCPServerInfo {
 	name: string;
-	status: "Connected" | "Disconnected";
+	status: "Configured";
 }
 
 export interface SidebarState {
@@ -47,33 +47,16 @@ export function formatCost(cost: number): string {
 }
 
 /**
- * Lee los servidores MCP configurados en ~/.pi/agent/mcp.json.
+ * Lee los servidores MCP declarados en ~/.pi/agent/mcp.json. Solo afirma que
+ * están configurados: no comprueba la conexión. Sin archivo válido, lista vacía.
  */
 export function getRegisteredMCPServers(agentDir?: string): MCPServerInfo[] {
 	const dir = agentDir || join(homedir(), ".pi", "agent");
-	const mcpPath = join(dir, "mcp.json");
 	try {
-		const raw = readFileSync(mcpPath, "utf8");
-		const data = JSON.parse(raw);
-		const serversObj = data.mcpServers || {};
-		const names = Object.keys(serversObj);
-		if (names.length === 0) {
-			return [
-				{ name: "codebase-memory-mcp", status: "Connected" },
-				{ name: "codegraph", status: "Connected" },
-				{ name: "gomemory", status: "Connected" },
-			];
-		}
-		return names.map((name) => ({
-			name,
-			status: "Connected",
-		}));
+		const data = JSON.parse(readFileSync(join(dir, "mcp.json"), "utf8"));
+		return Object.keys(data?.mcpServers ?? {}).map((name) => ({ name, status: "Configured" }));
 	} catch {
-		return [
-			{ name: "codebase-memory-mcp", status: "Connected" },
-			{ name: "codegraph", status: "Connected" },
-			{ name: "gomemory", status: "Connected" },
-		];
+		return [];
 	}
 }
 
@@ -147,7 +130,7 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 	for (const srv of state.servers) {
 		const bullet = theme.fg("success", "•");
 		const nameStyled = theme.fg("accent", srv.name);
-		const statusStyled = srv.status === "Connected" ? theme.fg("dim", "Connected") : theme.fg("error", "Disconnected");
+		const statusStyled = theme.fg("dim", srv.status);
 
 		const leftPart = ` ${bullet} ${nameStyled}`;
 		const rightPart = `${statusStyled} `;

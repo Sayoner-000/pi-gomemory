@@ -91,7 +91,7 @@ func InstallHarness(localBinDir string) error {
 		return fmt.Errorf("crear dir local bin %s: %w", localBinDir, err)
 	}
 	targetScript := filepath.Join(localBinDir, "pi-gomemory")
-	if err := os.WriteFile(targetScript, []byte(GenerateHarnessScript()), 0755); err != nil {
+	if err := writeFileAtomic(targetScript, []byte(GenerateHarnessScript()), 0755); err != nil {
 		return fmt.Errorf("instalar script en %s: %w", targetScript, err)
 	}
 	return nil

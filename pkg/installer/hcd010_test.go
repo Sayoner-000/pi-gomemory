@@ -12,7 +12,7 @@ func TestSidebarExtension(t *testing.T) {
 	for _, want := range []string{
 		"gomemory-sidebar", `registerCommand("sidebar"`,
 		"Context", "tokens", "% used", "$", "spent",
-		"MCP", "Connected", "Disconnected",
+		"MCP", "Configured",
 		"top-right", "visible: (w)",
 	} {
 		if !strings.Contains(s, want) {

@@ -33,7 +33,7 @@ func InstallTUIExtension(assets fs.FS, piAgentDir string) error {
 		}
 
 		dstFile := filepath.Join(extDir, resource.destination)
-		if err := os.WriteFile(dstFile, data, 0644); err != nil {
+		if err := writeFileAtomic(dstFile, data, 0644); err != nil {
 			return fmt.Errorf("escribir extensión %s: %w", dstFile, err)
 		}
 	}

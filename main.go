@@ -86,24 +86,16 @@ func main() {
 		installer.RefreshDeps(installer.DefaultDepProbes(version, opts.PiAgentDir),
 			installer.DefaultDepsCachePath(opts.PiAgentDir), time.Now())
 	case "deps-status":
-		if n := installer.FormatDepsNotice(installer.DepsStatus(installer.DefaultDepsCachePath(opts.PiAgentDir))); n != "" {
+		if n := installer.FormatDepsNotice(installer.DepsStatusFor(installer.DefaultDepsCachePath(opts.PiAgentDir),
+			installer.DefaultDepProbes(version, opts.PiAgentDir))); n != "" {
 			fmt.Fprint(os.Stderr, n)
 			os.Exit(10)
 		}
 	case "deps-update":
-		cache := installer.DefaultDepsCachePath(opts.PiAgentDir)
-		outdated := installer.DepsStatus(cache)
-		if len(outdated) == 0 {
-			fmt.Println("✓ El meta-harness y sus dependencias están al día.")
-			return
+		if code := installer.RunDepsUpdate(installer.DefaultDepsCachePath(opts.PiAgentDir),
+			installer.DefaultDepProbes(version, opts.PiAgentDir), os.Stdout, os.Stderr); code != 0 {
+			os.Exit(code)
 		}
-		failed := installer.UpdateDeps(outdated, os.Stdout, os.Stderr)
-		_ = os.Remove(cache)
-		if len(failed) > 0 {
-			fmt.Fprintf(os.Stderr, "✗ No se pudieron actualizar: %v\n", failed)
-			os.Exit(1)
-		}
-		fmt.Println("✓ Dependencias actualizadas.")
 	case "check-update":
 		res := installer.CheckUpdate(version, installer.UpdateCheckConfig{
 			CachePath: installer.DefaultUpdateCachePath(opts.PiAgentDir),

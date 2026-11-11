@@ -110,10 +110,10 @@ func installEmbeddedSkills(assets fs.FS, dir string) ([]string, error) {
 			return names, fmt.Errorf("crear dir para skill %s: %w", skillName, err)
 		}
 		content := SanitizeFrontmatter(rawContent)
-		if err := os.WriteFile(filepath.Join(dstSkillDir, "SKILL.md"), content, 0644); err != nil {
+		if err := writeFileAtomic(filepath.Join(dstSkillDir, "SKILL.md"), content, 0644); err != nil {
 			return names, fmt.Errorf("escribir SKILL.md de %s: %w", skillName, err)
 		}
-		if err := os.WriteFile(filepath.Join(dstSkillDir, skillMarkerFile), []byte(contentHash(content)+"\n"), 0644); err != nil {
+		if err := writeFileAtomic(filepath.Join(dstSkillDir, skillMarkerFile), []byte(contentHash(content)+"\n"), 0644); err != nil {
 			return names, fmt.Errorf("escribir marca de %s: %w", skillName, err)
 		}
 	}

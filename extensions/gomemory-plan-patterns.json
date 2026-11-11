@@ -1,5 +1,5 @@
 {
-  "tools": ["edit", "write"],
+  "tools": ["edit", "write", "powershell"],
   "strip": [
     "\\d?>>?\\s*/dev/null",
     "\\d>&\\d"

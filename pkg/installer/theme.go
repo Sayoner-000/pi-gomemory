@@ -19,7 +19,7 @@ func InstallTheme(assets fs.FS, piAgentDir string) error {
 	if err := os.MkdirAll(themesDir, 0755); err != nil {
 		return fmt.Errorf("crear dir themes en pi: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(themesDir, "gomemory.json"), data, 0644); err != nil {
+	if err := writeFileAtomic(filepath.Join(themesDir, "gomemory.json"), data, 0644); err != nil {
 		return fmt.Errorf("escribir tema: %w", err)
 	}
 
