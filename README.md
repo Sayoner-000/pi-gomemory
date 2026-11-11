@@ -1,14 +1,14 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/gomemory-readme-dark-pi.png">
-    <img src="assets/gomemory-readme-light-pi.png" alt="pi-gomemory" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/pi-gomemory-dark.svg">
+    <img src="assets/pi-gomemory-light.svg" alt="pi-gomemory" width="280">
   </picture>
 </p>
 
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.6.2"><img src="https://img.shields.io/badge/version-1.6.2-blue" alt="Version 1.6.2"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.6.3"><img src="https://img.shields.io/badge/version-1.6.3-blue" alt="Version 1.6.3"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">

@@ -4,6 +4,11 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.6.3] - 2026-11-11
+
+### Changed
+- Nueva identidad visual: logotipo de pi-gomemory en SVG y WebP con variantes clara y oscura, más icono en SVG y PNG (`assets/`). El README usa los SVG según el tema del sistema.
+
 ## [v1.6.2] - 2026-11-11
 
 ### Changed
