@@ -4,6 +4,12 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.6.2] - 2026-11-11
+
+### Changed
+- El banner identifica el enfoque HCD: la línea de versiones pasa a `HCD · pi - gomemory  vX.Y.Z · gomemory vX.Y.Z` y debajo aparece `HCD · Harness Continual Development`.
+- El título del panel lateral (`/sidebar`) empieza por `HCD ·`.
+
 ## [v1.6.1] - 2026-11-11
 
 ### Fixed
