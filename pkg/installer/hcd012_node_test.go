@@ -25,9 +25,10 @@ export const SettingsManager = { inMemory: () => ({}) };`,
 	"@earendil-works/pi-tui": `
 const plain = (s) => s.replace(/\x1b\[[0-9;]*m/g, "");
 export const visibleWidth = (s) => [...plain(s)].length;
-export const truncateToWidth = (s, width, ellipsis = "…") => {
+// pad=true rellena con espacios hasta width, como truncateToWidth de pi-tui 1.5.2.
+export const truncateToWidth = (s, width, ellipsis = "…", pad = false) => {
 	const chars = [...plain(s)];
-	if (chars.length <= width) return s;
+	if (chars.length <= width) return pad ? s + " ".repeat(width - chars.length) : s;
 	const keep = Math.max(0, width - [...ellipsis].length);
 	return chars.slice(0, keep).join("") + ellipsis;
 };`,

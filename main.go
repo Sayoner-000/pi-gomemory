@@ -60,6 +60,15 @@ func main() {
 		data, _ := json.MarshalIndent(summary, "", "  ")
 		fmt.Println(string(data))
 		return
+	case "anthropic-usage":
+		usage, err := installer.FetchAnthropicUsage(opts.PiAgentDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "{\"error\": %q}\n", err.Error())
+			os.Exit(1)
+		}
+		data, _ := json.MarshalIndent(usage, "", "  ")
+		fmt.Println(string(data))
+		return
 	case "theme":
 		if err := installer.InstallTheme(EmbeddedAssets, opts.PiAgentDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error instalando tema: %v\n", err)
@@ -165,6 +174,7 @@ func printHelp() {
 	fmt.Println("Uso:")
 	fmt.Println("  pi-gomemory-setup [install]   Instalación completa desde los recursos embebidos")
 	fmt.Println("  pi-gomemory-setup usage       Cuota real de Google AI Pro / Antigravity")
+	fmt.Println("  pi-gomemory-setup anthropic-usage  Límites del plan de Anthropic (sesión y semana) en JSON")
 	fmt.Println("  pi-gomemory-setup doctor      Diagnóstico de Pi, MCP, plugins, launcher y otros agentes")
 	fmt.Println("  pi-gomemory-setup mcp         Registra los servidores MCP (gomemory, codegraph, codebase-memory)")
 	fmt.Println("  pi-gomemory-setup theme       Instala y activa el tema gomemory en Pi")

@@ -88,6 +88,51 @@ export interface ClaudeUsageInfo {
 	total: ClaudeTokenBucketInfo;
 }
 
+/** Parte un texto plano en líneas de como mucho `width` columnas por palabras (máximo `maxLines`). */
+export function wrapWords(text: string, width: number, maxLines: number): string[] {
+	const out: string[] = [];
+	let line = "";
+	for (const word of text.split(/\s+/).filter(Boolean)) {
+		const next = line ? `${line} ${word}` : word;
+		if (visibleWidth(next) <= width) {
+			line = next;
+			continue;
+		}
+		if (line) out.push(line);
+		line = word;
+	}
+	if (line) out.push(line);
+	if (out.length > maxLines) {
+		const kept = out.slice(0, maxLines);
+		kept[maxLines - 1] = truncateToWidth(`${kept[maxLines - 1]} …`, width, "…");
+		return kept;
+	}
+	return out;
+}
+
+/**
+ * Mensaje para el sidebar cuando anthropic-usage falla. Un binario anterior a
+ * HCD-023 no conoce el comando: se indica cómo actualizarlo en vez del error crudo.
+ */
+export function anthropicPlanErrorMessage(stderr: string): string {
+	if (/Comando desconocido: anthropic-usage/.test(stderr || "")) {
+		return "pi-gomemory-setup sin anthropic-usage: ejecuta pi-gomemory-setup update";
+	}
+	return parseCleanQuotaError(stderr);
+}
+
+/** Límite del plan de Anthropic (pi-gomemory-setup anthropic-usage). */
+export interface AnthropicLimitInfo {
+	name: string;
+	percent: number;
+	resetsAt: string;
+	resetIn: string;
+}
+
+export interface AnthropicPlanInfo {
+	limits: AnthropicLimitInfo[];
+}
+
 export interface SidebarState {
 	title: string;
 	tokens: number;
@@ -100,6 +145,9 @@ export interface SidebarState {
 	isAntigravityProvider?: boolean;
 	claudeUsage?: ClaudeUsageInfo | null;
 	isClaudeProvider?: boolean;
+	/** Límites del plan de la conexión OAuth de Pi con Anthropic (sesión, semana…). */
+	anthropicPlan?: AnthropicPlanInfo | null;
+	anthropicPlanError?: string;
 }
 
 export function formatNumber(n: number): string {
@@ -279,7 +327,29 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 		}
 	}
 
-	// 4. Sección Claude Code Usage (si el modelo o proveedor es Claude / Anthropic)
+	// 4a. Límites del plan de Anthropic (conexión OAuth de Pi): % usado y reinicio.
+	if (state.isClaudeProvider && (state.anthropicPlan || state.anthropicPlanError)) {
+		lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
+		lines.push(border("│") + padLine(` ${theme.style("▼ Anthropic · plan", { fg: "success", bold: true })}`) + border("│"));
+		if (state.anthropicPlanError) {
+			// El error se parte en líneas (no se recorta): la parte accionable suele ir al final.
+			for (const part of wrapWords(state.anthropicPlanError, innerW - 1, 4)) {
+				lines.push(border("│") + padLine(theme.fg("error", ` ${part}`)) + border("│"));
+			}
+		} else {
+			for (const limit of state.anthropicPlan!.limits) {
+				const used = Math.max(0, Math.min(100, limit.percent));
+				const color = used >= 80 ? "error" : used >= 50 ? "warning" : "success";
+				const label = theme.fg("text", limit.name.padEnd(6, " "));
+				const bar = theme.fg(color, formatProgressBar(used / 100, 8));
+				const pct = theme.fg("text", `${used.toFixed(0).padStart(3, " ")}%`);
+				const reset = limit.resetIn ? theme.fg("dim", ` · ${limit.resetIn}`) : "";
+				lines.push(border("│") + padLine(`  ${label} ${bar} ${pct}${reset}`) + border("│"));
+			}
+		}
+	}
+
+	// 4b. Sección Claude Code Usage (si el modelo o proveedor es Claude / Anthropic)
 	if (state.isClaudeProvider && state.claudeUsage) {
 		lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
 		const claudeHeader = theme.style("▼ Claude Code Usage", { fg: "success", bold: true });
@@ -466,7 +536,43 @@ export default function (pi: ExtensionAPI) {
 		return detectProvider(ctx) === "claude";
 	}
 
+	let cachedAnthropicPlan: AnthropicPlanInfo | null = null;
+	let cachedAnthropicPlanError: string | undefined = undefined;
+	let lastAnthropicPlanFetch = 0;
+	let anthropicPlanInflight = false;
+
+	/** Límites del plan de la conexión OAuth de Pi con Anthropic (sesión y semana). */
+	async function refreshAnthropicPlanIfNeeded(ctx: any, force = false) {
+		if (!isClaude(ctx) || anthropicPlanInflight) return;
+		if (!shouldRefreshQuota(Date.now(), lastAnthropicPlanFetch, force, !!cachedAnthropicPlanError, QUOTA_TTL_MS, QUOTA_ERROR_BACKOFF_MS)) {
+			return;
+		}
+		anthropicPlanInflight = true;
+		try {
+			const r = await pi.exec("pi-gomemory-setup", ["anthropic-usage"], { timeout: 12000 });
+			lastAnthropicPlanFetch = Date.now();
+			const parsed = r.code === 0 && r.stdout ? JSON.parse(r.stdout) : null;
+			if (parsed && Array.isArray(parsed.limits) && parsed.limits.length > 0) {
+				cachedAnthropicPlan = parsed as AnthropicPlanInfo;
+				cachedAnthropicPlanError = undefined;
+			} else {
+				// Nunca se conservan cifras viejas como si fueran actuales.
+				cachedAnthropicPlan = null;
+				cachedAnthropicPlanError = r.code === 0 ? "Respuesta de uso sin límites" : anthropicPlanErrorMessage(r.stderr);
+			}
+		} catch (err: any) {
+			lastAnthropicPlanFetch = Date.now();
+			cachedAnthropicPlan = null;
+			cachedAnthropicPlanError = err?.message || "No disponible";
+		} finally {
+			anthropicPlanInflight = false;
+		}
+		requestRender?.();
+	}
+
 	async function refreshClaudeUsageIfNeeded(ctx: any, force = false) {
+		// Los límites del plan se refrescan en los mismos momentos que el uso de Claude Code.
+		void refreshAnthropicPlanIfNeeded(ctx, force);
 		if (!isClaude(ctx) || claudeInflight) {
 			return;
 		}
@@ -622,6 +728,8 @@ export default function (pi: ExtensionAPI) {
 							quotaError: cachedQuotaError,
 							isClaudeProvider: claudeActive,
 							claudeUsage: cachedClaudeUsage,
+							anthropicPlan: cachedAnthropicPlan,
+							anthropicPlanError: cachedAnthropicPlanError,
 						};
 						return publishHeight(
 							overlayMinimized
