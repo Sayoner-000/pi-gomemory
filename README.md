@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.10.0"><img src="https://img.shields.io/badge/version-1.10.0-blue" alt="Version 1.10.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.10.1"><img src="https://img.shields.io/badge/version-1.10.1-blue" alt="Version 1.10.1"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -150,11 +150,13 @@ Con `usage`, si la API no responde o el token caducó, el comando termina con un
 | `/plan [petición]` | Modo plan: bloquea las modificaciones; `/plan` otra vez o `/plan run` lo desactivan |
 | `/tasks` | Muestra u oculta las tareas de la unidad HCD activa |
 | `/sidebar` | Panel lateral: sesión/HCD, contexto, coste, cuotas y servidores MCP |
-| `/sidebar min`, `/min` | Minimiza o restaura el panel lateral a una fila (también con clic en `[−]` / `[+]`) |
+| `/sidebar min` | Minimiza o restaura el panel lateral a una fila (también con clic en `[−]` / `[+]`) |
+| `/min` | Minimiza o restaura a la vez `/sidebar` y `/tdd` |
 | `/tdd` | TDD Live Inspector: ejecuta las pruebas reales del proyecto y muestra el recorrido en vivo |
 | `/tdd run [suite]` | Ejecuta `all`, `backend`, `frontend`, `playwright`, `ci` o `data`; si hay otra ejecución en curso, queda en cola |
 | `/tdd min` | Minimiza o restaura el inspector (también con clic en `[−]` / `[+]`) |
 | `/tdd watch` | Ejecuta las pruebas tras cada turno; varios turnos seguidos se agrupan en una ejecución |
+| `/tdd report` | Publica en el chat, y en el contexto del modelo, el informe de la última ejecución con cada fallo |
 | `/tokens` | Muestra u oculta la barra de tokens y coste |
 
 El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia. Los paneles `/sidebar` y `/tdd` se apilan en la columna derecha sin solaparse; el clic funciona en el modo `fullscreen` de Pi (el predeterminado). Detalle en [docs/usage.md](docs/usage.md).

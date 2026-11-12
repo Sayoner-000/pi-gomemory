@@ -95,7 +95,7 @@ Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anch
 
 - Clic en `[−]` de la cabecera: minimiza el panel a una sola fila (`[ HCD · ... [+] ]`); clic en `[+]`: lo restaura. El ratón solo funciona en el modo `fullscreen` de Pi (el predeterminado); en `--tui-mode regular` usa los comandos.
 - `/sidebar min` (o alias `/sidebar m`, `/sidebar -`): alterna el modo minimizado desde el teclado.
-- `/min`: alterna el modo minimizado del panel lateral.
+- `/min`: minimiza o restaura a la vez `/sidebar` y `/tdd`. Si alguno está expandido, minimiza los dos; si los dos están minimizados, los restaura.
 
 Con un título largo, el título se recorta con `…` y el control `[−]` sigue visible.
 
@@ -124,7 +124,7 @@ Las suites omitidas aparecen agrupadas al final, bajo «Omitidas (n)».
 - `/tdd run [suite]`: ejecuta `all` o una suite (`backend`, `frontend`, `playwright`, `ci`, `data`). Si ya hay una ejecución en curso, avisa y la nueva queda en cola.
 - `/tdd min` (o alias `/tdd m`, `/tdd -`), o clic en `[−]` / `[+]`: minimiza o restaura el panel.
 - `/tdd watch`: ejecuta las pruebas tras cada turno (`turn_end`). Varios turnos durante una ejecución se agrupan en una sola ejecución pendiente.
-- `/tdd report`: solo notifica; el informe detallado lo devuelve la tool `run_test_suite`.
+- `/tdd report`: publica en el chat el informe de la última ejecución (resultado por suite y cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia). Queda también en el contexto del modelo sin iniciar un turno, así que puedes pedir «corrige esos fallos» sin volver a ejecutar. Si aún no hubo ejecución, lo indica.
 
 **Herramienta del agente (`run_test_suite`).** Devuelve al modelo cada fallo con su suite, test, mensaje, ubicación, paso, diagnóstico y sugerencia, para que corrija y vuelva a ejecutar. Mientras corre, envía avances.
 

@@ -4,6 +4,16 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.10.1] - 2026-11-11
+
+### Fixed
+- **`/min` alterna ambos paneles (HCD-022):** antes solo minimizaba el sidebar aunque su descripción hablaba de «los paneles». Ahora, si alguno de `/sidebar` o `/tdd` está expandido, minimiza los dos; si los dos están minimizados, los restaura.
+- **`/tdd report` muestra el informe:** antes construía el texto pero solo notificaba «Reporte generado». Ahora publica en el chat el informe de la última ejecución, con el resultado por suite y cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia. Queda también en el contexto del modelo, sin iniciar un turno, para pedir la corrección sin volver a ejecutar. Sin ejecución previa, indica que se use `/tdd run`.
+- **Barra inferior sin emoji:** `⚡` (lecturas de caché) pasa a `↺` y `[🧠 nivel]` a `[thinking nivel]`, con el mismo criterio de glifos de texto que los paneles.
+
+### Documentation
+- `/min` y `/tdd report` descritos en `docs/usage.md` y en la tabla de comandos del README; referencias de versión, badge, instalador y script de build actualizados a `v1.10.1`.
+
 ## [v1.10.0] - 2026-11-11
 
 ### Added
