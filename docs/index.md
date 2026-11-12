@@ -4,6 +4,9 @@ Esta carpeta contiene la documentación técnica de pi-gomemory, el instalador y
 
 ## Contenido
 
+[Guía del harness pi-gomemory (HTML)](Guia-PI-GOMEMORY-v1.11.html)
+Guía larga de uso, con el formato de la Guía SDD_HCD de gomemory: instalación, qué cambia en tu máquina, launcher, memoria y grafos, skills, comandos dentro de Pi, `/sidebar`, `/tdd`, HCD, revisión con Splash/ACR/ADM, una sesión de punta a punta y mantenimiento. Se puede imprimir o guardar como PDF.
+
 [Arquitectura del sistema](architecture.md)
 Detalla cómo funciona el binario autocontenido con `embed.FS`, la integración de los servidores MCP, el parche para Antigravity, la interfaz TUI y la sanitización de skills.
 

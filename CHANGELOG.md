@@ -4,6 +4,16 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.11.1] - 2026-11-11
+
+### Fixed
+- **Límites de Anthropic sin sondeo ni HTTP 429 (HCD-024):** el bloque «▼ Anthropic · plan» del sidebar ahora obtiene la utilización y tiempos de reinicio de la sesión (5 h) y de la semana directamente a partir de las cabeceras `anthropic-ratelimit-unified-*` que Anthropic envía en cada respuesta del modelo (`after_provider_response`), de forma pasiva e instantánea. Se eliminó el sondeo recurrente cada 30 s y en cada turno que saturaba el endpoint `/api/oauth/usage` con errores 429. El comando `anthropic-usage` actúa ahora solo como respaldo de una única consulta al abrir el panel si aún no hay lecturas previas, con tiempo de reintento acotado.
+- **Banner ASCII predeterminado:** restaurado el banner ASCII en color de alta resolución como predeterminado en Pi, eliminando la dependencia de secuencias gráficas en el arranque.
+
+### Documentation
+- **Guía del harness pi-gomemory (`docs/Guia-PI-GOMEMORY-v1.11.html`):** guía integral en formato HTML interactivo que abarca arquitectura, instalación, herramientas MCP, extensiones TUI, flujo HCD y casos de uso de punta a punta.
+- Actualizados badges, referencias de versión e instaladores a `v1.11.1`.
+
 ## [v1.11.0] - 2026-11-11
 
 ### Added

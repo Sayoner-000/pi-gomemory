@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2322e3f7'/%3E%3Cstop offset='.55' stop-color='%232c8ff0'/%3E%3Cstop offset='1' stop-color='%236b56d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z'/%3E%3C/svg%3E">
+<title>Guía del harness pi-gomemory</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Marca gomemory: abismo del logo + gota cian → azul → violeta ─── */
+  :root {
+    --abyss:#061328; --abyss-2:#0c1d3a; --abyss-3:#13284d;
+    --cyan:#06c1ee; --glow:#22e3f7; --azure:#2c8ff0; --indigo:#3926e3; --violet:#6b56d4; --blush:#ff8fa3;
+    --grad:linear-gradient(90deg, var(--glow) 0%, var(--azure) 48%, var(--violet) 100%);
+    --grad-v:linear-gradient(180deg, var(--glow) 0%, var(--azure) 55%, var(--violet) 100%);
+
+    --ink:#0d1526; --slate:#2c374c; --soft:#4b566b; --faint:#68728a;
+    --paper:#f6f9fd; --paper-2:#e9eff8; --surface:#ffffff; --line:#d9e1ee; --backdrop:#dfe6f2;
+
+    --cyan-ink:#006d8a;   --cyan-soft:#dcf5fc;   --cyan-on:#06394a;
+    --azure-ink:#1557b0;  --azure-soft:#e2eefd;  --azure-on:#0f2f5e;
+    --violet-ink:#4a37a8; --violet-soft:#ece8fb; --violet-on:#2d2068;
+    --mint:#0f9f7b; --mint-ink:#0b7a5f; --mint-soft:#daf4ec; --mint-on:#07493a;
+    --rose:#d23c5a; --rose-ink:#a32640; --rose-soft:#fde5ea; --rose-on:#6a1426;
+    --amber:#c98a06; --amber-ink:#8a5c00; --amber-soft:#fcf0d2; --amber-on:#523700;
+
+    --code-bg:#071833; --code-ink:#dce8fb; --code-faint:#7d8fb0; --code-hl:#22e3f7; --code-hl2:#b9a9ff;
+
+    --display:'Nunito', 'DM Sans', system-ui, sans-serif;
+    --sans:'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --drop:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 48'%3E%3Cpath d='M20 0C24 8 39 21 39 31.5a19 16.5 0 0 1-38 0C1 21 16 8 20 0Z'/%3E%3C/svg%3E");
+    --pad:56px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:#e9effb; --slate:#c4cee2; --soft:#9ba8c0; --faint:#7c89a3;
+      --paper:#0a1730; --paper-2:#11213f; --surface:#0e1c38; --line:#21345a; --backdrop:#040c1b;
+      --cyan-ink:#6fe3fb; --cyan-soft:#0b2c40; --cyan-on:#c9f3fd;
+      --azure-ink:#8cc0ff; --azure-soft:#10284d; --azure-on:#d3e5ff;
+      --violet-ink:#c2b6ff; --violet-soft:#211a4d; --violet-on:#e3ddff;
+      --mint-ink:#5fe0bb; --mint-soft:#0b3229; --mint-on:#c8f5e7;
+      --rose-ink:#ff9cb0; --rose-soft:#3d1420; --rose-on:#ffd9e1;
+      --amber-ink:#ffd27a; --amber-soft:#33260a; --amber-on:#ffeec7;
+      --code-bg:#040e22;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink:#e9effb; --slate:#c4cee2; --soft:#9ba8c0; --faint:#7c89a3;
+    --paper:#0a1730; --paper-2:#11213f; --surface:#0e1c38; --line:#21345a; --backdrop:#040c1b;
+    --cyan-ink:#6fe3fb; --cyan-soft:#0b2c40; --cyan-on:#c9f3fd;
+    --azure-ink:#8cc0ff; --azure-soft:#10284d; --azure-on:#d3e5ff;
+    --violet-ink:#c2b6ff; --violet-soft:#211a4d; --violet-on:#e3ddff;
+    --mint-ink:#5fe0bb; --mint-soft:#0b3229; --mint-on:#c8f5e7;
+    --rose-ink:#ff9cb0; --rose-soft:#3d1420; --rose-on:#ffd9e1;
+    --amber-ink:#ffd27a; --amber-soft:#33260a; --amber-on:#ffeec7;
+    --code-bg:#040e22;
+  }
+
+  html { font-size: 10.5pt; scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body {
+    font-family: var(--sans); color: var(--ink); background: var(--backdrop); line-height: 1.6;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--glow); color: var(--abyss); }
+  :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 3px; }
+  a { color: var(--azure-ink); text-underline-offset: 3px; }
+
+  /* ── Barra de lectura ─────────────────────────────────────────────── */
+  .printbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px; padding: 10px 22px;
+    background: rgba(6,19,40,.92); color: #dfe8f7;
+    backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px);
+    box-shadow: 0 6px 20px -12px rgba(2,8,20,.7);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; flex-shrink: 0; }
+  .brand .logo { width: 22px; height: auto; filter: drop-shadow(0 0 8px rgba(34,227,247,.45)); }
+  .brand b { font-family: var(--display); font-weight: 900; font-size: 12pt; letter-spacing: -.01em; color: #fff; }
+  .brand b em { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brand small { font-size: 8pt; color: #9fb0cc; font-weight: 500; }
+  .toc { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; mask-image: linear-gradient(90deg, #000 92%, transparent); }
+  .toc::-webkit-scrollbar { display: none; }
+  .toc a {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 8pt; font-weight: 600; color: #c3cfe3; text-decoration: none;
+    padding: 5px 10px; border-radius: 8px; transition: background .18s, color .18s;
+  }
+  .toc a span { font-family: var(--display); font-weight: 900; font-size: 7.5pt; color: var(--glow); font-variant-numeric: tabular-nums; }
+  .toc a:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .toc a[aria-current] { background: rgba(34,227,247,.14); color: #fff; }
+  .pb-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .pb-btn {
+    font-family: var(--sans); font-size: 8.5pt; font-weight: 700; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.18); background: transparent; color: #dfe8f7;
+    padding: 7px 12px; border-radius: 10px; transition: background .18s, transform .18s;
+  }
+  .pb-btn:hover { background: rgba(255,255,255,.08); }
+  .pb-btn.primary { background: var(--grad); color: var(--abyss); border: none; padding: 8px 16px; box-shadow: 0 4px 14px -6px rgba(34,227,247,.6); }
+  .pb-btn.primary:hover { transform: translateY(-1px); }
+  .readbar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; pointer-events: none; }
+  .readbar i { display: block; height: 100%; background: var(--grad); transform-origin: 0 50%; transform: scaleX(0); }
+
+  /* ── Hoja ─────────────────────────────────────────────────────────── */
+  .doc { max-width: 1040px; margin: 0 auto 64px; background: var(--paper); box-shadow: 0 24px 60px -30px rgba(6,19,40,.5); }
+  .page { position: relative; padding: 0 var(--pad) 36px; }
+  .page + .page { border-top: 1px solid var(--line); }
+
+  /* ── Portada ──────────────────────────────────────────────────────── */
+  .cover {
+    position: relative; overflow: hidden; color: #e7eefa; padding: 0;
+    min-height: clamp(720px, 100vh, 980px); display: flex; flex-direction: column;
+    background:
+      radial-gradient(60% 45% at 50% 30%, rgba(44,143,240,.28), transparent 70%),
+      radial-gradient(40% 30% at 85% 75%, rgba(107,86,212,.22), transparent 70%),
+      var(--abyss);
+  }
+  .cover-top { display: flex; justify-content: space-between; align-items: center; padding: 30px var(--pad) 0; position: relative; z-index: 2; }
+  .cover-top .brand .logo { width: 30px; }
+  .cover-top .brand b { font-size: 15pt; }
+  .cover-edition { font-size: 8.5pt; color: #c9d5ea; text-align: right; line-height: 1.5; }
+  .cover-edition strong { display: block; font-family: var(--display); font-size: 11pt; font-weight: 900; color: var(--glow); }
+  .cover-art { position: relative; margin: 18px auto 0; width: min(420px, 78%); }
+  .cover-art img { display: block; width: 100%; height: auto; }
+  .cover-body { margin-top: auto; padding: 18px var(--pad) 44px; position: relative; z-index: 2; }
+  .cover-kicker { font-family: var(--mono); font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: var(--glow); margin-bottom: 10px; }
+  .cover h1 {
+    font-family: var(--display); font-weight: 900; font-size: clamp(30pt, 5.6vw, 54pt);
+    line-height: 1; letter-spacing: -.025em; color: #fff; margin-bottom: 14px; text-wrap: balance;
+  }
+  .cover h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .cover-voice { font-family: var(--display); font-size: 13pt; font-weight: 800; color: #fff; margin-bottom: 16px; }
+  .cover-voice i { font-style: normal; color: #9fb0cc; font-weight: 700; }
+  .cover-accent { width: 64px; height: 4px; border-radius: 2px; background: var(--grad); margin: 0 0 20px; }
+  .cover .subtitle { font-size: 10.5pt; color: #c9d5ea; max-width: 70ch; margin-bottom: 24px; line-height: 1.65; }
+  .cover .subtitle code { color: var(--glow); background: transparent; padding: 0; }
+
+  .cover-route { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; align-items: stretch; margin-bottom: 24px; }
+  .eco-block { padding: 13px 14px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07); }
+  .eco-block.main { background: rgba(34,227,247,.10); border-color: rgba(34,227,247,.28); }
+  .eco-link { align-self: center; width: 30px; height: 2px; margin: 0 5px; background: linear-gradient(90deg, rgba(34,227,247,.85), rgba(107,86,212,.6)); position: relative; }
+  .eco-link::after { content: ''; position: absolute; right: -4px; top: -4px; width: 8px; height: 10px; -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat; background: var(--glow); }
+  .eco-label { font-size: 7pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #9fb0cc; margin-bottom: 4px; }
+  .eco-block.main .eco-label { color: var(--glow); }
+  .eco-title { font-family: var(--display); font-size: 11pt; font-weight: 800; color: #fff; }
+  .eco-ver { font-size: 8pt; color: #aebcd4; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  .cover-tags { font-size: 8.5pt; line-height: 1.9; color: #c9d5ea; margin-bottom: 22px; max-width: 110ch; }
+  .cover-tags span + span::before { content: ''; display: inline-block; width: 5px; height: 6px; margin: 0 9px 1px; -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat; background: var(--glow); opacity: .8; }
+
+  .cover-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 36px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.12); }
+  .cover-meta p { font-size: 8.5pt; color: #aebcd4; line-height: 1.55; margin: 0; max-width: none; }
+  .cover-meta strong { display: block; color: #fff; font-weight: 600; font-size: 8pt; letter-spacing: .02em; }
+  .cover-meta code { background: rgba(255,255,255,.1); color: #fff; }
+
+  /* ── Apertura de capítulo ─────────────────────────────────────────── */
+  .chapter {
+    position: relative; margin: 0 calc(var(--pad) * -1) 34px; min-height: 230px;
+    display: flex; align-items: flex-end; color: #fff; overflow: hidden;
+    background:
+      radial-gradient(55% 90% at 82% 40%, rgba(44,143,240,.30), transparent 70%),
+      radial-gradient(35% 60% at 10% 100%, rgba(107,86,212,.25), transparent 70%),
+      linear-gradient(180deg, var(--abyss-2), var(--abyss));
+  }
+  .chapter::after {
+    content: ''; position: absolute; right: var(--rx, 6%); top: 50%; width: 250px; height: 250px; transform: translateY(-50%) rotate(var(--rot, 0deg));
+    border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, var(--glow) 0 8deg, transparent 8deg 22.5deg);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 26px), #000 calc(100% - 25px)), conic-gradient(from 200deg, transparent 0 25%, #000 70%, rgba(0,0,0,.15));
+    -webkit-mask-composite: source-in;
+    mask: radial-gradient(farthest-side, transparent calc(100% - 26px), #000 calc(100% - 25px)), conic-gradient(from 200deg, transparent 0 25%, #000 70%, rgba(0,0,0,.15));
+    mask-composite: intersect;
+    opacity: .55; pointer-events: none;
+  }
+  .chapter::before {
+    content: ''; position: absolute; right: calc(var(--rx, 6%) + 88px); top: 50%; width: 74px; height: 88px; transform: translateY(-50%);
+    -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat;
+    background: var(--grad-v); opacity: .9; filter: drop-shadow(0 0 22px rgba(34,227,247,.6));
+  }
+  .chapter-inner { position: relative; z-index: 1; display: flex; align-items: flex-end; gap: 18px; padding: 0 var(--pad) 26px; width: 100%; max-width: 760px; }
+  .dropnum {
+    flex-shrink: 0; display: inline-grid; place-items: center; width: 52px; height: 62px; padding-top: 12px;
+    -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat;
+    background: var(--grad-v); color: var(--abyss);
+    font-family: var(--display); font-weight: 900; font-size: 17pt; font-variant-numeric: tabular-nums;
+  }
+  .chapter h2 { font-family: var(--display); font-weight: 900; font-size: clamp(20pt, 3.2vw, 28pt); line-height: 1.06; letter-spacing: -.02em; color: #fff; text-wrap: balance; margin-bottom: 8px; }
+  .chapter h2 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .chapter .pg-sub { font-size: 10pt; color: #cbd6ea; max-width: 64ch; line-height: 1.5; margin: 0; }
+  .chapter .pg-sub code { background: rgba(255,255,255,.12); color: #fff; }
+
+  /* ── Secciones ────────────────────────────────────────────────────── */
+  .section-header { margin: 26px 0 14px; }
+  .section-header h3 { font-family: var(--display); font-size: 14pt; font-weight: 800; color: var(--ink); letter-spacing: -.01em; line-height: 1.25; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .section-header h3::before { content: ''; flex-shrink: 0; width: 11px; height: 13px; -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat; background: var(--grad-v); transform: translateY(1px); }
+  .section-header p { font-size: 9pt; color: var(--faint); margin: 4px 0 0 21px; }
+
+  p { margin-bottom: 12px; font-size: 10pt; color: var(--slate); max-width: 78ch; }
+  .lead { font-size: 11.5pt; line-height: 1.65; color: var(--ink); max-width: 72ch; }
+  p strong, li strong, td strong { color: var(--ink); }
+  ul, ol { margin: 6px 0 12px 20px; }
+  li { font-size: 9.6pt; margin-bottom: 4px; color: var(--slate); }
+  code { font-family: var(--mono); font-size: .85em; background: var(--paper-2); padding: 1px 5px; border-radius: 5px; color: var(--azure-ink); }
+  p code, li code, .card-body code, .pool-s code { overflow-wrap: anywhere; }
+
+  /* ── Notas ────────────────────────────────────────────────────────── */
+  .infobox { --bg: var(--cyan-soft); --fg: var(--cyan-on); --ac: var(--cyan); background: var(--bg); color: var(--fg); border-radius: 14px; padding: 14px 18px 14px 20px; font-size: 9.5pt; margin: 16px 0; line-height: 1.6; position: relative; overflow: hidden; }
+  .infobox::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--ac); }
+  .infobox strong { color: inherit; }
+  .infobox p { color: inherit; font-size: inherit; margin-bottom: 6px; max-width: none; }
+  .infobox p:last-child { margin-bottom: 0; }
+  .infobox .lbl { display: block; font-size: 7.5pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; opacity: .85; }
+  .infobox.azure  { --bg: var(--azure-soft);  --fg: var(--azure-on);  --ac: var(--azure); }
+  .infobox.violet { --bg: var(--violet-soft); --fg: var(--violet-on); --ac: var(--violet); }
+  .infobox.mint   { --bg: var(--mint-soft);   --fg: var(--mint-on);   --ac: var(--mint); }
+  .infobox.rose   { --bg: var(--rose-soft);   --fg: var(--rose-on);   --ac: var(--rose); }
+  .infobox.amber  { --bg: var(--amber-soft);  --fg: var(--amber-on);  --ac: var(--amber); }
+  .infobox.dark   { --bg: var(--abyss); --fg: #d6e0f2; --ac: var(--glow); }
+  .infobox.dark strong { color: var(--glow); }
+  .infobox code { background: rgba(127,140,170,.16); color: inherit; }
+
+  /* ── Tarjetas ─────────────────────────────────────────────────────── */
+  .grid { display: grid; gap: 14px; margin: 14px 0; }
+  .grid > * { min-width: 0; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .card { --c: var(--cyan); position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px 17px; }
+  .card.azure { --c: var(--azure); } .card.violet { --c: var(--violet); } .card.mint { --c: var(--mint); } .card.rose { --c: var(--rose); } .card.amber { --c: var(--amber); }
+  .card-title { font-family: var(--display); font-size: 10.5pt; font-weight: 800; color: var(--ink); margin-bottom: 6px; line-height: 1.3; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-title::before { content: ''; flex-shrink: 0; width: 9px; height: 11px; -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat; background: var(--c); }
+  .card-body { font-size: 9pt; color: var(--soft); line-height: 1.6; }
+  .card-body p { font-size: 9pt; color: var(--soft); margin-bottom: 6px; }
+  .card-body ul { margin: 4px 0 0 16px; }
+  .card-body li { font-size: 8.8pt; color: var(--soft); }
+
+  /* ── Tablas ───────────────────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin: 12px 0 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; font-variant-numeric: tabular-nums; }
+  th { text-align: left; padding: 9px 12px; font-size: 7.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); border-bottom: 2px solid var(--ink); }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--slate); }
+  tbody tr:hover td { background: rgba(34,227,247,.06); }
+  td code { white-space: nowrap; }
+
+  /* ── Insignias ────────────────────────────────────────────────────── */
+  .badge { display: inline-block; font-size: 7pt; font-weight: 700; padding: 2px 8px; border-radius: 999px; letter-spacing: .02em; vertical-align: 1px; white-space: nowrap; }
+  .b-cyan   { background: var(--cyan-soft);   color: var(--cyan-ink); }
+  .b-azure  { background: var(--azure-soft);  color: var(--azure-ink); }
+  .b-violet { background: var(--violet-soft); color: var(--violet-ink); }
+  .b-mint   { background: var(--mint-soft);   color: var(--mint-ink); }
+  .b-rose   { background: var(--rose-soft);   color: var(--rose-ink); }
+  .b-amber  { background: var(--amber-soft);  color: var(--amber-ink); }
+  .b-gray   { background: var(--paper-2); color: var(--soft); }
+  .b-new    { background: var(--grad); color: var(--abyss); }
+
+  /* ── Bloques de código ────────────────────────────────────────────── */
+  .code { background: var(--code-bg); color: var(--code-ink); border-radius: 12px; margin: 10px 0 16px; overflow: hidden; border: 1px solid rgba(34,227,247,.14); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 12px 7px 14px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .code-head span { font: 600 7.5pt/1 var(--mono); letter-spacing: .06em; color: var(--code-faint); text-transform: uppercase; }
+  .code-head span::before { content: ''; display: inline-block; width: 6px; height: 7px; margin-right: 7px; -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat; background: var(--glow); vertical-align: 0; }
+  .copy { font: 600 7.5pt/1 var(--sans); color: var(--code-faint); background: transparent; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+  .copy:hover { color: #fff; border-color: rgba(34,227,247,.5); }
+  .code pre { margin: 0; padding: 12px 14px 14px; overflow-x: auto; font: 400 8.6pt/1.7 var(--mono); }
+  .code .c { color: var(--code-faint); }
+  .code .k { color: var(--code-hl); }
+  .code .v { color: var(--code-hl2); }
+  .code .ok { color: #5fe0bb; }
+
+  /* ── Flujo ────────────────────────────────────────────────────────── */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 0; margin: 18px 0 22px; }
+  .fl-node { background: var(--abyss); color: #fff; font-size: 8pt; font-weight: 600; padding: 8px 12px; border-radius: 10px; white-space: nowrap; border: 1px solid transparent; }
+  .fl-node.opt { background: transparent; color: var(--soft); border: 1px dashed var(--faint); }
+  .fl-node.hl { background: var(--grad); color: var(--abyss); font-weight: 700; }
+  .fl-arrow { color: var(--cyan-ink); font-size: 10pt; padding: 0 6px; font-weight: 700; }
+
+  /* ── Pasos ────────────────────────────────────────────────────────── */
+  .steps { list-style: none; margin: 18px 0; counter-reset: st; }
+  .steps > li { counter-increment: st; position: relative; padding: 0 0 22px 64px; margin: 0; font-size: 10pt; }
+  .steps > li::before {
+    content: counter(st); position: absolute; left: 0; top: -4px; width: 40px; height: 48px; padding-top: 10px; display: grid; place-items: center;
+    -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat;
+    background: var(--grad-v); color: var(--abyss); font-family: var(--display); font-weight: 900; font-size: 13pt;
+  }
+  .steps > li::after { content: ''; position: absolute; left: 19px; top: 50px; bottom: 4px; width: 2px; background: linear-gradient(var(--line), transparent); }
+  .steps > li:last-child::after { display: none; }
+  .steps h4 { font-family: var(--display); font-size: 12pt; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+  .steps h4 .badge { margin-left: 6px; }
+  .steps .why { font-size: 9.2pt; color: var(--soft); margin-bottom: 8px; }
+  .steps .check { font-size: 8.8pt; color: var(--mint-ink); margin: 0; }
+  .steps .check::before { content: 'Resultado esperado: '; font-weight: 700; }
+
+  /* ── Antes / después ──────────────────────────────────────────────── */
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+  .ba > * { min-width: 0; }
+  .ba-col { border-radius: 14px; padding: 14px 16px; font-size: 9pt; line-height: 1.6; }
+  .ba-col.before { background: var(--rose-soft); color: var(--rose-on); }
+  .ba-col.after  { background: var(--mint-soft); color: var(--mint-on); }
+  .ba-col h5 { font-family: var(--display); font-size: 8.5pt; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+  .ba-col ul { margin: 0 0 0 16px; } .ba-col li { color: inherit; font-size: 9pt; }
+  .ba-col code { background: rgba(127,140,170,.16); color: inherit; }
+
+  /* ── Cifras ───────────────────────────────────────────────────────── */
+  .metrics { display: flex; margin: 16px 0; border-top: 2px solid var(--ink); }
+  .metric { flex: 1; padding: 12px 14px 4px 0; }
+  .metric + .metric { padding-left: 14px; border-left: 1px solid var(--line); }
+  .metric .m-n { font-family: var(--display); font-size: 22pt; font-weight: 900; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; display: inline-block; }
+  .metric .m-l { font-size: 8pt; color: var(--faint); margin-top: 6px; line-height: 1.4; }
+
+  /* ── Sumario ──────────────────────────────────────────────────────── */
+  .summary { padding-top: 48px; }
+  .summary-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+  .summary-head h2 { font-family: var(--display); font-weight: 900; font-size: clamp(24pt, 3.6vw, 32pt); line-height: 1; letter-spacing: -.025em; color: var(--ink); }
+  .summary-head h2 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .summary-head p { font-size: 9pt; color: var(--faint); max-width: 46ch; margin: 0; text-align: right; }
+  .pool { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; }
+  .pool-col + .pool-col { padding-top: 40px; }
+  .pool a { display: grid; grid-template-columns: 38px 1fr; gap: 0 14px; align-items: start; padding: 14px 0 15px; border-bottom: 1px solid var(--line); text-decoration: none; color: inherit; }
+  .pool-n { grid-row: span 2; width: 36px; height: 43px; padding-top: 9px; -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat; background: var(--cyan-soft); color: var(--cyan-ink); display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: 11.5pt; transition: background .22s, color .22s; }
+  .pool a:hover .pool-n, .pool a:focus-visible .pool-n { background: var(--grad-v); color: var(--abyss); }
+  .pool a:hover .pool-t { color: var(--azure-ink); }
+  .pool-t { font-family: var(--display); font-size: 10.8pt; font-weight: 800; line-height: 1.3; color: var(--ink); transition: color .22s; }
+  .pool-s { font-size: 8.5pt; line-height: 1.5; color: var(--soft); margin-top: 3px; }
+
+  .edition { margin-top: 34px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px 34px; padding: 24px 26px; border-radius: 16px; background: var(--abyss); color: #d6e0f2; break-inside: avoid; position: relative; overflow: hidden; }
+  .edition::after { content: ''; position: absolute; left: -60px; bottom: -60px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(rgba(44,143,240,.35), transparent 70%); pointer-events: none; }
+  .edition h3 { font-family: var(--display); font-size: 16pt; font-weight: 900; line-height: 1.15; color: #fff; margin-bottom: 8px; }
+  .edition h3 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .edition p { font-size: 9pt; color: #aebcd4; margin: 0; }
+  .edition ul { list-style: none; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; align-content: start; position: relative; z-index: 1; }
+  .edition li { position: relative; padding-left: 18px; margin: 0; font-size: 9pt; line-height: 1.5; color: #c3cfe3; }
+  .edition li::before { content: ''; position: absolute; left: 0; top: 4px; width: 8px; height: 10px; -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat; background: var(--glow); }
+  .edition li strong { color: #fff; }
+  .edition code { background: rgba(255,255,255,.1); color: #fff; }
+
+  /* ── Colofón ──────────────────────────────────────────────────────── */
+  .colophon {
+    position: relative; margin: 40px calc(var(--pad) * -1) 0; padding: 60px var(--pad) 36px; color: #d6e0f2; break-inside: avoid; overflow: hidden;
+    background: radial-gradient(50% 80% at 80% 20%, rgba(44,143,240,.28), transparent 70%), radial-gradient(40% 60% at 10% 100%, rgba(107,86,212,.22), transparent 70%), var(--abyss);
+  }
+  .colophon .brand .logo { width: 28px; }
+  .colophon .brand b { font-size: 14pt; }
+  .colophon-voice { font-family: var(--display); font-size: clamp(20pt, 3vw, 26pt); font-weight: 900; line-height: 1.1; color: #fff; margin: 18px 0 8px; text-wrap: balance; }
+  .colophon-voice span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .colophon-sub { font-size: 9.5pt; color: #aebcd4; max-width: 62ch; margin: 0 0 18px; }
+  .colophon ul.refs { list-style: none; margin: 0 0 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
+  .colophon ul.refs li { font-size: 8.8pt; color: #aebcd4; margin: 0; }
+  .colophon ul.refs a { color: var(--glow); text-decoration: none; }
+  .colophon ul.refs a:hover { text-decoration: underline; }
+  .colophon ul.refs code { background: rgba(255,255,255,.1); color: #fff; }
+  .colophon-meta { display: flex; flex-wrap: wrap; gap: 6px 22px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); font-size: 8pt; color: #9fb0cc; }
+  .colophon-meta b { color: #fff; font-weight: 600; }
+  .footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 30px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 8pt; color: var(--faint); }
+  .footer span:first-child::before { content: ''; display: inline-block; width: 8px; height: 10px; margin-right: 8px; -webkit-mask: var(--drop) center/100% 100% no-repeat; mask: var(--drop) center/100% 100% no-repeat; background: var(--grad-v); vertical-align: -1px; }
+
+  /* ── Pantallas pequeñas ───────────────────────────────────────────── */
+  @media screen and (max-width: 860px) {
+    :root { --pad: 22px; }
+    .printbar { padding: 8px 12px; gap: 10px; }
+    .brand small { display: none; }
+    .g3, .g4 { grid-template-columns: 1fr 1fr; }
+    .cover-route { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .eco-link { display: none; }
+    .cover-meta { grid-template-columns: 1fr; }
+    .chapter { min-height: 200px; }
+    .chapter::after { opacity: .3; }
+    .chapter::before { opacity: .35; }
+    .pool { column-gap: 24px; }
+    .edition { grid-template-columns: 1fr; }
+  }
+  @media screen and (max-width: 600px) {
+    .toc { display: none; }
+    .pb-btn:not(.primary) { display: none; }
+    .g2, .g3, .g4, .ba { grid-template-columns: 1fr; }
+    .cover-route { grid-template-columns: 1fr; }
+    .dropnum { width: 44px; height: 52px; font-size: 14pt; }
+    .chapter-inner { gap: 12px; }
+    .steps > li { padding-left: 54px; }
+    .summary-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .summary-head p { text-align: left; }
+    .pool { grid-template-columns: 1fr; }
+    .pool-col + .pool-col { padding-top: 0; }
+    .edition ul, .colophon ul.refs { grid-template-columns: 1fr; }
+    .metrics { flex-wrap: wrap; }
+    .metric { flex: 1 1 45%; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .cover h1, .cover-voice, .cover-art { animation: rise .9s cubic-bezier(.16,1,.3,1) both; }
+    .cover-voice { animation-delay: .08s; }
+    .cover-art img { animation: float 6s ease-in-out infinite; }
+    @keyframes rise { from { transform: translateY(14px); opacity: .001; } }
+    @keyframes float { 50% { transform: translateY(-6px); } }
+  }
+
+  /* ── Impresión A4 ─────────────────────────────────────────────────── */
+  @page { size: A4; margin: 0; }
+  @media print {
+    :root, :root[data-theme] {
+      --ink:#0d1526; --slate:#2c374c; --soft:#4b566b; --faint:#68728a;
+      --paper:#ffffff; --paper-2:#eef2f8; --surface:#ffffff; --line:#d9e1ee;
+      --cyan-ink:#006d8a; --cyan-soft:#dcf5fc; --cyan-on:#06394a; --azure-ink:#1557b0; --azure-soft:#e2eefd; --azure-on:#0f2f5e;
+      --violet-ink:#4a37a8; --violet-soft:#ece8fb; --violet-on:#2d2068; --mint-ink:#0b7a5f; --mint-soft:#daf4ec; --mint-on:#07493a;
+      --rose-ink:#a32640; --rose-soft:#fde5ea; --rose-on:#6a1426; --amber-ink:#8a5c00; --amber-soft:#fcf0d2; --amber-on:#523700;
+      --pad: 15mm;
+    }
+    html { font-size: 9.5pt; }
+    body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .printbar, .copy { display: none; }
+    .doc { max-width: none; margin: 0; box-shadow: none; }
+    .page { width: 210mm; min-height: 297mm; padding: 0 var(--pad) 12mm; break-after: page; border: 0 !important; }
+    .page:last-child { break-after: auto; }
+    .cover { min-height: 297mm; }
+    .cover-art img, .cover h1, .cover-voice, .cover-art { animation: none; }
+    .chapter { min-height: 52mm; margin-bottom: 8mm; }
+    .code pre { white-space: pre-wrap; word-break: break-word; }
+    tbody tr:hover td { background: none; }
+    .card, .infobox, .ba, table, .code, .steps > li { break-inside: avoid; }
+    .summary { padding-top: 16mm; }
+    .colophon { margin-top: 12mm; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="printbar" aria-label="Documento">
+  <a class="brand" href="#portada"><svg class="logo" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22e3f7"/><stop offset=".55" stop-color="#2c8ff0"/><stop offset="1" stop-color="#6b56d4"/></linearGradient></defs><path fill="url(#lg1)" d="M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z"/><ellipse cx="13" cy="24" rx="3" ry="6" fill="#fff" opacity=".35"/></svg><b>Guía <em>pi-gomemory</em></b><small>v1.11.0 · Pi 1.5.2 · gomemory 2.54.1</small></a>
+  <div class="toc">
+    <a href="#cap-1"><span>1</span>Qué es</a>
+    <a href="#cap-2"><span>2</span>Requisitos</a>
+    <a href="#cap-3"><span>3</span>Instalar</a>
+    <a href="#cap-4"><span>4</span>Qué toca</a>
+    <a href="#cap-5"><span>5</span>Launcher</a>
+    <a href="#cap-6"><span>6</span>Memoria y grafos</a>
+    <a href="#cap-7"><span>7</span>Skills</a>
+    <a href="#cap-8"><span>8</span>Comandos en Pi</a>
+    <a href="#cap-9"><span>9</span>Panel lateral</a>
+    <a href="#cap-10"><span>10</span>/tdd</a>
+    <a href="#cap-11"><span>11</span>HCD en Pi</a>
+    <a href="#cap-12"><span>12</span>Revisión</a>
+    <a href="#cap-13"><span>13</span>Una sesión</a>
+    <a href="#cap-14"><span>14</span>Mantenimiento</a>
+    <a href="#cap-15"><span>15</span>Otros agentes</a>
+    <a href="#cap-16"><span>16</span>Reglas de campo</a>
+  </div>
+  <div class="pb-actions">
+    <button type="button" class="pb-btn" id="themeBtn" aria-label="Cambiar tema">◐ Tema</button>
+    <button type="button" class="pb-btn primary" onclick="window.print()">Guardar como PDF</button>
+  </div>
+  <span class="readbar" aria-hidden="true"><i></i></span>
+</nav>
+
+<div class="doc">
+
+<!-- ═══ PORTADA ═══ -->
+<div class="page cover" id="portada">
+  <div class="cover-top">
+    <div class="brand"><svg class="logo" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22e3f7"/><stop offset=".55" stop-color="#2c8ff0"/><stop offset="1" stop-color="#6b56d4"/></linearGradient></defs><path fill="url(#lg2)" d="M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z"/><ellipse cx="13" cy="24" rx="3" ry="6" fill="#fff" opacity=".35"/></svg><b>Guía <em>pi-gomemory</em></b></div>
+    <div class="cover-edition"><strong>Edición 1</strong>pi-gomemory 1.11.0 · Pi 1.5.2</div>
+  </div>
+
+  <div class="cover-art" aria-hidden="true"><img src="../assets/pi-gomemory-dark.webp" alt=""></div>
+
+  <div class="cover-body">
+    <p class="cover-kicker">Pi Coding Agent · Harness Continual Development</p>
+    <h1>Pi, con memoria <span>desde el primer mensaje</span></h1>
+    <p class="cover-voice">Una guía de uso del harness pi-gomemory. <i>Qué instala, qué cambia en tu máquina y cómo se trabaja con él cada día.</i></p>
+    <div class="cover-accent" aria-hidden="true"></div>
+    <p class="subtitle">pi-gomemory es un binario en Go que deja a Pi listo para trabajar en serio: registra la memoria de gomemory y dos grafos de código como servidores MCP,
+    reúne 21 skills en un repositorio propio, instala el tema y las extensiones de interfaz, y genera el launcher <code>pi-gomemory</code>, que abre Pi con el contexto del proyecto ya cargado.</p>
+
+    <div class="cover-route">
+      <div class="eco-block"><div class="eco-label">Agente</div><div class="eco-title">Pi</div><div class="eco-ver">pi 1.5.2 · dentro de Herdr</div></div>
+      <div class="eco-link" aria-hidden="true"></div>
+      <div class="eco-block main"><div class="eco-label">Harness</div><div class="eco-title">pi-gomemory</div><div class="eco-ver">v1.11.0 · un binario, todo embebido</div></div>
+      <div class="eco-link" aria-hidden="true"></div>
+      <div class="eco-block"><div class="eco-label">Memoria</div><div class="eco-title">gomemory</div><div class="eco-ver">mem 2.54.1 · HCD</div></div>
+      <div class="eco-link" aria-hidden="true"></div>
+      <div class="eco-block"><div class="eco-label">Estructura</div><div class="eco-title">Grafos de código</div><div class="eco-ver">CodeGraph · codebase-memory-mcp</div></div>
+    </div>
+
+    <p class="cover-tags"><span>curl | bash con SHA256</span><span>embed.FS</span><span>Fusión sin pisar tu configuración</span><span>~/.pi-gomemory/skills</span><span>/plan</span><span>/tasks</span><span>/sidebar</span><span>/tdd</span><span>run_test_suite</span><span>splash_review</span><span>doctor</span><span>uninstall con manifiesto</span></p>
+
+    <div class="cover-meta">
+      <p><strong>Propósito</strong>Que Pi recuerde decisiones entre sesiones, consulte el grafo antes de leer archivos a ciegas y trabaje con el protocolo HCD sin que tengas que montarlo a mano</p>
+      <p><strong>Versiones comprobadas</strong>pi-gomemory 1.11.0 · Pi 1.5.2 · gomemory 2.54.1 · pi-antigravity 0.12.0 · pi-cc-extensions 1.0.16</p>
+      <p><strong>Plataformas</strong>macOS y Linux, amd64 y arm64</p>
+      <p><strong>Estado</strong>Release <code>v1.11.0</code> (2026-11-11): el panel lateral muestra los límites del plan de Anthropic (sesión de 5 h y semana) y se añade <code>pi-gomemory-setup anthropic-usage</code>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SUMARIO ═══ -->
+<div class="page summary" id="sumario">
+  <div class="summary-head"><h2>Conte<span>nido</span></h2><p>Dieciséis capítulos: de la instalación a una sesión real, con cada comando tal como lo acepta la versión 1.11.0.</p></div>
+  <nav class="pool" aria-label="Capítulos">
+    <div class="pool-col">
+      <a href="#cap-1"><span class="pool-n" aria-hidden="true">1</span><span class="pool-t">Qué es pi-gomemory</span><span class="pool-s">Pi de serie, el harness y por qué va en un solo binario</span></a>
+      <a href="#cap-2"><span class="pool-n" aria-hidden="true">2</span><span class="pool-t">Requisitos</span><span class="pool-s">Lo obligatorio, lo recomendado y lo opcional</span></a>
+      <a href="#cap-3"><span class="pool-n" aria-hidden="true">3</span><span class="pool-t">Instalar, paso a paso</span><span class="pool-s">Script, código fuente o binario manual, y el primer doctor</span></a>
+      <a href="#cap-4"><span class="pool-n" aria-hidden="true">4</span><span class="pool-t">Qué toca en tu máquina</span><span class="pool-s">Rutas, fusión de JSON y lo que nunca modifica</span></a>
+      <a href="#cap-5"><span class="pool-n" aria-hidden="true">5</span><span class="pool-t">El launcher</span><span class="pool-s">Qué hace <code>pi-gomemory</code> antes de abrir Pi</span></a>
+      <a href="#cap-6"><span class="pool-n" aria-hidden="true">6</span><span class="pool-t">Memoria y grafos dentro de Pi</span><span class="pool-s">Los tres servidores MCP y el protocolo de AGENTS.md</span></a>
+      <a href="#cap-7"><span class="pool-n" aria-hidden="true">7</span><span class="pool-t">El repositorio de skills</span><span class="pool-s">Las 21 skills, la prioridad y la sanitización del YAML</span></a>
+      <a href="#cap-8"><span class="pool-n" aria-hidden="true">8</span><span class="pool-t">Comandos dentro de Pi</span><span class="pool-s">Banner, <code>/plan</code>, <code>/tasks</code>, <code>/tokens</code> y <code>/context</code></span></a>
+    </div>
+    <div class="pool-col">
+      <a href="#cap-9"><span class="pool-n" aria-hidden="true">9</span><span class="pool-t">El panel lateral</span><span class="pool-s"><code>/sidebar</code>, <code>/min</code> y las cuotas de Google y Anthropic</span></a>
+      <a href="#cap-10"><span class="pool-n" aria-hidden="true">10</span><span class="pool-t">Pruebas en vivo con /tdd</span><span class="pool-s">Suites detectadas, recorrido en vivo y <code>run_test_suite</code></span></a>
+      <a href="#cap-11"><span class="pool-n" aria-hidden="true">11</span><span class="pool-t">HCD dentro de Pi</span><span class="pool-s">Unidades, skills <code>hcd-*</code>, evidencia y cierre</span></a>
+      <a href="#cap-12"><span class="pool-n" aria-hidden="true">12</span><span class="pool-t">Revisión independiente</span><span class="pool-s"><code>splash_review</code>, ACR y ADM</span></a>
+      <a href="#cap-13"><span class="pool-n" aria-hidden="true">13</span><span class="pool-t">Una sesión de punta a punta</span><span class="pool-s">De abrir la terminal a cerrar una unidad</span></a>
+      <a href="#cap-14"><span class="pool-n" aria-hidden="true">14</span><span class="pool-t">Actualizar, diagnosticar, desinstalar</span><span class="pool-s">Dependencias, <code>doctor</code> y la desinstalación con manifiesto</span></a>
+      <a href="#cap-15"><span class="pool-n" aria-hidden="true">15</span><span class="pool-t">Otros agentes y portapapeles</span><span class="pool-s">Claude Code, Codex, agy y OpenCode comparten la memoria</span></a>
+      <a href="#cap-16"><span class="pool-n" aria-hidden="true">16</span><span class="pool-t">Reglas de campo</span><span class="pool-s">Avisos de Pi que ya no verás y problemas frecuentes</span></a>
+    </div>
+  </nav>
+
+  <section class="edition" aria-label="Esta edición">
+    <div><h3>Sobre esta <span>edición</span></h3>
+    <p>Es la primera guía larga de pi-gomemory. Sigue el formato de la Guía SDD_HCD de gomemory y se apoya en el README, en <code>docs/</code> y en el código de la v1.11.0.</p></div>
+    <ul>
+      <li><strong>Cuotas de Anthropic.</strong> El panel lateral muestra la sesión de 5 h y la semana del plan Claude Pro/Max. Capítulo 9.</li>
+      <li><strong>/tdd con pruebas reales.</strong> Ejecuta las suites del proyecto con <code>spawn</code> y avanza test a test. Capítulo 10.</li>
+      <li><strong>/min y /tdd report.</strong> Minimizan ambos paneles a la vez y publican el informe en el chat. Capítulos 9 y 10.</li>
+      <li><strong>Desinstalación segura.</strong> Solo retira lo que puede probar que instaló, con huellas SHA256. Capítulo 14.</li>
+    </ul>
+  </section>
+</div>
+
+<!-- ═══ 1 ═══ -->
+<div class="page" id="cap-1">
+  <div class="chapter"><div class="chapter-inner"><span class="dropnum">1</span><div><h2>Qué es <span>pi-gomemory</span></h2><p class="pg-sub">Pi es rápido y extensible. Lo que le falta es memoria, mapa del código y un método de trabajo.</p></div></div></div>
+
+  <p class="lead">Pi arranca cada sesión desde cero. No sabe qué decidiste ayer, qué bug ya corregiste ni qué módulo llama a cuál. Para cada pregunta sobre el código abre archivos uno tras otro, y cuando termina una tarea nada le obliga a demostrar que funciona.</p>
+  <p>Arreglarlo a mano lleva una tarde: registrar tres servidores MCP en <code>mcp.json</code>, copiar y corregir una veintena de skills, instalar dos plugins de npm, ajustar el tema y escribir un script que cargue el contexto del proyecto antes de abrir Pi. Es fácil dejar algo a medias, y en la siguiente máquina hay que repetirlo.</p>
+  <p>pi-gomemory hace ese montaje con un comando. Lleva sus recursos (skills, tema, extensiones y configuración) dentro del ejecutable con <code>embed.FS</code>, así que no descarga nada durante la instalación y deja el mismo resultado en cualquier equipo.</p>
+
+  <div class="section-header"><h3>Las capas del harness</h3><p>Lo que queda alrededor del modelo cuando terminas de instalar</p></div>
+  <div class="grid g4">
+    <div class="card"><div class="card-title">Memoria</div><div class="card-body">gomemory guarda decisiones, bugs con su causa raíz y convenciones, y las devuelve al empezar cada sesión.</div></div>
+    <div class="card azure"><div class="card-title">Grafo de código</div><div class="card-body">CodeGraph y codebase-memory-mcp responden quién llama a qué y qué se rompe si cambias algo, sin recorrer carpetas.</div></div>
+    <div class="card violet"><div class="card-title">Método</div><div class="card-body">El protocolo HCD y 21 skills llevan un cambio de la intención al cierre, con la prueba en rojo antes que en verde.</div></div>
+    <div class="card mint"><div class="card-title">Interfaz</div><div class="card-body">Banner, modo plan, tareas, panel lateral, inspector de pruebas y barra de tokens, con el tema gomemory en Truecolor.</div></div>
+  </div>
+
+  <div class="section-header"><h3>Cómo encaja todo</h3></div>
+  <div class="flow" aria-label="Flujo de instalación">
+    <span class="fl-node">install.sh</span><span class="fl-arrow">→</span>
+    <span class="fl-node">verifica SHA256</span><span class="fl-arrow">→</span>
+    <span class="fl-node hl">pi-gomemory-setup</span><span class="fl-arrow">→</span>
+    <span class="fl-node">~/.pi/agent · ~/.pi-gomemory/skills</span><span class="fl-arrow">→</span>
+    <span class="fl-node">~/.local/bin/pi-gomemory</span><span class="fl-arrow">→</span>
+    <span class="fl-node hl">Pi con memoria y grafo</span>
+  </div>
+  <p>Hay dos ejecutables y conviene no confundirlos. <code>pi-gomemory-setup</code> es el binario en Go que instala, diagnostica, actualiza y desinstala. <code>pi-gomemory</code> es un script de bash que el instalador genera; lo usas cada día para abrir Pi.</p>
+
+  <div class="infobox azure"><span class="lbl">Alcance</span><p>pi-gomemory configura solo Pi. Si también usas Claude Code, Codex, Antigravity u OpenCode, la memoria y los grafos les llegan a través de gomemory con <code>mem setup-mcp</code>. El capítulo 15 lo explica.</p></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 1</span></div>
+</div>
+
+<!-- ═══ 2 ═══ -->
+<div class="page" id="cap-2">
+  <div class="chapter" style="--rot:40deg"><div class="chapter-inner"><span class="dropnum">2</span><div><h2><span>Requisitos</span></h2><p class="pg-sub">Pi es lo único imprescindible. El resto se puede instalar antes o después.</p></div></div></div>
+
+  <p class="lead">El instalador registra la configuración de los tres servidores MCP aunque sus binarios todavía no estén en el sistema. Funcionan en cuanto los instalas, sin repetir la configuración.</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Herramienta</th><th>Estado</th><th>Para qué sirve</th></tr></thead>
+    <tbody>
+      <tr><td>Pi (<code>pi</code>)</td><td><span class="badge b-rose">obligatorio</span></td><td>El agente. El launcher se detiene con un error si no lo encuentra en el <code>PATH</code>.</td></tr>
+      <tr><td>macOS o Linux</td><td><span class="badge b-rose">obligatorio</span></td><td>Hay binarios para amd64 y arm64 en cada release.</td></tr>
+      <tr><td><a href="https://github.com/Sayoner-000/gomemory">gomemory</a> (<code>mem</code>)</td><td><span class="badge b-azure">recomendado</span></td><td>Memoria del proyecto, contexto de arranque y motor HCD. Sin él, Pi abre sin historial.</td></tr>
+      <tr><td><a href="https://github.com/colbymchenry/codegraph">CodeGraph</a> (<code>codegraph</code>)</td><td><span class="badge b-gray">opcional</span></td><td>Grafo AST en SQLite para más de 30 lenguajes.</td></tr>
+      <tr><td><a href="https://github.com/DeusData/codebase-memory-mcp">codebase-memory-mcp</a></td><td><span class="badge b-gray">opcional</span></td><td>Grafo estructural, trazado de llamadas y análisis de impacto.</td></tr>
+      <tr><td>Herdr</td><td><span class="badge b-gray">opcional</span></td><td>Multiplexor de terminal para agentes. El launcher exporta <code>HERDR_ENV=1</code>.</td></tr>
+      <tr><td>Go 1.27+</td><td><span class="badge b-gray">solo para compilar</span></td><td>Necesario si instalas desde el código fuente.</td></tr>
+      <tr><td><code>xclip</code> o <code>wl-clipboard</code></td><td><span class="badge b-gray">Linux</span></td><td>Portapapeles del sistema. En macOS ya vienen <code>pbcopy</code> y <code>pbpaste</code>.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="infobox amber"><span class="lbl">PATH</span><p>Todo se instala en <code>~/.local/bin</code>. Si la terminal no encuentra los comandos, añade <code>export PATH="${HOME}/.local/bin:${PATH}"</code> a tu <code>~/.zshrc</code> o <code>~/.bashrc</code>.</p></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 2</span></div>
+</div>
+
+<!-- ═══ 3 ═══ -->
+<div class="page" id="cap-3">
+  <div class="chapter" style="--rot:80deg"><div class="chapter-inner"><span class="dropnum">3</span><div><h2>Instalar, <span>paso a paso</span></h2><p class="pg-sub">Tres caminos que terminan igual: el binario en <code>~/.local/bin</code> y el harness montado.</p></div></div></div>
+
+  <ol class="steps">
+    <li>
+      <h4>Ejecuta el script de instalación <span class="badge b-mint">recomendado</span></h4>
+      <p class="why">Descarga el binario de tu plataforma desde GitHub Releases, comprueba su SHA256 contra <code>SHA256SUMS</code> y lanza la instalación completa. Si la suma no coincide, se detiene.</p>
+      <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | bash</pre></div>
+      <p class="check"><code>pi-gomemory-setup</code> queda en <code>~/.local/bin</code> y el resumen de la instalación termina sin errores.</p>
+    </li>
+    <li>
+      <h4>O compila desde el código fuente</h4>
+      <p class="why">Útil si quieres revisar el código antes de ejecutarlo. Compila sin símbolos de depuración, copia el binario y ejecuta el instalador.</p>
+      <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>git clone https://github.com/Sayoner-000/pi-gomemory.git
+cd pi-gomemory
+make install</pre></div>
+    </li>
+    <li>
+      <h4>O descarga el binario a mano</h4>
+      <p class="why">Para máquinas sin acceso directo a GitHub o cuando prefieres verificar cada paso. Elige el tarball de tu sistema: <code>darwin_arm64</code>, <code>darwin_amd64</code>, <code>linux_amd64</code> o <code>linux_arm64</code>.</p>
+      <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>shasum -a 256 -c SHA256SUMS --ignore-missing
+tar -xzf pi-gomemory-setup_v1.11.0_darwin_arm64.tar.gz
+mkdir -p ~/.local/bin
+mv pi-gomemory-setup ~/.local/bin/
+pi-gomemory-setup install</pre></div>
+    </li>
+    <li>
+      <h4>Comprueba el resultado con doctor</h4>
+      <p class="why">Revisa binarios, tema, servidores MCP, plugins, skills, extensiones y launcher. Cada línea dice qué falta y, si aplica, qué comando lo arregla.</p>
+      <div class="code"><div class="code-head"><span>salida esperada (resumida)</span><button class="copy" type="button">Copiar</button></div><pre>pi-gomemory-setup doctor
+
+  <span class="ok">✓</span> Binario pi                       /Users/usuario/.local/bin/pi
+  <span class="ok">✓</span> Binario mem                      /Users/usuario/.local/bin/mem
+  <span class="ok">✓</span> Tema gomemory en Pi              ~/.pi/agent/themes/gomemory.json
+  <span class="ok">✓</span> MCP gomemory                     conectado
+  <span class="ok">✓</span> MCP codegraph                    conectado
+  <span class="ok">✓</span> MCP codebase-memory              conectado
+  <span class="ok">✓</span> Plugin pi-antigravity (Google)   registrado en settings.json
+  <span class="ok">✓</span> Skills gomemory en Pi            21 skills cargadas
+  <span class="ok">✓</span> Launcher Herdr (pi-gomemory)     ~/.local/bin/pi-gomemory</pre></div>
+      <p class="check">todas las líneas en verde, o una lista corta de piezas opcionales pendientes.</p>
+    </li>
+    <li>
+      <h4>Abre Pi con el launcher</h4>
+      <p class="why">Desde la carpeta de tu proyecto. Si ahí hay una memoria de gomemory (<code>.gomemory/memories.db</code>), Pi empieza con el contexto del proyecto. Si es la primera vez, ejecuta antes <code>mem init</code>.</p>
+      <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>cd ~/mi-proyecto
+pi-gomemory</pre></div>
+      <p class="check">el banner muestra la gota de gomemory con las versiones de pi-gomemory y de gomemory.</p>
+    </li>
+  </ol>
+
+  <div class="infobox"><span class="lbl">Variables de install.sh</span><p><code>PI_GOMEMORY_VERSION</code> fija una versión concreta, <code>PI_GOMEMORY_BIN_DIR</code> cambia la carpeta de destino y <code>PI_GOMEMORY_BASE_URL</code> apunta a otra fuente de descarga, por ejemplo <code>file://$PWD/dist</code> para probar un build local.</p></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 3</span></div>
+</div>
+
+<!-- ═══ 4 ═══ -->
+<div class="page" id="cap-4">
+  <div class="chapter" style="--rot:120deg"><div class="chapter-inner"><span class="dropnum">4</span><div><h2>Qué toca <span>en tu máquina</span></h2><p class="pg-sub">El instalador fusiona tu configuración. No la reemplaza.</p></div></div></div>
+
+  <p class="lead">Antes de instalar algo que escribe en tu carpeta personal conviene saber exactamente dónde. Esta es la lista completa.</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Pieza</th><th>Qué hace en Pi</th><th>Dónde queda</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Servidores MCP</strong></td><td>gomemory, codegraph y codebase-memory</td><td><code>~/.pi/agent/mcp.json</code></td></tr>
+      <tr><td><strong>Skills</strong></td><td>21 skills de gomemory y enlaces a las de otros agentes</td><td><code>~/.pi-gomemory/skills/</code></td></tr>
+      <tr><td><strong>Protocolo</strong></td><td>Instrucciones para consultar memoria y grafo antes de grep</td><td><code>~/.pi/agent/AGENTS.md</code></td></tr>
+      <tr><td><strong>Plugins</strong></td><td><code>pi-antigravity@0.12.0</code> y <code>pi-cc-extensions@1.0.16</code>, registro de skills y tema</td><td><code>~/.pi/agent/settings.json</code></td></tr>
+      <tr><td><strong>Extensiones</strong></td><td>Banner, plan, tareas, panel lateral, <code>/tdd</code>, barra de tokens y Splash</td><td><code>~/.pi/agent/extensions/gomemory-*</code></td></tr>
+      <tr><td><strong>Tema</strong></td><td>Paleta gomemory de 24 bits</td><td><code>~/.pi/agent/themes/gomemory.json</code></td></tr>
+      <tr><td><strong>Launcher</strong></td><td>Prepara el entorno y abre Pi</td><td><code>~/.local/bin/pi-gomemory</code></td></tr>
+      <tr><td><strong>Manifiesto</strong></td><td>Huella SHA256 de cada archivo instalado</td><td><code>~/.pi-gomemory/manifest.json</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="section-header"><h3>Cómo fusiona</h3></div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">mcp.json</div><div class="card-body">Solo cambia sus tres entradas. Tus otros servidores se quedan como estaban, con todos sus campos.</div></div>
+    <div class="card azure"><div class="card-title">pi-cc-extensions.json</div><div class="card-body">Añade las claves que falten. Lo que ya ajustaste se respeta, con una excepción: fija <code>showStartupHeader: false</code> para que no tape el banner.</div></div>
+    <div class="card violet"><div class="card-title">AGENTS.md</div><div class="card-body">El protocolo vive entre <code>&lt;!-- pi-gomemory:start --&gt;</code> y <code>&lt;!-- pi-gomemory:end --&gt;</code>. Reinstalar reemplaza ese bloque y deja el resto del archivo intacto.</div></div>
+    <div class="card rose"><div class="card-title">JSON inválido</div><div class="card-body">Si encuentra un JSON existente que no puede leer, la instalación se detiene y no lo modifica. Corrige el archivo y vuelve a ejecutar.</div></div>
+  </div>
+
+  <div class="infobox mint"><span class="lbl">Lo que nunca toca</span><p>El directorio desde el que lo ejecutas, la configuración de otros agentes, las skills de <code>~/.claude/skills</code> y compañía (las enlaza, no las copia) y la memoria de gomemory.</p></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 4</span></div>
+</div>
+
+<!-- ═══ 5 ═══ -->
+<div class="page" id="cap-5">
+  <div class="chapter" style="--rot:160deg"><div class="chapter-inner"><span class="dropnum">5</span><div><h2>El <span>launcher</span></h2><p class="pg-sub"><code>pi-gomemory</code> hace cinco cosas antes de ceder el control a Pi.</p></div></div></div>
+
+  <p class="lead">El launcher es un script corto con <code>set -euo pipefail</code>. Lo puedes leer en <code>~/.local/bin/pi-gomemory</code>; esto es lo que hace, en orden.</p>
+
+  <ol class="steps">
+    <li><h4>Prepara la terminal</h4>
+      <p class="why">Exporta <code>HERDR_ENV=1</code>, <code>COLORTERM=truecolor</code>, <code>GOMEMORY_CLIENT=pi</code> y pone por delante en el <code>PATH</code> su propia carpeta, <code>~/.local/bin</code> y <code>~/.gomemory/bin</code>. Respeta los valores que ya tengas definidos.</p></li>
+    <li><h4>Atiende <code>usage</code></h4>
+      <p class="why">Si el primer argumento es <code>usage</code> o <code>quota</code>, delega en <code>pi-gomemory-setup usage</code> y muestra la cuota de Google AI Pro sin abrir Pi.</p></li>
+    <li><h4>Revisa versiones</h4>
+      <p class="why">Exporta <code>PI_GOMEMORY_RUNNING_VERSION</code> y <code>GOMEMORY_INSTALLED_VERSION</code> para el banner. Después ejecuta <code>deps-status</code> con el resultado de la consulta anterior; si algo está desactualizado y hay terminal interactiva, pregunta <code>¿Actualizar ahora? [s/N]</code> durante 10 segundos. La consulta nueva se lanza en segundo plano y no retrasa el arranque.</p></li>
+    <li><h4>Sincroniza las skills</h4>
+      <p class="why">Ejecuta <code>skills-sync</code>, que solo crea o retira enlaces en <code>~/.pi-gomemory/skills</code>. Es rápido y silencioso.</p></li>
+    <li><h4>Carga la memoria y abre Pi</h4>
+      <p class="why">Si existe <code>.gomemory/memories.db</code> en la carpeta actual, ejecuta <code>mem context</code> y pasa el resultado con <code>--append-system-prompt</code>. Por encima de 64 KiB lo recorta para no superar el límite de argumentos del kernel. Termina con <code>exec pi --use-theme gomemory</code> y tus argumentos.</p>
+      <p class="check">Pi abre con el tema gomemory y, en un proyecto inicializado, con las decisiones recientes en el contexto.</p></li>
+  </ol>
+
+  <div class="code"><div class="code-head"><span>uso habitual</span><button class="copy" type="button">Copiar</button></div><pre><span class="c"># abrir Pi en el proyecto actual</span>
+pi-gomemory
+
+<span class="c"># los argumentos pasan tal cual a pi</span>
+pi-gomemory --model anthropic/claude-sonnet-4-5
+
+<span class="c"># ver la cuota de Google AI Pro sin abrir Pi</span>
+pi-gomemory usage
+
+<span class="c"># arrancar sin comprobar actualizaciones</span>
+PI_GOMEMORY_NO_UPDATE_CHECK=1 pi-gomemory</pre></div>
+
+  <div class="infobox amber"><span class="lbl">Si abres pi directamente</span><p>Las extensiones, el tema y las skills siguen ahí, pero no hay contexto de gomemory al inicio ni comprobación de versiones, y el banner aparece sin números de versión. Para el trabajo diario, usa el launcher.</p></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 5</span></div>
+</div>
+
+<!-- ═══ 6 ═══ -->
+<div class="page" id="cap-6">
+  <div class="chapter" style="--rot:200deg"><div class="chapter-inner"><span class="dropnum">6</span><div><h2>Memoria y grafos <span>dentro de Pi</span></h2><p class="pg-sub">gomemory guarda el porqué. Los grafos responden el qué y el cómo.</p></div></div></div>
+
+  <p class="lead">Los tres servidores MCP aparecen en Pi como herramientas que el modelo puede llamar. El protocolo que el instalador escribe en <code>AGENTS.md</code> le dice cuándo usar cada una, y en qué orden.</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Servidor</th><th>Comando</th><th>Herramientas que más se usan</th></tr></thead>
+    <tbody>
+      <tr><td><strong>gomemory</strong></td><td><code>mem mcp</code></td><td><code>get_context</code>, <code>search_memories</code>, <code>save_memory</code>, <code>get_plan_context</code>, <code>review_*</code>, <code>end_session</code></td></tr>
+      <tr><td><strong>codegraph</strong></td><td><code>codegraph serve --mcp</code></td><td><code>codegraph_explore</code>: devuelve el código de los símbolos relevantes y la ruta de llamadas entre ellos en una sola consulta</td></tr>
+      <tr><td><strong>codebase-memory</strong></td><td><code>codebase-memory-mcp</code></td><td><code>search_graph</code>, <code>trace_path</code>, <code>get_code_snippet</code>, <code>check_index_coverage</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="section-header"><h3>El protocolo de AGENTS.md</h3><p>Cinco reglas, más una para Splash</p></div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Buscar en la memoria</div><div class="card-body">Para decisiones pasadas, <code>search_memories</code> o <code>get_context</code>. Nunca grep sobre el historial.</div></div>
+    <div class="card azure"><div class="card-title">Grafo antes que grep</div><div class="card-body">Arquitectura, rutas y relaciones van por <code>codegraph_explore</code>, <code>search_graph</code> o <code>trace_path</code>. Grep queda para literales, configs y archivos no indexados.</div></div>
+    <div class="card violet"><div class="card-title">Guardar sin que lo pidan</div><div class="card-body">Tras una decisión de arquitectura, un bug corregido con su causa raíz o una convención nueva, <code>save_memory</code>.</div></div>
+    <div class="card mint"><div class="card-title">HCD y modo plan</div><div class="card-body">Comprobar la unidad activa con <code>mem hcd show</code>, registrar evidencia con <code>mem hcd verify</code> y, para planificar, cargar <code>get_plan_context</code> y entregar el árbol de tareas sin ejecutar.</div></div>
+  </div>
+
+  <div class="ba">
+    <div class="ba-col before"><h5>Pi de serie</h5><ul>
+      <li>Pregunta «¿quién llama a <code>InstallSkills</code>?» y abre archivos uno por uno.</li>
+      <li>Repite una decisión que ya se descartó la semana pasada.</li>
+      <li>Al cerrar la sesión, lo aprendido se pierde.</li>
+    </ul></div>
+    <div class="ba-col after"><h5>Pi con pi-gomemory</h5><ul>
+      <li><code>codegraph_explore</code> devuelve los siete llamadores y sus tests en una llamada.</li>
+      <li><code>search_memories</code> encuentra la decisión y su motivo.</li>
+      <li><code>save_memory</code> y <code>end_session</code> dejan el resumen para la próxima vez.</li>
+    </ul></div>
+  </div>
+
+  <div class="infobox"><span class="lbl">Indexar el proyecto</span><p>Los grafos necesitan un índice. La primera vez, pide a Pi que indexe el repositorio (<code>index_repository</code> de codebase-memory) o ejecuta <code>codegraph</code> en la carpeta. gomemory indexa el código Go por su cuenta con <code>mem</code>.</p></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 6</span></div>
+</div>
+
+<!-- ═══ 7 ═══ -->
+<div class="page" id="cap-7">
+  <div class="chapter" style="--rot:240deg"><div class="chapter-inner"><span class="dropnum">7</span><div><h2>El repositorio <span>de skills</span></h2><p class="pg-sub">Una sola carpeta para Pi, sin colisiones de nombres.</p></div></div></div>
+
+  <p class="lead">Pi carga skills desde varias carpetas y avisa cada vez que dos se llaman igual. Si usas varios agentes, esas carpetas se solapan y el arranque se llena de advertencias. pi-gomemory registra en <code>settings.json</code> una única ruta, <code>~/.pi-gomemory/skills</code>, y reúne ahí todo lo demás.</p>
+
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Las 21 de gomemory</div><div class="card-body">Se copian adaptadas para Pi y siempre ganan. Cada copia lleva una marca <code>.pi-gomemory</code> con el SHA256 de su <code>SKILL.md</code>; si la editas, el instalador la deja en paz.</div></div>
+    <div class="card azure"><div class="card-title">Las de otros agentes</div><div class="card-body">Se enlazan con symlinks, en este orden: <code>~/.agents/skills</code>, <code>~/.config/opencode/skills</code>, <code>~/.claude/skills</code>, <code>~/.codex/skills</code> y <code>~/.gemini/skills</code>. Si un nombre se repite, gana la primera carpeta.</div></div>
+  </div>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grupo</th><th>Skills</th></tr></thead>
+    <tbody>
+      <tr><td><strong>HCD</strong></td><td><code>hcd</code>, <code>hcd-define</code>, <code>hcd-clarify</code>, <code>hcd-approve</code>, <code>hcd-slice</code>, <code>hcd-tasks</code>, <code>hcd-implement</code>, <code>hcd-verify</code>, <code>hcd-analyze</code>, <code>hcd-close</code></td></tr>
+      <tr><td><strong>Rigor</strong></td><td><code>verify-loop</code>, <code>search-first</code>, <code>iterative-retrieval</code>, <code>strategic-compact</code>, <code>instincts</code>, <code>atomic-decomposition</code></td></tr>
+      <tr><td><strong>Revisión</strong></td><td><code>adversarial-consensus-review</code> (ACR), <code>defensive-qa-audit</code> (ADM)</td></tr>
+      <tr><td><strong>Memoria y apoyo</strong></td><td><code>codebase-memory</code>, <code>constitution</code>, <code>socratica</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <p>El modelo carga una skill cuando la tarea coincide con su descripción. Si quieres forzarla, escribe <code>/skill:nombre</code> en el editor de Pi, con argumentos si hace falta:</p>
+  <div class="code"><div class="code-head"><span>en Pi</span><button class="copy" type="button">Copiar</button></div><pre>/skill:hcd corregir el cálculo de cuota cuando la API devuelve 0
+/skill:verify-loop
+/skill:defensive-qa-audit pkg/installer</pre></div>
+
+  <div class="infobox violet"><span class="lbl">Sanitización</span><p>Pi lee el bloque YAML de cada <code>SKILL.md</code> con un analizador estricto. Una <code>description:</code> con dos puntos sin comillas hace que la skill no cargue. <code>SanitizeFrontmatter</code> detecta ese caso y envuelve el valor entre comillas antes de copiarlo.</p></div>
+
+  <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>pi-gomemory-setup skills        <span class="c"># reúne de nuevo el repositorio y lo registra</span>
+pi-gomemory-setup skills-sync   <span class="c"># sincroniza enlaces y purga copias legadas</span>
+pi-gomemory-setup doctor        <span class="c"># muestra el total y las colisiones resueltas</span></pre></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 7</span></div>
+</div>
+
+<!-- ═══ 8 ═══ -->
+<div class="page" id="cap-8">
+  <div class="chapter" style="--rot:280deg"><div class="chapter-inner"><span class="dropnum">8</span><div><h2>Comandos <span>dentro de Pi</span></h2><p class="pg-sub">Lo que añaden las extensiones gomemory al editor de Pi.</p></div></div></div>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Comando</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><code>/plan [petición]</code></td><td>Activa el modo plan. <code>/plan</code> otra vez o <code>/plan run</code> lo desactivan.</td></tr>
+      <tr><td><code>/tasks</code></td><td>Muestra u oculta las tareas de la unidad HCD activa.</td></tr>
+      <tr><td><code>/sidebar</code> · <code>/sidebar min</code></td><td>Panel lateral y su versión minimizada (capítulo 9).</td></tr>
+      <tr><td><code>/min</code></td><td>Minimiza o restaura a la vez <code>/sidebar</code> y <code>/tdd</code>.</td></tr>
+      <tr><td><code>/tdd</code> y subcomandos</td><td>Inspector de pruebas en vivo (capítulo 10).</td></tr>
+      <tr><td><code>/tokens</code></td><td>Muestra u oculta la barra inferior de tokens y coste.</td></tr>
+      <tr><td><code>/context</code></td><td>Desglose de la ventana de contexto. Lo aporta pi-cc-extensions.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="section-header"><h3>Banner</h3></div>
+  <p>Al abrir Pi verás la gota de gomemory, «pi - gomemory» y las dos versiones que exporta el launcher. Pi solo admite una cabecera, así que el instalador desactiva la de pi-cc-extensions. Si la vuelves a activar desde <code>/ccstyle</code>, <code>doctor</code> te avisa en la línea «Banner gomemory». Con <code>NO_COLOR</code> el banner se dibuja sin colores.</p>
+
+  <div class="section-header"><h3>Modo plan</h3></div>
+  <p>Con <code>/plan</code> Pi puede leer, buscar y razonar, pero no modificar. Bloquea las herramientas <code>edit</code> y <code>write</code> y los comandos de consola que cambian archivos: <code>rm</code>, <code>mv</code>, redirecciones, <code>sed -i</code>, <code>git commit</code>, <code>npm install</code>, <code>go get</code> y otros. Además añade al contexto el método de descomposición de <code>mem plan-context</code> y muestra «PLAN» en la barra.</p>
+  <div class="code"><div class="code-head"><span>en Pi</span><button class="copy" type="button">Copiar</button></div><pre>/plan añadir soporte de Windows al instalador
+<span class="c"># … revisas el árbol de tareas que propone …</span>
+/plan run</pre></div>
+  <div class="infobox amber"><span class="lbl">Límite</span><p>Bloquea las modificaciones comunes, no aísla el proceso. La lista de patrones está en <code>~/.pi/agent/extensions/gomemory-plan-patterns.json</code> y la puedes ampliar.</p></div>
+
+  <div class="section-header"><h3>Panel de tareas</h3></div>
+  <p>Encima del editor, <code>/tasks</code> muestra las tareas de la unidad HCD activa leídas de <code>mem hcd show --json</code>. Se actualiza al abrir la sesión, después de cada <code>mem hcd</code> y al terminar cada respuesta.</p>
+  <div class="grid g4">
+    <div class="card mint"><div class="card-title">✓ verificada</div><div class="card-body">La comprobación pasó y el código no ha cambiado desde entonces.</div></div>
+    <div class="card"><div class="card-title">○ pendiente</div><div class="card-body">Aún no tiene evidencia.</div></div>
+    <div class="card amber"><div class="card-title">◌ caducada</div><div class="card-body">Pasó, pero el código cambió después. Hay que volver a verificar.</div></div>
+    <div class="card rose"><div class="card-title">✗ con fallo</div><div class="card-body">La última comprobación falló.</div></div>
+  </div>
+
+  <div class="section-header"><h3>Barra de tokens</h3></div>
+  <p><code>/tokens</code> alterna la barra inferior con los tokens de entrada y salida, las lecturas de caché (<code>↺</code>), el nivel de razonamiento (<code>[thinking nivel]</code>) y el coste estimado acumulado.</p>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 8</span></div>
+</div>
+
+<!-- ═══ 9 ═══ -->
+<div class="page" id="cap-9">
+  <div class="chapter" style="--rot:320deg"><div class="chapter-inner"><span class="dropnum">9</span><div><h2>El panel <span>lateral</span></h2><p class="pg-sub">Sesión, contexto, coste y cuotas, sin salir de la conversación.</p></div></div></div>
+
+  <p class="lead"><code>/sidebar</code> abre un panel de 36 columnas en la esquina superior derecha, inspirado en el de OpenCode. Flota sin capturar el teclado, así que puedes seguir escribiendo mientras está abierto.</p>
+
+  <div class="grid g3">
+    <div class="card"><div class="card-title">Sesión y HCD</div><div class="card-body">La unidad activa y la versión instalada en el título.</div></div>
+    <div class="card azure"><div class="card-title">Contexto</div><div class="card-body">Tokens usados, porcentaje de la ventana y coste, en tiempo real.</div></div>
+    <div class="card violet"><div class="card-title">MCP</div><div class="card-body">Los servidores declarados en <code>mcp.json</code> con estado <code>Configured</code>. No comprueba la conexión en vivo.</div></div>
+  </div>
+
+  <div class="section-header"><h3>Cuotas</h3></div>
+  <div class="grid g2">
+    <div class="card mint"><div class="card-title">Google AI Pro</div><div class="card-body">Porcentaje restante de los límites semanal y de cinco horas, y el tiempo hasta cada reinicio. También desde la terminal con <code>pi-gomemory usage</code>.</div></div>
+    <div class="card amber"><div class="card-title">Anthropic · plan <span class="badge b-new">1.11.0</span></div><div class="card-body">Con Pi conectado por OAuth a una suscripción Claude Pro o Max, muestra el uso de la sesión (5 h) y de la semana, y los límites por modelo si Anthropic los envía. La barra pasa a amarillo al 50 % y a rojo al 80 %. Se refresca al abrir, en cada turno y cada 30 s.</div></div>
+  </div>
+  <div class="infobox rose"><span class="lbl">Errores a la vista</span><p>Si una consulta falla, el panel muestra el error completo y nunca cifras viejas o inventadas. Los dos casos habituales son el token caducado (abre <code>pi</code> para que lo renueve) y un binario anterior a 1.11.0 sin <code>anthropic-usage</code> (ejecuta <code>pi-gomemory-setup update</code>).</p></div>
+
+  <div class="section-header"><h3>Minimizar</h3></div>
+  <ul>
+    <li>Clic en <code>[−]</code> de la cabecera lo reduce a una fila; clic en <code>[+]</code> lo restaura. El ratón funciona en el modo <code>fullscreen</code> de Pi, que es el predeterminado.</li>
+    <li><code>/sidebar min</code> (o <code>/sidebar m</code>, <code>/sidebar -</code>) hace lo mismo desde el teclado, también en <code>--tui-mode regular</code>.</li>
+    <li><code>/min</code> actúa sobre los dos paneles: si alguno está expandido, minimiza ambos; si los dos están minimizados, los restaura.</li>
+    <li>En una terminal de menos de 100 columnas el panel se oculta solo.</li>
+  </ul>
+
+  <div class="code"><div class="code-head"><span>las mismas cifras en JSON</span><button class="copy" type="button">Copiar</button></div><pre>pi-gomemory-setup usage --json       <span class="c"># Google AI Pro</span>
+pi-gomemory-setup anthropic-usage    <span class="c"># sesión y semana del plan de Anthropic</span>
+pi-gomemory-setup claude-usage       <span class="c"># tokens de Claude Code: hoy, semana y total</span></pre></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 9</span></div>
+</div>
+
+<!-- ═══ 10 ═══ -->
+<div class="page" id="cap-10">
+  <div class="chapter" style="--rot:20deg"><div class="chapter-inner"><span class="dropnum">10</span><div><h2>Pruebas en vivo <span>con /tdd</span></h2><p class="pg-sub">Las pruebas reales del proyecto, test a test, con cada fallo de vuelta al agente.</p></div></div></div>
+
+  <p class="lead"><code>/tdd</code> abre el TDD Live Inspector debajo del panel lateral, en la misma columna. Detecta qué suites tiene sentido ejecutar en el proyecto abierto y las lanza.</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Suite</th><th>Se activa con</th><th>Comando</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Backend</strong></td><td><code>go.mod</code></td><td><code>go test -json ./...</code></td></tr>
+      <tr><td><strong>Frontend</strong></td><td><code>package.json</code> con script <code>test</code></td><td><code>npm test</code></td></tr>
+      <tr><td><strong>Playwright E2E</strong></td><td><code>playwright.config.*</code></td><td><code>npx playwright test --reporter=line</code></td></tr>
+      <tr><td><strong>CI &amp; Static</strong></td><td><code>go.mod</code> y/o <code>tsconfig.json</code></td><td><code>go vet ./...</code> y/o <code>npx tsc --noEmit</code></td></tr>
+      <tr><td><strong>Data &amp; Graph</strong></td><td>unidad HCD activa</td><td><code>mem hcd show --json</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Una suite que no aplica, o cuya herramienta falta, aparece como «omitida» con el motivo. Nunca cuenta como éxito ni como fallo, y las omitidas se agrupan al final.</p>
+
+  <div class="section-header"><h3>Qué ves mientras corre</h3></div>
+  <p>Los procesos se lanzan con <code>spawn</code>, sin shell, y la salida se lee línea a línea. Por eso el panel avanza mientras los tests se ejecutan: los que están en curso llevan el spinner braille de Pi, los aprobados se resumen en un conteo (<code>✓ 108 aprobados</code>) y cada fallo (<code>✗</code>) trae su archivo y línea, el paso de Playwright si lo hay, el mensaje real (por ejemplo <code>Expected 13 · Received 7</code>) y un diagnóstico.</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Subcomando</th><th>Efecto</th></tr></thead>
+    <tbody>
+      <tr><td><code>/tdd</code></td><td>Muestra u oculta el panel y lanza todas las suites.</td></tr>
+      <tr><td><code>/tdd run [suite]</code></td><td><code>all</code>, <code>backend</code>, <code>frontend</code>, <code>playwright</code>, <code>ci</code> o <code>data</code>. Si ya hay una ejecución en curso, la nueva queda en cola.</td></tr>
+      <tr><td><code>/tdd min</code></td><td>Minimiza o restaura el inspector (también <code>/tdd m</code>, <code>/tdd -</code> o clic en <code>[−]</code>).</td></tr>
+      <tr><td><code>/tdd watch</code></td><td>Ejecuta las pruebas al final de cada turno. Varios turnos durante una ejecución se agrupan en una sola pendiente.</td></tr>
+      <tr><td><code>/tdd report</code></td><td>Publica en el chat el informe de la última ejecución, con cada fallo. Queda en el contexto del modelo sin iniciar un turno.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="section-header"><h3>El bucle con el agente</h3></div>
+  <p>El modelo tiene su propia herramienta, <code>run_test_suite</code>. Devuelve cada fallo con suite, test, mensaje, ubicación, paso, diagnóstico y sugerencia, y envía avances mientras corre. Así Pi puede ejecutar, leer el fallo, corregir y volver a ejecutar sin que copies nada.</p>
+  <div class="flow">
+    <span class="fl-node">/tdd run backend</span><span class="fl-arrow">→</span>
+    <span class="fl-node">✗ 2 fallos</span><span class="fl-arrow">→</span>
+    <span class="fl-node">/tdd report</span><span class="fl-arrow">→</span>
+    <span class="fl-node hl">«corrige esos fallos»</span><span class="fl-arrow">→</span>
+    <span class="fl-node">run_test_suite</span><span class="fl-arrow">→</span>
+    <span class="fl-node">✓ verde</span>
+  </div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 10</span></div>
+</div>
+
+<!-- ═══ 11 ═══ -->
+<div class="page" id="cap-11">
+  <div class="chapter" style="--rot:60deg"><div class="chapter-inner"><span class="dropnum">11</span><div><h2>HCD <span>dentro de Pi</span></h2><p class="pg-sub">Cada cambio es una unidad con intención, tareas, evidencia y un cierre aprobado.</p></div></div></div>
+
+  <p class="lead">HCD (Harness Continual Development) es el protocolo de gomemory para llevar un cambio de la idea al cierre. El motor es <code>mem hcd</code>; las skills <code>hcd-*</code> lo conducen desde Pi, y la terminal queda como vía de respaldo.</p>
+
+  <div class="section-header"><h3>Dos carriles</h3></div>
+  <div class="grid g2">
+    <div class="card mint"><div class="card-title">Vía rápida <span class="badge b-mint">--lane fast</span></div><div class="card-body">Para fixes y cambios acotados.
+      <div class="flow" style="margin:10px 0 0"><span class="fl-node">/hcd</span><span class="fl-arrow">→</span><span class="fl-node">define</span><span class="fl-arrow">→</span><span class="fl-node">tasks</span><span class="fl-arrow">→</span><span class="fl-node">implement</span><span class="fl-arrow">→</span><span class="fl-node">verify</span><span class="fl-arrow">→</span><span class="fl-node hl">close</span></div></div></div>
+    <div class="card violet"><div class="card-title">Ceremonia completa <span class="badge b-violet">--lane full</span></div><div class="card-body">Para features y cambios con riesgo. Añade aclaraciones, aprobación citada de la definición y división en incrementos.
+      <div class="flow" style="margin:10px 0 0"><span class="fl-node">define</span><span class="fl-arrow">→</span><span class="fl-node">clarify</span><span class="fl-arrow">→</span><span class="fl-node">approve</span><span class="fl-arrow">→</span><span class="fl-node">slice</span><span class="fl-arrow">→</span><span class="fl-node">tasks</span><span class="fl-arrow">→</span><span class="fl-node">…</span></div></div></div>
+  </div>
+
+  <div class="section-header"><h3>Desde Pi</h3></div>
+  <p>Lo normal es pedirlo en lenguaje natural o forzar la skill de entrada. <code>/skill:hcd</code> elige el carril, crea o retoma la unidad y te dice el paso siguiente.</p>
+  <div class="code"><div class="code-head"><span>en Pi</span><button class="copy" type="button">Copiar</button></div><pre>/skill:hcd el panel lateral no muestra el error cuando el token caducó
+<span class="c"># Pi crea la unidad, redacta la definición y propone las tareas</span>
+/tasks
+<span class="c"># ○ 1 prueba que reproduce el fallo   ○ 2 corrección   ○ 3 documentación</span></pre></div>
+
+  <div class="section-header"><h3>El motor por debajo</h3></div>
+  <div class="code"><div class="code-head"><span>bash · vía de respaldo</span><button class="copy" type="button">Copiar</button></div><pre>mem hcd start --kind fix --lane fast --title "Error de token en sidebar" --why "el panel queda vacío"
+mem hcd show                         <span class="c"># unidad activa, paso y siguiente skill</span>
+mem hcd verify --task 1 --expect-fail -- 'go test ./pkg/installer -run TestToken'   <span class="c"># rojo</span>
+mem hcd verify --task 1 -- 'go test ./pkg/installer -run TestToken'                 <span class="c"># verde</span>
+mem hcd analyze                      <span class="c"># coherencia, sin escribir</span>
+mem hcd close --quote "aprobado"</pre></div>
+
+  <div class="grid g3">
+    <div class="card rose"><div class="card-title">Rojo antes del verde</div><div class="card-body">Con <code>--expect-fail</code> registras que la prueba falla antes del cambio. Sin ese paso no hay demostración de que la prueba mida algo.</div></div>
+    <div class="card amber"><div class="card-title">Evidencia que caduca</div><div class="card-body">Si el código cambia después de verificar, la tarea pasa a <code>◌</code> en <code>/tasks</code> y hay que volver a ejecutarla.</div></div>
+    <div class="card"><div class="card-title">Cierre citado</div><div class="card-body"><code>close</code> exige tu aprobación literal con <code>--quote</code>. El agente no cierra por su cuenta.</div></div>
+  </div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 11</span></div>
+</div>
+
+<!-- ═══ 12 ═══ -->
+<div class="page" id="cap-12">
+  <div class="chapter" style="--rot:100deg"><div class="chapter-inner"><span class="dropnum">12</span><div><h2>Revisión <span>independiente</span></h2><p class="pg-sub">Un segundo par de ojos que no ha visto la conversación.</p></div></div></div>
+
+  <p class="lead">Un modelo que revisa su propio trabajo en la misma sesión arrastra sus mismas suposiciones. pi-gomemory trae tres formas de revisión con distinto nivel de aislamiento.</p>
+
+  <div class="section-header"><h3>splash_review</h3></div>
+  <p>Es una herramienta de Pi que lanza una revisión en una sesión nueva, en memoria, sin historial, sin instrucciones del proyecto, sin skills ni extensiones. Solo tiene herramientas de lectura y no ve los servidores MCP. Recibe la ruta de un documento y, si quieres, una lente: seguridad, coherencia, alcance. Usa el modelo y la autenticación que tengas seleccionados en Pi, tiene un límite de cinco minutos y se puede cancelar.</p>
+  <div class="code"><div class="code-head"><span>en Pi</span><button class="copy" type="button">Copiar</button></div><pre>/reload    <span class="c"># una vez, después de instalar o actualizar</span>
+ejecuta splash_review sobre hcd/HCD-024.md con la lente "criterios de aceptación verificables"</pre></div>
+  <div class="infobox violet"><span class="lbl">Lo que Splash no hace</span><p>No aprueba nada ni registra decisiones HCD. La sesión principal lee el informe y decide. Un fallo de ejecución tampoco equivale a una revisión aprobada. La definición del rol vive en <code>config/splash.md</code> y no depende de Claude Code.</p></div>
+
+  <div class="section-header"><h3>ACR y ADM</h3></div>
+  <div class="grid g2">
+    <div class="card azure"><div class="card-title">ACR · Revisión Adversarial por Consenso</div><div class="card-body">Skill <code>adversarial-consensus-review</code>. Dos revisores independientes, un defecto se confirma solo por consenso, rondas de corrección acotadas y re-verificación. Las herramientas <code>review_*</code> de gomemory guardan cada paso.</div></div>
+    <div class="card rose"><div class="card-title">ADM · Auditoría Defensiva Multilenguaje</div><div class="card-body">Skill <code>defensive-qa-audit</code>. Busca fugas de credenciales, PII, recursos y errores expuestos en Go, TypeScript, Shell, SQL y CI. Cada hallazgo lleva evidencia reproducible y una propuesta de cierre.</div></div>
+  </div>
+  <p>Si escribes las siglas en el chat, Pi carga la skill correspondiente sin preguntar qué significan.</p>
+  <div class="code"><div class="code-head"><span>en Pi</span><button class="copy" type="button">Copiar</button></div><pre>haz un ACR del diff contra main
+ADM sobre extensions/gomemory-tdd.ts</pre></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 12</span></div>
+</div>
+
+<!-- ═══ 13 ═══ -->
+<div class="page" id="cap-13">
+  <div class="chapter" style="--rot:140deg"><div class="chapter-inner"><span class="dropnum">13</span><div><h2>Una sesión <span>de punta a punta</span></h2><p class="pg-sub">Un fix real, desde la terminal vacía hasta la unidad cerrada.</p></div></div></div>
+
+  <p class="lead">El ejemplo es pequeño a propósito. Lo que interesa es el orden: memoria primero, grafo después, prueba en rojo, cambio, prueba en verde, y lo aprendido guardado antes de salir.</p>
+
+  <ol class="steps">
+    <li><h4>Abrir</h4>
+      <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>cd ~/proyectos/pi-gomemory
+pi-gomemory</pre></div>
+      <p class="check">el banner con versiones y, en el contexto, las decisiones recientes del proyecto.</p></li>
+    <li><h4>Recordar</h4>
+      <p class="why">Pides: «¿qué sabemos del cálculo de cuotas?». Pi llama a <code>search_memories</code> y encuentra la decisión que fijó «nunca mostrar cifras aproximadas».</p></li>
+    <li><h4>Ubicar</h4>
+      <p class="why">«¿Dónde se construye la barra de cuota y quién la llama?». Pi usa <code>codegraph_explore</code> y recibe el código de <code>usage.go</code> con sus llamadores, sin abrir carpetas a ciegas.</p></li>
+    <li><h4>Abrir la unidad</h4>
+      <p class="why"><code>/skill:hcd</code> con la descripción del fallo. Vía rápida, tipo <code>fix</code>. <code>/tasks</code> muestra las tareas pendientes.</p></li>
+    <li><h4>Rojo, cambio, verde</h4>
+      <p class="why">Pi escribe la prueba y la registra en rojo con <code>--expect-fail</code>. Aplica el cambio, lanza <code>run_test_suite</code> y registra la evidencia en verde. En el panel de <code>/tdd</code> ves avanzar cada test.</p>
+      <p class="check">las tareas aparecen como <code>✓</code> en <code>/tasks</code>.</p></li>
+    <li><h4>Revisar</h4>
+      <p class="why">Para un cambio con riesgo, <code>splash_review</code> sobre el documento de la unidad, o un ACR del diff. Pi lee el informe y corrige lo confirmado.</p></li>
+    <li><h4>Cerrar y guardar</h4>
+      <p class="why">Das la aprobación y Pi ejecuta <code>mem hcd close --quote "…"</code>. Guarda el bug con su causa raíz con <code>save_memory</code> y termina con <code>end_session</code>, que deja un resumen para la próxima sesión.</p></li>
+  </ol>
+
+  <div class="infobox dark"><p><strong>La próxima vez</strong> que abras <code>pi-gomemory</code> en esa carpeta, el contexto incluirá la unidad cerrada, el bug y el resumen de la sesión. No hace falta volver a explicarle nada.</p></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 13</span></div>
+</div>
+
+<!-- ═══ 14 ═══ -->
+<div class="page" id="cap-14">
+  <div class="chapter" style="--rot:180deg"><div class="chapter-inner"><span class="dropnum">14</span><div><h2>Actualizar, diagnosticar, <span>desinstalar</span></h2><p class="pg-sub">Mantener el harness al día sin romper lo que ya funciona.</p></div></div></div>
+
+  <div class="section-header"><h3>Actualizar</h3></div>
+  <p>El launcher revisa siete componentes en cada arranque: pi-gomemory, <code>pi</code>, <code>mem</code>, <code>codegraph</code>, <code>codebase-memory-mcp</code>, <code>pi-antigravity</code> y <code>pi-cc-extensions</code>. Los dos plugins van fijados a la versión del catálogo oficial de Pi y solo cambian con una release nueva de pi-gomemory.</p>
+  <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>pi-gomemory-setup version        <span class="c"># versión instalada</span>
+pi-gomemory-setup check-update   <span class="c"># ¿hay release nueva? (caché de 24 h)</span>
+pi-gomemory-setup deps-refresh   <span class="c"># consulta las últimas versiones</span>
+pi-gomemory-setup deps-status    <span class="c"># lo desactualizado; sale con código 10 si hay algo</span>
+pi-gomemory-setup deps-update    <span class="c"># actualiza cada componente con su comando oficial</span>
+pi-gomemory-setup update         <span class="c"># solo pi-gomemory: descarga, verifica SHA256SUMS y reinstala</span></pre></div>
+  <p>Si el checksum no coincide, <code>update</code> rechaza la descarga y el binario actual no cambia. Después de actualizar, ejecuta <code>/reload</code> en Pi para cargar herramientas nuevas como <code>splash_review</code>.</p>
+
+  <div class="section-header"><h3>Reinstalar por partes</h3></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Comando</th><th>Qué rehace</th></tr></thead>
+    <tbody>
+      <tr><td><code>pi-gomemory-setup mcp</code></td><td>Solo las tres entradas de <code>mcp.json</code></td></tr>
+      <tr><td><code>pi-gomemory-setup theme</code></td><td>Solo el tema</td></tr>
+      <tr><td><code>pi-gomemory-setup plugin</code></td><td>Solo pi-antigravity y pi-cc-extensions</td></tr>
+      <tr><td><code>pi-gomemory-setup skills</code></td><td>Solo el repositorio de skills</td></tr>
+      <tr><td><code>pi-gomemory-setup harness</code></td><td>Solo el launcher</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="section-header"><h3>Desinstalar</h3></div>
+  <p>La desinstalación solo borra lo que puede demostrar que instaló. Compara la huella SHA256 de cada archivo con <code>~/.pi-gomemory/manifest.json</code>; si editaste algo, lo conserva y lo lista como omitido.</p>
+  <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>pi-gomemory-setup uninstall --dry-run         <span class="c"># qué se retiraría, sin tocar nada</span>
+pi-gomemory-setup uninstall                   <span class="c"># muestra el plan y pide confirmación</span>
+pi-gomemory-setup uninstall --yes --verbose   <span class="c"># sin preguntar, con log en ~/.pi-gomemory/uninstall.log</span>
+pi-gomemory-setup install                     <span class="c"># reinstalación limpia</span></pre></div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Opciones</div><div class="card-body"><ul>
+      <li><code>--packages</code> quita también los dos plugins de npm.</li>
+      <li><code>--self</code> borra el propio <code>pi-gomemory-setup</code>.</li>
+      <li><code>--yes</code> es obligatorio sin terminal interactiva.</li>
+    </ul></div></div>
+    <div class="card mint"><div class="card-title">Lo que conserva</div><div class="card-body">La memoria de gomemory (<code>mem</code>, su base de datos, <code>.gomemory/</code> y <code>hcd/</code>), tus skills, otros servidores MCP y los binarios <code>pi</code>, <code>mem</code>, <code>codegraph</code> y <code>codebase-memory-mcp</code>.</div></div>
+  </div>
+  <p>Tras desinstalar queda la marca <code>~/.pi-gomemory/uninstalled</code>, para que un launcher que siga en el sistema no reinstale skills al arrancar. <code>install</code> la retira.</p>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 14</span></div>
+</div>
+
+<!-- ═══ 15 ═══ -->
+<div class="page" id="cap-15">
+  <div class="chapter" style="--rot:220deg"><div class="chapter-inner"><span class="dropnum">15</span><div><h2>Otros agentes <span>y portapapeles</span></h2><p class="pg-sub">La memoria es una sola, aunque cambies de agente a mitad del día.</p></div></div></div>
+
+  <p class="lead">En Herdr es habitual tener Pi en un panel y Claude Code o Codex en otro. Todos pueden leer y escribir la misma memoria de gomemory; lo que cambia es quién los configura.</p>
+
+  <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>mem setup-mcp --scope global --agents claude,codex,agy,opencode</pre></div>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th></th><th>Pi</th><th>Claude Code</th><th>Codex</th><th>agy</th><th>OpenCode</th></tr></thead>
+    <tbody>
+      <tr><td>MCP gomemory, codegraph, codebase-memory</td><td>pi-gomemory</td><td>gomemory</td><td>gomemory</td><td>gomemory</td><td>gomemory</td></tr>
+      <tr><td>Skills</td><td>pi-gomemory</td><td>gomemory</td><td>gomemory</td><td>gomemory¹</td><td>gomemory</td></tr>
+      <tr><td>Tema, launcher y <code>usage</code></td><td>pi-gomemory</td><td colspan="4">no aplica</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:8.5pt;color:var(--faint)">¹ En agy las skills van a <code>~/.gemini/config/skills</code>. Hoy llegan 20 de las 21; falta <code>codebase-memory</code>.</p>
+  <p><code>pi-gomemory-setup doctor</code> detecta qué agentes hay en el <code>PATH</code> y muestra el comando que corresponde, sin modificar su configuración.</p>
+
+  <div class="section-header"><h3>Portapapeles</h3></div>
+  <p>Pi y Herdr usan el portapapeles del sistema. <code>doctor</code> comprueba que las herramientas existan, sin leer ni escribir su contenido.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Entorno</th><th>Herramientas</th><th>Instalación</th></tr></thead>
+    <tbody>
+      <tr><td>macOS</td><td><code>pbcopy</code>, <code>pbpaste</code></td><td>Incluidas en el sistema</td></tr>
+      <tr><td>Linux X11 o WSL con WSLg</td><td><code>xclip</code> y <code>DISPLAY</code></td><td><code>sudo apt-get install xclip</code></td></tr>
+      <tr><td>Linux Wayland</td><td><code>wl-copy</code>, <code>wl-paste</code></td><td><code>sudo apt-get install wl-clipboard</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="infobox amber"><span class="lbl">Por SSH</span><p>Tener el ejecutable no garantiza la conexión gráfica. En un servidor sin escritorio, lo que copia al portapapeles de tu máquina es el soporte OSC 52 del terminal; instalar <code>xclip</code> en el servidor no lo resuelve.</p></div>
+
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 15</span></div>
+</div>
+
+<!-- ═══ 16 ═══ -->
+<div class="page" id="cap-16">
+  <div class="chapter" style="--rot:260deg"><div class="chapter-inner"><span class="dropnum">16</span><div><h2>Reglas <span>de campo</span></h2><p class="pg-sub">Avisos que ya no verás, problemas frecuentes y unos cuantos hábitos.</p></div></div></div>
+
+  <div class="section-header"><h3>Avisos de Pi que el instalador evita</h3></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Aviso</th><th>Causa</th><th>Qué hace pi-gomemory</th></tr></thead>
+    <tbody>
+      <tr><td><code>name "…" collision</code></td><td>La misma skill en varias carpetas de agentes</td><td>Registra solo <code>~/.pi-gomemory/skills</code> con prioridad fija</td></tr>
+      <tr><td><code>failed to parse skill file</code></td><td>Dos puntos sin comillas en <code>description:</code></td><td><code>SanitizeFrontmatter</code> entrecomilla el valor</td></tr>
+      <tr><td>host-provided extension packages</td><td><code>pi-antigravity</code> declara <code>typebox</code> en <code>dependencies</code></td><td>Lo mueve a <code>peerDependencies</code></td></tr>
+      <tr><td>Banner tapado</td><td>Cabecera de pi-cc-extensions activa</td><td>Fija <code>showStartupHeader: false</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="section-header"><h3>Problemas frecuentes</h3></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Síntoma</th><th>Qué revisar</th></tr></thead>
+    <tbody>
+      <tr><td>Pi abre sin contexto del proyecto</td><td>¿Lo abriste con <code>pi-gomemory</code> y no con <code>pi</code>? ¿Existe <code>.gomemory/memories.db</code>? Si no, <code>mem init</code>.</td></tr>
+      <tr><td><code>command not found: pi-gomemory</code></td><td><code>~/.local/bin</code> no está en el <code>PATH</code>.</td></tr>
+      <tr><td>El clic en <code>[−]</code> no hace nada</td><td>Pi está en <code>--tui-mode regular</code>. Usa <code>/sidebar min</code>, <code>/tdd min</code> o <code>/min</code>.</td></tr>
+      <tr><td>El panel lateral no aparece</td><td>La terminal mide menos de 100 columnas.</td></tr>
+      <tr><td>Error de Anthropic en el panel</td><td>Token caducado: abre <code>pi</code> para renovarlo. Binario antiguo: <code>pi-gomemory-setup update</code>.</td></tr>
+      <tr><td><code>splash_review</code> no existe</td><td>Ejecuta <code>/reload</code> en Pi después de instalar o actualizar.</td></tr>
+      <tr><td>La instalación se detiene con un JSON</td><td>Ese archivo ya era inválido. Corrígelo; el instalador no lo tocó.</td></tr>
+      <tr><td>Una suite de <code>/tdd</code> sale «omitida»</td><td>Falta el archivo que la activa o la herramienta (<code>npx</code>, <code>go</code>). El motivo aparece junto a la suite.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="section-header"><h3>Hábitos que funcionan</h3></div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Pregunta a la memoria antes de rehacer</div><div class="card-body">Si una decisión te suena, pide «busca en la memoria» antes de discutirla otra vez.</div></div>
+    <div class="card azure"><div class="card-title">Deja que el grafo localice</div><div class="card-body">Para «dónde» y «quién llama», el grafo responde en una llamada lo que grep tarda varias en aproximar.</div></div>
+    <div class="card violet"><div class="card-title">Planifica con /plan</div><div class="card-body">En cambios grandes, revisa el árbol de tareas sin riesgo de que Pi empiece a editar.</div></div>
+    <div class="card mint"><div class="card-title">Comprueba lo que se instala</div><div class="card-body">Un test que pasa en un fixture no demuestra el caso real. Si un cambio no se ve, revisa primero el binario, la caché o la ruta que de verdad se está usando.</div></div>
+  </div>
+
+  <!-- Colofón -->
+  <div class="colophon">
+    <div class="brand"><svg class="logo" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22e3f7"/><stop offset=".55" stop-color="#2c8ff0"/><stop offset="1" stop-color="#6b56d4"/></linearGradient></defs><path fill="url(#lg3)" d="M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z"/><ellipse cx="13" cy="24" rx="3" ry="6" fill="#fff" opacity=".35"/></svg><b>pi-<em>gomemory</em></b></div>
+    <p class="colophon-voice">Un binario para montar el harness, <span>y Pi recuerda lo que hiciste ayer</span></p>
+    <p class="colophon-sub">Referencias usadas para esta guía. Los documentos de <code>docs/</code> amplían cada capítulo.</p>
+    <ul class="refs">
+      <li><a href="https://github.com/Sayoner-000/pi-gomemory">Sayoner-000/pi-gomemory</a> · repositorio y releases</li>
+      <li><a href="https://github.com/Sayoner-000/gomemory">Sayoner-000/gomemory</a> · memoria y HCD</li>
+      <li><a href="https://github.com/colbymchenry/codegraph">colbymchenry/codegraph</a> · CodeGraph</li>
+      <li><a href="https://github.com/DeusData/codebase-memory-mcp">DeusData/codebase-memory-mcp</a></li>
+      <li><a href="architecture.md">architecture.md</a> · embebido, fusión y extensiones</li>
+      <li><a href="installation.md">installation.md</a> · instalación y desinstalación</li>
+      <li><a href="usage.md">usage.md</a> · comandos y paneles</li>
+      <li><a href="SPLASH.md">SPLASH.md</a> · <a href="PORTAPAPELES.md">PORTAPAPELES.md</a></li>
+    </ul>
+    <div class="colophon-meta"><span><b>Edición</b> 1</span><span><b>pi-gomemory</b> 1.11.0</span><span><b>Pi</b> 1.5.2</span><span><b>gomemory</b> 2.54.1</span><span><b>Basada en</b> Guía SDD_HCD gomemory v2.54</span></div>
+  </div>
+  <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 16</span></div>
+</div>
+
+</div>
+
+<script>
+/* Barra de lectura, índice activo, tema y copiar (solo pantalla) */
+(function () {
+  var bar = document.querySelector('.readbar i');
+  var links = [].slice.call(document.querySelectorAll('.toc a'));
+  function onScroll() {
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    if (bar) bar.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, h.scrollTop / max) : 0) + ')';
+  }
+  addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  var root = document.documentElement, btn = document.getElementById('themeBtn');
+  try { var saved = localStorage.getItem('guia-pi-gomemory-theme'); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+  if (btn) btn.addEventListener('click', function () {
+    var cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('guia-pi-gomemory-theme', next); } catch (e) {}
+  });
+
+  document.querySelectorAll('.copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var pre = b.closest('.code').querySelector('pre');
+      var text = pre ? pre.innerText : '';
+      function done() { var t = b.textContent; b.textContent = 'Copiado'; setTimeout(function () { b.textContent = t; }, 1400); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () {});
+    });
+  });
+
+  if (!('IntersectionObserver' in window)) return;
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      links.forEach(function (a) { a.removeAttribute('aria-current'); });
+      var a = byId[e.target.id];
+      if (a) {
+        a.setAttribute('aria-current', 'location');
+        var toc = a.parentNode;
+        toc.scrollTo({ left: a.offsetLeft - toc.clientWidth / 3, behavior: 'smooth' });
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px' });
+  Object.keys(byId).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+})();
+</script>
+</body>
+</html>
