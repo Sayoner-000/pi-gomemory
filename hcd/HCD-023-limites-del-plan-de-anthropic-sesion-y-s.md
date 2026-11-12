@@ -102,17 +102,28 @@ Mostrar solo los tokens consumidos en local, sin red. No requiere el endpoint, p
 - 2026-11-11 19:46 -05:00 · tarea 5 · verde · caducada · `go test ./... -count=1 && go vet ./...` (salida 0)
       ?   	pi-gomemory	[no test files]
       ok  	pi-gomemory/pkg/installer	15.638s
-- 2026-11-11 19:47 -05:00 · tarea 1 · verde · vigente · `go test ./pkg/installer -run TestHCD023FetchAnthropicUsage -count=1` (salida 0)
+- 2026-11-11 19:47 -05:00 · tarea 1 · verde · caducada · `go test ./pkg/installer -run TestHCD023FetchAnthropicUsage -count=1` (salida 0)
       ok  	pi-gomemory/pkg/installer	0.203s
-- 2026-11-11 19:47 -05:00 · tarea 2 · verde · vigente · `go test ./pkg/installer -run TestHCD023AnthropicUsageErrors -count=1` (salida 0)
+- 2026-11-11 19:47 -05:00 · tarea 2 · verde · caducada · `go test ./pkg/installer -run TestHCD023AnthropicUsageErrors -count=1` (salida 0)
       ok  	pi-gomemory/pkg/installer	0.159s
-- 2026-11-11 19:47 -05:00 · tarea 3 · verde · vigente · `go test ./pkg/installer -run TestHCD023CommandRegistered -count=1` (salida 0)
+- 2026-11-11 19:47 -05:00 · tarea 3 · verde · caducada · `go test ./pkg/installer -run TestHCD023CommandRegistered -count=1` (salida 0)
       ok  	pi-gomemory/pkg/installer	0.139s
-- 2026-11-11 19:47 -05:00 · tarea 4 · verde · vigente · `go test ./pkg/installer -run TestHCD023SidebarPlanLimits -count=1` (salida 0)
+- 2026-11-11 19:47 -05:00 · tarea 4 · verde · caducada · `go test ./pkg/installer -run TestHCD023SidebarPlanLimits -count=1` (salida 0)
       ok  	pi-gomemory/pkg/installer	0.268s
-- 2026-11-11 19:47 -05:00 · tarea 5 · verde · vigente · `go test ./... -count=1 && go vet ./...` (salida 0)
+- 2026-11-11 19:47 -05:00 · tarea 5 · verde · caducada · `go test ./... -count=1 && go vet ./...` (salida 0)
       ?   	pi-gomemory	[no test files]
       ok  	pi-gomemory/pkg/installer	15.736s
+- 2026-11-11 19:51 -05:00 · tarea 1 · verde · vigente · `go test ./pkg/installer -run TestHCD023FetchAnthropicUsage -count=1` (salida 0)
+      ok  	pi-gomemory/pkg/installer	0.153s
+- 2026-11-11 19:51 -05:00 · tarea 2 · verde · vigente · `go test ./pkg/installer -run TestHCD023AnthropicUsageErrors -count=1` (salida 0)
+      ok  	pi-gomemory/pkg/installer	0.163s
+- 2026-11-11 19:51 -05:00 · tarea 3 · verde · vigente · `go test ./pkg/installer -run TestHCD023CommandRegistered -count=1` (salida 0)
+      ok  	pi-gomemory/pkg/installer	0.141s
+- 2026-11-11 19:51 -05:00 · tarea 4 · verde · vigente · `go test ./pkg/installer -run TestHCD023SidebarPlanLimits -count=1` (salida 0)
+      ok  	pi-gomemory/pkg/installer	0.268s
+- 2026-11-11 19:51 -05:00 · tarea 5 · verde · vigente · `go test ./... -count=1 && go vet ./...` (salida 0)
+      ?   	pi-gomemory	[no test files]
+      ok  	pi-gomemory/pkg/installer	15.504s
 
 ## Siguiente
-pendiente
+Cerrada con aprobación sobre la revisión 52ce9ca5dbc1.

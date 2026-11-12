@@ -79,8 +79,14 @@ func FetchAnthropicUsage(piAgentDir string) (*AnthropicUsage, error) {
 	if len(body) > maxAnthropicUsageBody {
 		return nil, errors.New("respuesta de uso de Anthropic mayor que 1 MiB; se descarta")
 	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("uso de Anthropic: HTTP %d (¿sesión caducada? abre pi para renovarla)", resp.StatusCode)
+	switch {
+	case resp.StatusCode == http.StatusTooManyRequests:
+		// Límite de frecuencia del endpoint, no un problema de sesión (HCD-024).
+		return nil, errors.New("uso de Anthropic: HTTP 429, límite de frecuencia de consulta; se actualizará con la próxima respuesta del modelo")
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return nil, fmt.Errorf("uso de Anthropic: HTTP %d, sesión no válida: abre pi para renovarla", resp.StatusCode)
+	case resp.StatusCode != http.StatusOK:
+		return nil, fmt.Errorf("uso de Anthropic: HTTP %d", resp.StatusCode)
 	}
 
 	var r anthropicUsageResponse

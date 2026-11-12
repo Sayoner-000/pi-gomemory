@@ -65,17 +65,28 @@ Cambiar las descripciones para que digan lo que hacen («/min alterna el sidebar
       FAIL
       FAIL	pi-gomemory/pkg/installer	0.264s
       FAIL
-- 2026-11-11 19:35 -05:00 · tarea 1 · verde · vigente · `go test ./pkg/installer -run HCD022 -count=1` (salida 0)
+- 2026-11-11 19:35 -05:00 · tarea 1 · verde · caducada · `go test ./pkg/installer -run HCD022 -count=1` (salida 0)
       ok  	pi-gomemory/pkg/installer	0.891s
-- 2026-11-11 19:35 -05:00 · tarea 2 · verde · vigente · `go test ./pkg/installer -run TestHCD022MinBothPanels -count=1` (salida 0)
+- 2026-11-11 19:35 -05:00 · tarea 2 · verde · caducada · `go test ./pkg/installer -run TestHCD022MinBothPanels -count=1` (salida 0)
       ok  	pi-gomemory/pkg/installer	0.299s
-- 2026-11-11 19:35 -05:00 · tarea 3 · verde · vigente · `go test ./pkg/installer -run TestHCD022TddReport -count=1` (salida 0)
+- 2026-11-11 19:35 -05:00 · tarea 3 · verde · caducada · `go test ./pkg/installer -run TestHCD022TddReport -count=1` (salida 0)
       ok  	pi-gomemory/pkg/installer	0.561s
-- 2026-11-11 19:35 -05:00 · tarea 4 · verde · vigente · `go test ./pkg/installer -run TestHCD022StatusNoEmoji -count=1` (salida 0)
+- 2026-11-11 19:35 -05:00 · tarea 4 · verde · caducada · `go test ./pkg/installer -run TestHCD022StatusNoEmoji -count=1` (salida 0)
       ok  	pi-gomemory/pkg/installer	0.253s
-- 2026-11-11 19:35 -05:00 · tarea 5 · verde · vigente · `go test ./... -count=1 && go vet ./...` (salida 0)
+- 2026-11-11 19:35 -05:00 · tarea 5 · verde · caducada · `go test ./... -count=1 && go vet ./...` (salida 0)
       ?   	pi-gomemory	[no test files]
       ok  	pi-gomemory/pkg/installer	15.274s
+- 2026-11-11 19:51 -05:00 · tarea 1 · verde · vigente · `go test ./pkg/installer -run HCD022 -count=1` (salida 0)
+      ok  	pi-gomemory/pkg/installer	0.980s
+- 2026-11-11 19:51 -05:00 · tarea 2 · verde · vigente · `go test ./pkg/installer -run TestHCD022MinBothPanels -count=1` (salida 0)
+      ok  	pi-gomemory/pkg/installer	0.310s
+- 2026-11-11 19:51 -05:00 · tarea 3 · verde · vigente · `go test ./pkg/installer -run TestHCD022TddReport -count=1` (salida 0)
+      ok  	pi-gomemory/pkg/installer	0.554s
+- 2026-11-11 19:51 -05:00 · tarea 4 · verde · vigente · `go test ./pkg/installer -run TestHCD022StatusNoEmoji -count=1` (salida 0)
+      ok  	pi-gomemory/pkg/installer	0.266s
+- 2026-11-11 19:51 -05:00 · tarea 5 · verde · vigente · `go test ./... -count=1 && go vet ./...` (salida 0)
+      ?   	pi-gomemory	[no test files]
+      ok  	pi-gomemory/pkg/installer	15.834s
 
 ## Siguiente
-pendiente
+Cerrada con aprobación sobre la revisión cd89451e79b7.

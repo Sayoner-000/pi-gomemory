@@ -118,7 +118,46 @@ export function anthropicPlanErrorMessage(stderr: string): string {
 	if (/Comando desconocido: anthropic-usage/.test(stderr || "")) {
 		return "pi-gomemory-setup sin anthropic-usage: ejecuta pi-gomemory-setup update";
 	}
+	// Un 429 es el límite de frecuencia del endpoint de uso, no una sesión caducada (HCD-024).
+	if (/HTTP 429/.test(stderr || "")) {
+		return "Límite de consultas de Anthropic (429): se actualiza con la próxima respuesta del modelo";
+	}
 	return parseCleanQuotaError(stderr);
+}
+
+/** Tiempo hasta un reinicio, como formatResetTime de Go: «4d 6h», «2h 14m», «9m». */
+export function formatResetIn(resetsAtMs: number, nowMs = Date.now()): string {
+	const diff = resetsAtMs - nowMs;
+	if (!Number.isFinite(diff)) return "";
+	if (diff <= 0) return "now";
+	const mins = Math.floor(diff / 60000);
+	const days = Math.floor(mins / 1440);
+	const hours = Math.floor((mins % 1440) / 60);
+	if (days > 0) return `${days}d ${hours}h`;
+	if (hours > 0) return `${hours}h ${mins % 60}m`;
+	return `${mins}m`;
+}
+
+/**
+ * Límites del plan desde las cabeceras que Anthropic envía en CADA respuesta del modelo
+ * (after_provider_response), como claude-token-usage: sin consultas propias, sin 429.
+ * Devuelve null si la respuesta no trae cabeceras de límite (otro proveedor).
+ */
+export function planFromRateLimitHeaders(headers: Record<string, unknown> | undefined): AnthropicPlanInfo | null {
+	if (!headers) return null;
+	const get = (k: string) => {
+		const v = headers[k] ?? headers[k.toLowerCase()];
+		return v === undefined || v === null ? undefined : String(v);
+	};
+	const limits: AnthropicLimitInfo[] = [];
+	for (const [win, name] of [["5h", "Sesión"], ["7d", "Semana"]] as const) {
+		const util = Number.parseFloat(get(`anthropic-ratelimit-unified-${win}-utilization`) ?? "");
+		if (!Number.isFinite(util)) continue;
+		const resetSec = Number.parseInt(get(`anthropic-ratelimit-unified-${win}-reset`) ?? "", 10);
+		const resetsAt = Number.isFinite(resetSec) ? new Date(resetSec * 1000).toISOString() : "";
+		limits.push({ name, percent: Math.round(util * 1000) / 10, resetsAt, resetIn: resetsAt ? formatResetIn(resetSec * 1000) : "" });
+	}
+	return limits.length ? { limits } : null;
 }
 
 /** Límite del plan de Anthropic (pi-gomemory-setup anthropic-usage). */
@@ -343,7 +382,10 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 				const label = theme.fg("text", limit.name.padEnd(6, " "));
 				const bar = theme.fg(color, formatProgressBar(used / 100, 8));
 				const pct = theme.fg("text", `${used.toFixed(0).padStart(3, " ")}%`);
-				const reset = limit.resetIn ? theme.fg("dim", ` · ${limit.resetIn}`) : "";
+				// Se recalcula al pintar: la lectura puede tener minutos y la cuenta atrás no se congela.
+				const resetAtMs = Date.parse(limit.resetsAt);
+				const resetIn = Number.isFinite(resetAtMs) ? formatResetIn(resetAtMs) : limit.resetIn;
+				const reset = resetIn ? theme.fg("dim", ` · ${resetIn}`) : "";
 				lines.push(border("│") + padLine(`  ${label} ${bar} ${pct}${reset}`) + border("│"));
 			}
 		}
@@ -540,19 +582,36 @@ export default function (pi: ExtensionAPI) {
 	let cachedAnthropicPlanError: string | undefined = undefined;
 	let lastAnthropicPlanFetch = 0;
 	let anthropicPlanInflight = false;
+	/** La lectura vino de las cabeceras de una respuesta del modelo (fuente principal). */
+	let anthropicPlanFromHeaders = false;
+	/** Tras un fallo de anthropic-usage no se reintenta antes de esto (evita el 429). */
+	const ANTHROPIC_FETCH_RETRY_MS = 5 * 60 * 1000;
 
-	/** Límites del plan de la conexión OAuth de Pi con Anthropic (sesión y semana). */
-	async function refreshAnthropicPlanIfNeeded(ctx: any, force = false) {
-		if (!isClaude(ctx) || anthropicPlanInflight) return;
-		if (!shouldRefreshQuota(Date.now(), lastAnthropicPlanFetch, force, !!cachedAnthropicPlanError, QUOTA_TTL_MS, QUOTA_ERROR_BACKOFF_MS)) {
-			return;
-		}
+	// Fuente principal: cada respuesta de Anthropic trae el uso del plan en sus cabeceras.
+	pi.on("after_provider_response", async (event: any, _ctx: any) => {
+		const plan = planFromRateLimitHeaders(event?.headers);
+		if (!plan) return; // otro proveedor o respuesta sin cabeceras de límite: se conserva la lectura
+		cachedAnthropicPlan = plan;
+		cachedAnthropicPlanError = undefined;
+		anthropicPlanFromHeaders = true;
+		requestRender?.();
+	});
+
+	/**
+	 * Respaldo: una sola consulta a anthropic-usage al abrir el panel, solo si aún no llegó
+	 * ninguna respuesta del modelo. Nunca se sondea (cada 30 s y en cada turno daba HTTP 429).
+	 */
+	async function refreshAnthropicPlanIfNeeded(ctx: any) {
+		if (!isClaude(ctx) || anthropicPlanInflight || anthropicPlanFromHeaders || cachedAnthropicPlan) return;
+		if (lastAnthropicPlanFetch && Date.now() - lastAnthropicPlanFetch < ANTHROPIC_FETCH_RETRY_MS) return;
 		anthropicPlanInflight = true;
 		try {
 			const r = await pi.exec("pi-gomemory-setup", ["anthropic-usage"], { timeout: 12000 });
 			lastAnthropicPlanFetch = Date.now();
 			const parsed = r.code === 0 && r.stdout ? JSON.parse(r.stdout) : null;
-			if (parsed && Array.isArray(parsed.limits) && parsed.limits.length > 0) {
+			if (anthropicPlanFromHeaders) {
+				// Llegó una respuesta del modelo mientras tanto: su lectura es más reciente.
+			} else if (parsed && Array.isArray(parsed.limits) && parsed.limits.length > 0) {
 				cachedAnthropicPlan = parsed as AnthropicPlanInfo;
 				cachedAnthropicPlanError = undefined;
 			} else {
@@ -571,8 +630,6 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	async function refreshClaudeUsageIfNeeded(ctx: any, force = false) {
-		// Los límites del plan se refrescan en los mismos momentos que el uso de Claude Code.
-		void refreshAnthropicPlanIfNeeded(ctx, force);
 		if (!isClaude(ctx) || claudeInflight) {
 			return;
 		}
@@ -670,6 +727,7 @@ export default function (pi: ExtensionAPI) {
 		cachedTitle = await fetchTitle(ctx);
 		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
+		void refreshAnthropicPlanIfNeeded(ctx); // respaldo de una sola consulta; luego mandan las cabeceras
 
 		visible = true;
 
