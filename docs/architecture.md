@@ -85,7 +85,10 @@ gomemory-tasks.ts:
 Extensión en TypeScript que muestra sobre el editor de Pi las tareas de la unidad HCD activa con su estado de verificación (`✓`, `○`, `◌`, `✗`), actualizándose reactivamente tras cada comando `mem hcd`. Se activa o desactiva con `/tasks`.
 
 gomemory-sidebar.ts:
-Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral derecho (`anchor: "top-right"`, 36 cols, responsive) con la sesión/HCD activo, métricas de contexto en vivo (tokens, porcentaje y coste) y conectividad de servidores MCP. Se activa o desactiva con `/sidebar` y no captura el teclado (`nonCapturing`).
+Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral derecho (`anchor: "top-right"`, 36 cols, responsive) con la sesión/HCD activo, métricas de contexto en vivo (tokens, porcentaje y coste) y conectividad de servidores MCP. Se activa o desactiva con `/sidebar` y no captura el teclado (`nonCapturing`). Publica su altura en un estado compartido (`globalThis[Symbol.for("pi-gomemory.dock")]`) para que `/tdd` se apile debajo. En `fullscreen`, pi-tui entrega un clic como `press → release → click`; el panel alterna solo con el `click` de su cabecera.
+
+gomemory-tdd.ts:
+Extensión en TypeScript del TDD Live Inspector (`/tdd`, tool `run_test_suite`). `detectSuites` decide qué ejecutar según los archivos del proyecto. `streamLines` lanza cada comando con `spawn` (sin shell) y entrega la salida línea a línea, porque `pi.exec` solo la devuelve al terminar. Los parsers de `go test -json` y del reporter `line` de Playwright llevan cada test al `TDDStore` en vivo, con su mensaje, archivo:línea y duración reales. Las ejecuciones se encadenan para no pisar el mismo store, y el modo watch agrupa los turnos en una sola ejecución pendiente.
 
 ## Sanitización de skills
 

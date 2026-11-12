@@ -4,6 +4,35 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.10.0] - 2026-11-11
+
+### Added
+- **Ejecución real en `/tdd` (HCD-020):** las suites se detectan según el proyecto abierto (`go.mod` → `go test -json ./...` y `go vet ./...`; `package.json` con script `test` → `npm test`; `tsconfig.json` → `npx tsc --noEmit`; `playwright.config.*` → `npx playwright test --reporter=line`). Lo que no aplica, o cuya herramienta falta, aparece como «omitida» con su motivo.
+- **Recorrido en vivo:** los procesos se lanzan con `spawn` (sin shell) y la salida se procesa línea a línea, así que el panel avanza test a test mientras corren, con la duración real de cada uno.
+- **Detalle de cada fallo:** mensaje real, `archivo:línea`, paso fallido de Playwright (`› título › paso`) y un resumen `Expected · Received`, además del diagnóstico.
+- **Bucle con el agente:** `run_test_suite` devuelve cada fallo con su suite, test, mensaje, ubicación, paso, diagnóstico y sugerencia, y envía avances mientras corre.
+- **Clic para minimizar y expandir (HCD-019):** clic en `[−]` o `[+]` en la cabecera de `/sidebar` y `/tdd` (modo `fullscreen` de Pi).
+- **Referencia de comandos** en el README: comandos del CLI que faltaban (`check-update`, `deps-refresh`, `claude-usage`, `uninstall`) y una tabla de los comandos dentro de Pi.
+
+### Changed
+- **Panel `/tdd`:** muestra solo las suites habilitadas y, dentro de cada una, los tests en curso y los fallidos; los aprobados se resumen en un conteo y las omitidas se agrupan al final. Sin emoji: el test en curso usa el spinner braille de pi-tui y el resto, `✓ ✗ ○ –`.
+- **Paneles apilados:** `/tdd` se coloca debajo de `/sidebar`, en la misma columna, y se reubica cuando el sidebar cambia de altura.
+- **Modo minimizado:** ocupa una sola fila, sin el relleno de 26 filas en blanco que tapaba la conversación.
+- **Modo watch:** varios turnos durante una ejecución se agrupan en una sola ejecución pendiente, y `/tdd run` avisa cuando queda en cola.
+
+### Fixed
+- **Clic sin efecto:** pi-tui entrega un clic como `press → release → click` y los paneles alternaban en `press` y en `click`, así que se minimizaban y restauraban en el mismo gesto. Ahora solo alterna el `click`.
+- **Resultados falsos en `/tdd`:** Playwright se marcaba como aprobado sin ejecutar nada; Frontend fallaba siempre porque `node --check` no admite TypeScript; Data fallaba sin unidad HCD activa. Hallazgos C-001 y C-002 de la auditoría v1.9.0.
+- **Rutas fijas:** `/tdd` ya no asume `./pkg/installer` y funciona en cualquier repositorio Go (C-006).
+- **`[−]` oculto con títulos largos:** el título del sidebar se recorta reservando el espacio del control (C-004).
+- **Diagnóstico de errores de sintaxis:** «unexpected token» ya no se clasifica como discrepancia de contrato.
+
+### Security
+- **`fetchQuota` limitado a 1 MiB:** una respuesta mayor se rechaza con un error explícito, en lugar de cargarse entera en memoria (C-005).
+
+### Documentation
+- Guía de `/tdd` y `/sidebar` en `docs/usage.md`, arquitectura de `gomemory-tdd.ts` en `docs/architecture.md`, informe de la auditoría ACR/ADM v1.9.0 en `docs/audits/`, y referencias de versión, badge, instalador y script de build actualizados a `v1.10.0`.
+
 ## [v1.9.0] - 2026-11-11
 
 ### Added

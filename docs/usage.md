@@ -93,18 +93,40 @@ Muestra u oculta, encima del editor, las tareas de la unidad HCD activa (`✓` v
 ### Panel lateral estilo OpenCode (`/sidebar`)
 Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), cuotas de Google AI Pro o Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
 
-- `/sidebar min` (o alias `/sidebar m`, `/sidebar -`): Alterna el modo minimizado a una sola fila compacta (`[ HCD · ... [+] ]`).
-- `/min`: Alterna de inmediato el estado minimizado/restaurado.
+- Clic en `[−]` de la cabecera: minimiza el panel a una sola fila (`[ HCD · ... [+] ]`); clic en `[+]`: lo restaura. El ratón solo funciona en el modo `fullscreen` de Pi (el predeterminado); en `--tui-mode regular` usa los comandos.
+- `/sidebar min` (o alias `/sidebar m`, `/sidebar -`): alterna el modo minimizado desde el teclado.
+- `/min`: alterna el modo minimizado del panel lateral.
+
+Con un título largo, el título se recorta con `…` y el control `[−]` sigue visible.
 
 ### Inspector de pruebas en tiempo real (`/tdd`)
-Alterna la visibilidad del overlay flotante **TDD Live Inspector** en la esquina superior derecha.
-- Ejecuta y visualiza paso a paso pruebas multi-dominio: **Backend** (pruebas Go en tiempo real vía `-json`), **Frontend** (sintaxis de extensiones TypeScript), **Playwright E2E**, **CI & Static** (`go vet`) y **Data & Graph** (integridad de la unidad HCD y grafo de memoria).
-- Subcomandos:
-  - `/tdd run [suite]`: Ejecuta la suite especificada (`all`, `backend`, `frontend`, `playwright`, `ci`, `data`).
-  - `/tdd min` (o alias `/tdd m`, `/tdd -`): Minimiza el inspector a una sola fila compacta apilada verticalmente bajo el sidebar sin solaparse.
-  - `/tdd watch`: Alterna el modo reactivo que ejecuta las pruebas automáticamente tras cada turno (`turn_end`).
-  - `/tdd report`: Genera un resumen estructurado del estado de las pruebas.
-- Herramienta de agente: Registra la tool `run_test_suite` para que el modelo pueda ejecutar pruebas de forma autónoma durante ciclos TDD.
+Abre el overlay **TDD Live Inspector**. Se coloca debajo del panel lateral, en la misma columna derecha, sin solaparse, y ejecuta las pruebas **reales** del proyecto abierto.
+
+**Suites según el proyecto.** Cada suite se activa solo si el proyecto tiene lo que necesita; si no, aparece como «omitida» con su motivo, nunca como éxito ni como fallo:
+
+| Suite | Se activa con | Comando |
+|---|---|---|
+| Backend | `go.mod` | `go test -json ./...` |
+| Frontend | `package.json` con script `test` | `npm test` |
+| Playwright E2E | `playwright.config.*` | `npx playwright test --reporter=line` |
+| CI & Static | `go.mod` y/o `tsconfig.json` | `go vet ./...` y/o `npx tsc --noEmit` |
+| Data & Graph | unidad HCD activa | `mem hcd show --json` |
+
+**Recorrido en vivo.** Los procesos se ejecutan sin shell y su salida se lee línea a línea, así que el panel avanza test a test mientras corren. Muestra solo las suites habilitadas y, dentro de cada una:
+- los tests en curso, con el spinner braille de Pi (`⠋⠙⠹…`);
+- los fallidos (`✗`), con archivo:línea, el paso que falló (Playwright), el mensaje real (por ejemplo, `Expected 13 · Received 7`) y un diagnóstico;
+- los aprobados, resumidos en un conteo (`✓ 108 aprobados`).
+
+Las suites omitidas aparecen agrupadas al final, bajo «Omitidas (n)».
+
+**Subcomandos:**
+- `/tdd`: muestra u oculta el panel y lanza todas las suites.
+- `/tdd run [suite]`: ejecuta `all` o una suite (`backend`, `frontend`, `playwright`, `ci`, `data`). Si ya hay una ejecución en curso, avisa y la nueva queda en cola.
+- `/tdd min` (o alias `/tdd m`, `/tdd -`), o clic en `[−]` / `[+]`: minimiza o restaura el panel.
+- `/tdd watch`: ejecuta las pruebas tras cada turno (`turn_end`). Varios turnos durante una ejecución se agrupan en una sola ejecución pendiente.
+- `/tdd report`: solo notifica; el informe detallado lo devuelve la tool `run_test_suite`.
+
+**Herramienta del agente (`run_test_suite`).** Devuelve al modelo cada fallo con su suite, test, mensaje, ubicación, paso, diagnóstico y sugerencia, para que corrija y vuelva a ejecutar. Mientras corre, envía avances.
 
 ### Barra de tokens (`/tokens`)
 Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens de entrada, salida, lecturas de caché y coste estimado.
