@@ -172,6 +172,18 @@ export interface AnthropicPlanInfo {
 	limits: AnthropicLimitInfo[];
 }
 
+export interface CodexLimitInfo {
+	name: string;
+	percent: number;
+	resetsAt: string;
+	resetIn: string;
+}
+
+export interface CodexQuotaInfo {
+	planType?: string;
+	limits: CodexLimitInfo[];
+}
+
 export interface SidebarState {
 	title: string;
 	tokens: number;
@@ -187,6 +199,9 @@ export interface SidebarState {
 	/** Límites del plan de la conexión OAuth de Pi con Anthropic (sesión, semana…). */
 	anthropicPlan?: AnthropicPlanInfo | null;
 	anthropicPlanError?: string;
+	isCodexProvider?: boolean;
+	codexQuota?: CodexQuotaInfo | null;
+	codexQuotaError?: string;
 }
 
 export function formatNumber(n: number): string {
@@ -419,8 +434,40 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 		}
 	}
 
-	// 5. Sección Proveedor genérico (si no es Antigravity ni Claude, ej. OpenCode, Codex, etc.)
-	if (!state.isAntigravityProvider && !state.isClaudeProvider && state.providerName) {
+	// 4c. Sección Codex Quota (si el modelo o proveedor es Codex)
+	if (state.isCodexProvider) {
+		lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
+		const codexHeader = theme.style("▼ Codex Quota", { fg: "success", bold: true });
+		lines.push(border("│") + padLine(` ${codexHeader}`) + border("│"));
+
+		if (state.codexQuotaError) {
+			for (const part of wrapWords(state.codexQuotaError, innerW - 1, 3)) {
+				lines.push(border("│") + padLine(theme.fg("error", ` ${part}`)) + border("│"));
+			}
+		} else if (!state.codexQuota || !state.codexQuota.limits || state.codexQuota.limits.length === 0) {
+			lines.push(border("│") + padLine(theme.fg("dim", " Cargando cuota...")) + border("│"));
+		} else {
+			for (const limit of state.codexQuota.limits) {
+				const used = Math.max(0, Math.min(100, limit.percent));
+				const remaining = 100 - used;
+				let barColor: "success" | "warning" | "error" = "success";
+				if (remaining < 20) {
+					barColor = "error";
+				} else if (remaining < 50) {
+					barColor = "warning";
+				}
+
+				const label = theme.fg("text", limit.name.padEnd(8, " "));
+				const bar = theme.fg(barColor, formatProgressBar(remaining / 100, 8));
+				const pct = theme.fg("text", `${remaining.toFixed(0).padStart(3, " ")}%`);
+				const reset = limit.resetIn ? theme.fg("dim", ` · ${limit.resetIn}`) : "";
+				lines.push(border("│") + padLine(`  ${label} ${bar} ${pct}${reset}`) + border("│"));
+			}
+		}
+	}
+
+	// 5. Sección Proveedor genérico (si no es Antigravity, Claude ni Codex, ej. OpenCode, etc.)
+	if (!state.isAntigravityProvider && !state.isClaudeProvider && !state.isCodexProvider && state.providerName) {
 		lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
 		const provHeader = theme.style(`▼ ${state.providerName}`, { fg: "success", bold: true });
 		lines.push(border("│") + padLine(` ${provHeader}`) + border("│"));
@@ -578,6 +625,50 @@ export default function (pi: ExtensionAPI) {
 		return detectProvider(ctx) === "claude";
 	}
 
+	function isCodex(ctx: any): boolean {
+		return detectProvider(ctx) === "codex";
+	}
+
+	let cachedCodexQuota: CodexQuotaInfo | null = null;
+	let cachedCodexQuotaError: string | undefined = undefined;
+	let lastCodexFetchTime = 0;
+	let codexInflight = false;
+	const CODEX_TTL_MS = 30 * 1000;
+
+	async function refreshCodexQuotaIfNeeded(ctx: any, force = false) {
+		if (!isCodex(ctx) || codexInflight) return;
+		const now = Date.now();
+		if (!shouldRefreshQuota(now, lastCodexFetchTime, force, !!cachedCodexQuotaError, CODEX_TTL_MS, 15000)) {
+			return;
+		}
+
+		codexInflight = true;
+		try {
+			const r = await pi.exec("pi-gomemory-setup", ["codex-usage"], { timeout: 10000 });
+			lastCodexFetchTime = Date.now();
+			if (r.code === 0 && r.stdout) {
+				const parsed = JSON.parse(r.stdout);
+				if (parsed && Array.isArray(parsed.limits)) {
+					cachedCodexQuota = parsed as CodexQuotaInfo;
+					cachedCodexQuotaError = undefined;
+				} else {
+					cachedCodexQuota = null;
+					cachedCodexQuotaError = "Respuesta sin límites";
+				}
+			} else {
+				cachedCodexQuota = null;
+				cachedCodexQuotaError = parseCleanQuotaError(r.stderr);
+			}
+		} catch (err: any) {
+			lastCodexFetchTime = Date.now();
+			cachedCodexQuota = null;
+			cachedCodexQuotaError = err?.message || "Error consultando cuota";
+		} finally {
+			codexInflight = false;
+		}
+		requestRender?.();
+	}
+
 	let cachedAnthropicPlan: AnthropicPlanInfo | null = null;
 	let cachedAnthropicPlanError: string | undefined = undefined;
 	let lastAnthropicPlanFetch = 0;
@@ -728,6 +819,7 @@ export default function (pi: ExtensionAPI) {
 		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
 		void refreshAnthropicPlanIfNeeded(ctx); // respaldo de una sola consulta; luego mandan las cabeceras
+		void refreshCodexQuotaIfNeeded(ctx, true);
 
 		visible = true;
 
@@ -741,6 +833,7 @@ export default function (pi: ExtensionAPI) {
 				// Heartbeat forzado para mantener actualizados los % y tiempos de reinicio sin bloqueo de TTL
 				await refreshQuotaIfNeeded(activeCtx || ctx, true);
 				await refreshClaudeUsageIfNeeded(activeCtx || ctx, true);
+				await refreshCodexQuotaIfNeeded(activeCtx || ctx, true);
 			} catch {
 				if (autoRefreshTimer) {
 					clearInterval(autoRefreshTimer);
@@ -773,6 +866,7 @@ export default function (pi: ExtensionAPI) {
 						const servers = getRegisteredMCPServers();
 						const antigravityActive = isAntigravity(ctx);
 						const claudeActive = isClaude(ctx);
+						const codexActive = isCodex(ctx);
 						const providerName = formatProviderDisplayName(ctx);
 						const state: SidebarState = {
 							title: cachedTitle,
@@ -788,6 +882,9 @@ export default function (pi: ExtensionAPI) {
 							claudeUsage: cachedClaudeUsage,
 							anthropicPlan: cachedAnthropicPlan,
 							anthropicPlanError: cachedAnthropicPlanError,
+							isCodexProvider: codexActive,
+							codexQuota: cachedCodexQuota,
+							codexQuotaError: cachedCodexQuotaError,
 						};
 						return publishHeight(
 							overlayMinimized
@@ -907,6 +1004,7 @@ export default function (pi: ExtensionAPI) {
 		cachedTitle = await fetchTitle(ctx);
 		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
+		void refreshCodexQuotaIfNeeded(ctx, true);
 		requestRender?.();
 	});
 
@@ -915,12 +1013,14 @@ export default function (pi: ExtensionAPI) {
 		cachedTitle = await fetchTitle(ctx);
 		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
+		void refreshCodexQuotaIfNeeded(ctx, true);
 		requestRender?.();
 	});
 
 	pi.on("model_select", async (_event: any, ctx: any) => {
 		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
+		void refreshCodexQuotaIfNeeded(ctx, true);
 		requestRender?.();
 	});
 }
