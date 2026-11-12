@@ -4,6 +4,19 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.12.0] - 2026-11-12
+
+### Added
+- **Cuota de OpenAI Codex (HCD-026):** `/sidebar` muestra «▼ Codex Quota» cuando Codex es el proveedor activo, con porcentaje restante, barras y tiempo hasta el reinicio de las ventanas primaria y secundaria.
+- **`pi-gomemory-setup codex-usage`:** devuelve el plan y los límites en JSON con porcentaje usado. Usa la sesión OAuth `openai-codex` de Pi y el endpoint `wham/usage`; no renueva tokens. Rechaza errores HTTP, respuestas ilegibles, ventanas ausentes y cuerpos mayores que 1 MiB.
+
+### Documentation
+- Referencia CLI y guías de uso, instalación y arquitectura actualizadas; guía HTML v1.12, notas de versión y documento de problemas conocidos.
+- Badge, referencias de descarga e instaladores sincronizados con `v1.12.0`; distribución para macOS y Linux en amd64 y arm64 con `SHA256SUMS`.
+
+### Known Issues
+- **HCD-027 permanece pendiente de aprobación e implementación:** esta versión no corrige sus seis hallazgos sobre permisos MCP, archivos añadidos a skills legacy y resultados/terminación TDD. La política `flaky` acordada para esa unidad tampoco está implementada. Véase `docs/known-issues.md`.
+
 ## [v1.11.1] - 2026-11-11
 
 ### Fixed

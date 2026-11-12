@@ -71,6 +71,14 @@ Para conectar Pi con los modelos de Google AI Pro mediante Antigravity, el insta
 
 El archivo `pkg/installer/usage.go` lee la cuenta activa guardada en `~/.pi/agent/antigravity-accounts.json` y hace una llamada POST al endpoint `retrieveUserQuotaSummary`. Con la respuesta construye una barra de texto que muestra el porcentaje restante y el tiempo que falta para que se reinicien las cuotas semanal y de cinco horas.
 
+## Límites del plan de OpenAI Codex
+
+`pkg/installer/codex_usage.go` implementa `FetchCodexUsage`, invocado por el comando `codex-usage` de `main.go`. Lee la entrada OAuth `openai-codex` de `auth.json`, comprueba su vencimiento y envía una petición GET a `https://chatgpt.com/backend-api/wham/usage`, con `Authorization` y, si está disponible, `ChatGPT-Account-Id`.
+
+El cliente tiene un timeout de 10 segundos y un máximo de respuesta de 1 MiB. Solo acepta HTTP 200 y devuelve errores explícitos para autenticación, frecuencia, formato o ventanas ausentes. No refresca ni escribe credenciales. El DTO expone el plan y las ventanas primaria/secundaria con porcentaje usado y reinicio.
+
+`gomemory-sidebar.ts` detecta el proveedor Codex y ejecuta el subcomando mediante `pi.exec`. Conserva una caché de cuota o error y una guarda de consulta en curso. Los eventos y el heartbeat de 30 segundos fuerzan el refresco; no debe interpretarse el TTL como un máximo de una petición cada 30 segundos. La presentación transforma porcentaje usado en restante, sin cambiar la respuesta JSON del CLI.
+
 ## Interfaz visual y extensiones
 
 La interfaz combina dos componentes:
@@ -89,6 +97,10 @@ Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral 
 
 gomemory-tdd.ts:
 Extensión en TypeScript del TDD Live Inspector (`/tdd`, tool `run_test_suite`). `detectSuites` decide qué ejecutar según los archivos del proyecto. `streamLines` lanza cada comando con `spawn` (sin shell) y entrega la salida línea a línea, porque `pi.exec` solo la devuelve al terminar. Los parsers de `go test -json` y del reporter `line` de Playwright llevan cada test al `TDDStore` en vivo, con su mensaje, archivo:línea y duración reales. Las ejecuciones se encadenan para no pisar el mismo store, y el modo watch agrupa los turnos en una sola ejecución pendiente.
+
+## Riesgos pendientes
+
+La versión v1.12.0 publica HCD-026, no las correcciones de HCD-027. La escritura JSON aún puede ampliar permisos, la limpieza legacy puede eliminar archivos añadidos y el ejecutor TDD presenta limitaciones con interrupciones y proyectos Playwright. Véase [problemas conocidos](known-issues.md). Las garantías de fusión de contenido no implican conservación de permisos; las pruebas base verdes no demuestran los casos pendientes.
 
 ## Sanitización de skills
 

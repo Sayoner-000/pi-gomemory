@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.11.1"><img src="https://img.shields.io/badge/version-1.11.1-blue" alt="Version 1.11.1"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.12.0"><img src="https://img.shields.io/badge/version-1.12.0-blue" alt="Version 1.12.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -138,6 +138,7 @@ pi-gomemory-setup deps-status   Componentes desactualizados según la última co
 pi-gomemory-setup deps-update   Actualiza los componentes desactualizados
 pi-gomemory-setup claude-usage  Consumo de tokens de Claude Code en JSON (lo usa /sidebar)
 pi-gomemory-setup anthropic-usage  Límites del plan de Anthropic (sesión de 5 h y semana) en JSON (lo usa /sidebar)
+pi-gomemory-setup codex-usage      Límites del plan de OpenAI Codex (ventanas primaria y secundaria) en JSON
 pi-gomemory-setup uninstall [--dry-run] [--yes] [--verbose] [--packages] [--self]
                               Retira lo instalado por pi-gomemory; conserva la memoria de gomemory
 ```
@@ -150,7 +151,7 @@ Con `usage`, si la API no responde o el token caducó, el comando termina con un
 |---|---|
 | `/plan [petición]` | Modo plan: bloquea las modificaciones; `/plan` otra vez o `/plan run` lo desactivan |
 | `/tasks` | Muestra u oculta las tareas de la unidad HCD activa |
-| `/sidebar` | Panel lateral: sesión/HCD, contexto, coste, cuotas (Google AI Pro, límites del plan de Anthropic) y servidores MCP |
+| `/sidebar` | Panel lateral: sesión/HCD, contexto, coste, cuotas (Google AI Pro, límites de Anthropic y OpenAI Codex) y servidores MCP |
 | `/sidebar min` | Minimiza o restaura el panel lateral a una fila (también con clic en `[−]` / `[+]`) |
 | `/min` | Minimiza o restaura a la vez `/sidebar` y `/tdd` |
 | `/tdd` | TDD Live Inspector: ejecuta las pruebas reales del proyecto y muestra el recorrido en vivo |
@@ -175,6 +176,14 @@ Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`
 
 `pi-antigravity` y `pi-cc-extensions` se instalan fijados a la versión del catálogo oficial de Pi (`npm:pi-antigravity@0.12.0`, `npm:pi-cc-extensions@1.0.16`); cambian solo con una release nueva de pi-gomemory.
 
+### Cuota de OpenAI Codex
+
+Desde v1.12.0, con el proveedor `openai-codex` activo, `/sidebar` muestra «▼ Codex Quota»: porcentaje **restante**, barras y tiempo hasta el reinicio de las ventanas primaria y secundaria. El comando `pi-gomemory-setup codex-usage` devuelve porcentaje **usado** en JSON. Ambos usan la sesión OAuth de Pi; no consultan la caché de la aplicación Codex ni renuevan tokens.
+
+## Limitaciones conocidas
+
+Los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) siguen pendientes: permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD. Esta versión no implementa esas correcciones ni la política `flaky` propuesta. Consulta [los riesgos y mitigaciones](docs/known-issues.md) antes de reinstalar o confiar en resultados TDD interrumpidos.
+
 ## Desarrollo
 
 ```bash
@@ -187,6 +196,8 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 
 ## Documentación
 
+- [Guía HTML v1.12](docs/Guia-PI-GOMEMORY-v1.12.html): recorrido completo del harness
+- [Notas de v1.12.0](docs/releases/v1.12.0.md): cambios, binarios y limitaciones
 - [Arquitectura](docs/architecture.md): cómo se embeben y fusionan los recursos
 - [Instalación](docs/installation.md): requisitos y opciones
 - [Uso](docs/usage.md): comandos, cuotas y comandos dentro de Pi

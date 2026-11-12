@@ -50,6 +50,8 @@ Comandos:
   install       Ejecuta la instalación completa (opción por defecto)
   usage         Muestra cuotas y límites de consumo de Google AI Pro (--json disponible)
   claude-usage  Muestra telemetría agregada de tokens de Claude Code (hoy, semana, total)
+  anthropic-usage  Devuelve los límites del plan de Anthropic en JSON
+  codex-usage   Devuelve los límites del plan de OpenAI Codex en JSON
   doctor        Verifica binarios, tema, MCP, plugins, launcher y otros agentes detectados
   mcp           Registra gomemory, codegraph y codebase-memory en mcp.json
   theme         Instala la paleta gomemory en ~/.pi/agent/themes/
@@ -91,7 +93,7 @@ Pi solo admite una cabecera. Si pi-cc-extensions tiene `showStartupHeader: true`
 Muestra u oculta, encima del editor, las tareas de la unidad HCD activa (`✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo). Se actualiza solo tras cada `mem hcd` y al terminar cada respuesta.
 
 ### Panel lateral estilo OpenCode (`/sidebar`)
-Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), cuotas de Google AI Pro o Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
+Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), cuotas de Google AI Pro, límites de Anthropic u OpenAI Codex y telemetría de Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
 
 **Límites del plan de Anthropic.** Si Pi está conectado a Anthropic con OAuth (suscripción Claude Pro/Max, `/login` en pi), el bloque «▼ Anthropic · plan» muestra el porcentaje usado de la **sesión** (ventana de 5 h) y de la **semana**, con el tiempo hasta cada reinicio. Si Anthropic los envía, añade también los límites semanales de Opus o Sonnet. Los límites se obtienen de forma pasiva a partir de las cabeceras `anthropic-ratelimit-unified-*` que llegan en cada respuesta del modelo (`after_provider_response`), recalculando la cuenta atrás en cada renderizado. Como respaldo inicial al abrir el panel sin respuesta previa, realiza una única consulta con `pi-gomemory-setup anthropic-usage` evitando saturar la cuota de la API (HTTP 429).
 
@@ -103,7 +105,23 @@ Si la consulta falla, el bloque muestra el error completo y nunca cifras viejas 
 
 Con un título largo, el título se recorta con `…` y el control `[−]` sigue visible.
 
+### Cuota de OpenAI Codex
+
+Desde v1.12.0, cuando el proveedor activo es Codex (`openai-codex`), `/sidebar` muestra «▼ Codex Quota» con las ventanas primaria y secundaria del plan, habitualmente cinco horas y una semana. Cada fila indica el porcentaje **restante**, una barra y el tiempo hasta el reinicio. La barra cambia a amarillo por debajo del 50 % restante y a rojo por debajo del 20 %.
+
+```bash
+pi-gomemory-setup codex-usage
+```
+
+El JSON devuelve `planType` y `limits`; cada límite contiene `name`, `percent` (porcentaje **usado**), `resetsAt` y `resetIn`. El panel calcula lo restante como `100 - percent`. La consulta usa el token de `openai-codex` y, si existe, `accountId` en `~/.pi/agent/auth.json`, contra `https://chatgpt.com/backend-api/wham/usage`. Es una API externa sin contrato estable garantizado por este proyecto.
+
+El comando no renueva tokens. Sin sesión OAuth, con token caducado, respuesta HTTP distinta de 200, JSON inválido, respuesta superior a 1 MiB o ventanas ausentes, termina con código 1. No imprime el token ni el cuerpo de errores HTTP. Renueva la sesión en Pi con `/login` cuando corresponda.
+
+El panel consulta al abrirse, al seleccionar modelo, al iniciar sesión, al terminar respuestas y mediante un heartbeat de 30 segundos mientras está abierto. Estas rutas fuerzan la consulta; el TTL no es un límite global de frecuencia. Una guarda evita consultas simultáneas. Si falla, se muestra el error en lugar de conservar cifras anteriores. Después de actualizar, usa `/reload` en Pi.
+
 ### Inspector de pruebas en tiempo real (`/tdd`)
+
+**Limitación de v1.12.0:** las correcciones de interrupciones, identidad de proyectos y clasificación `flaky` de HCD-027 aún no están implementadas. Consulta [problemas conocidos](known-issues.md); confirma resultados parciales directamente con el ejecutor de pruebas.
 Abre el overlay **TDD Live Inspector**. Se coloca debajo del panel lateral, en la misma columna derecha, sin solaparse, y ejecuta las pruebas **reales** del proyecto abierto.
 
 **Suites según el proyecto.** Cada suite se activa solo si el proyecto tiene lo que necesita; si no, aparece como «omitida» con su motivo, nunca como éxito ni como fallo:

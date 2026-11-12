@@ -4,7 +4,7 @@ Esta carpeta contiene la documentación técnica de pi-gomemory, el instalador y
 
 ## Contenido
 
-[Guía del harness pi-gomemory (HTML)](Guia-PI-GOMEMORY-v1.11.html)
+[Guía del harness pi-gomemory (HTML)](Guia-PI-GOMEMORY-v1.12.html)
 Guía larga de uso, con el formato de la Guía SDD_HCD de gomemory: instalación, qué cambia en tu máquina, launcher, memoria y grafos, skills, comandos dentro de Pi, `/sidebar`, `/tdd`, HCD, revisión con Splash/ACR/ADM, una sesión de punta a punta y mantenimiento. Se puede imprimir o guardar como PDF.
 
 [Arquitectura del sistema](architecture.md)
@@ -14,7 +14,13 @@ Detalla cómo funciona el binario autocontenido con `embed.FS`, la integración 
 Instrucciones paso a paso para instalar con el script de una línea, compilar desde el código fuente o usar los binarios de release.
 
 [Guía de uso y comandos](usage.md)
-Referencia de comandos de la CLI, consulta del monitor de cuotas de Google AI Pro y atajos en la terminal interactiva.
+Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
+
+[Notas de v1.12.0](releases/v1.12.0.md)
+Cambios de cuota Codex, plataformas, verificación de binarios y límites de la entrega.
+
+[Problemas conocidos](known-issues.md)
+Hallazgos pendientes de HCD-027 y mitigaciones; no se consideran corregidos por publicar esta versión.
 
 [Decisiones de arquitectura (ADR)](adr/README.md)
 Registro de las decisiones vigentes: repositorio central de skills, extensiones TUI de HCD y orquestación de dependencias.
