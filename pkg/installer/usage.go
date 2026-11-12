@@ -169,6 +169,9 @@ func FetchAndFormatUsage(piAgentDir string) (string, error) {
 	return "", fmt.Errorf("no se pudo obtener la cuota (¿token caducado? abre pi para renovarlo): %w", lastErr)
 }
 
+// maxQuotaBody acota la respuesta de cuota (C-005), como update.go y deps.go.
+const maxQuotaBody = 1 << 20
+
 // fetchQuota consulta un endpoint de cuota y devuelve el cuerpo si responde 200.
 func fetchQuota(endpoint, accessToken string) ([]byte, error) {
 	req, err := http.NewRequest("POST", endpoint+"/v1internal:retrieveUserQuotaSummary", bytes.NewBufferString("{}"))
@@ -187,9 +190,14 @@ func fetchQuota(endpoint, accessToken string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// Se lee un byte de más para distinguir «cabe justo» de «excede»: truncar en
+	// silencio daría un JSON ilegible en vez de un error que explique la causa.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxQuotaBody+1))
 	if err != nil {
 		return nil, err
+	}
+	if len(body) > maxQuotaBody {
+		return nil, fmt.Errorf("%s: respuesta de cuota mayor que 1 MiB; se descarta", endpoint)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%s: status %d", endpoint, resp.StatusCode)

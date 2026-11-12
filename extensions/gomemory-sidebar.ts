@@ -19,6 +19,35 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 const EXTENSION_NAME = "gomemory-sidebar";
 const OVERLAY_WIDTH = 36;
 
+/**
+ * Estado compartido con el panel /tdd (otra extensión, otro módulo): el sidebar
+ * publica si está visible y cuántas filas ocupa para que el TDD se apile debajo.
+ */
+interface PanelDock {
+	sidebarVisible: boolean;
+	sidebarHeight: number;
+}
+const DOCK_KEY = Symbol.for("pi-gomemory.dock");
+function panelDock(): PanelDock {
+	const g = globalThis as any;
+	g[DOCK_KEY] ??= { sidebarVisible: false, sidebarHeight: 0 };
+	return g[DOCK_KEY];
+}
+
+/**
+ * En fullscreen, pi-tui entrega un clic como press → release → click al mismo
+ * componente. Solo el click alterna; press y release se marcan manejados para
+ * que el click llegue (sin press manejado no hay destino) y no alternen dos veces.
+ */
+export function headerClickToggles(event: any, minimized: boolean): "toggle" | "consume" | undefined {
+	if (event?.button !== "left") return undefined;
+	const onHeader = minimized ? event.y === 0 : event.y <= 1;
+	if (!onHeader) return undefined;
+	if (event.type === "click") return "toggle";
+	if (event.type === "press" || event.type === "release") return "consume";
+	return undefined;
+}
+
 export interface MCPServerInfo {
 	name: string;
 	status: "Configured";
@@ -180,12 +209,15 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 	const lines: string[] = [];
 	lines.push(border(`╭${"─".repeat(innerW)}╮`));
 
-	// 1. Título principal con indicador de minimizado [- min]
-	const titleWords = state.title.replace(/\s+/g, " ").trim();
-	const titleStyled = theme.style(titleWords || "pi-gomemory", { fg: "success", bold: true });
-	const minHint = theme.fg("dim", "[- min] ");
-	const titleLen = visibleWidth(titleWords || "pi-gomemory");
-	const minLen = visibleWidth("[- min] ");
+	// 1. Título principal con indicador clicable de minimizado [−]. El título se recorta
+	//    ANTES de unirlo: el presupuesto de [−] es fijo y el control nunca debe desaparecer (C-004).
+	const MIN_HINT = "[−] ";
+	const minLen = visibleWidth(MIN_HINT);
+	const fullTitle = state.title.replace(/\s+/g, " ").trim() || "pi-gomemory";
+	const titleWords = truncateToWidth(fullTitle, Math.max(1, innerW - minLen - 2), "…");
+	const titleStyled = theme.style(titleWords, { fg: "success", bold: true });
+	const minHint = theme.fg("dim", MIN_HINT);
+	const titleLen = visibleWidth(titleWords);
 	const space = Math.max(1, innerW - titleLen - minLen - 1);
 	const headerRow = ` ${titleStyled}${" ".repeat(space)}${minHint}`;
 	lines.push(border("│") + padLine(headerRow) + border("│"));
@@ -406,7 +438,7 @@ export default function (pi: ExtensionAPI) {
 	let visible = false;
 	let overlayMinimized = false;
 	let closeSidebar: (() => void) | null = null;
-	let requestRender: (() => void) | null = null;
+	let requestRender: ((force?: boolean) => void) | null = null;
 	let autoRefreshTimer: ReturnType<typeof setInterval> | null = null;
 	let cachedTitle = "Instalación de binario con componentes";
 	let activeCtx: any = null;
@@ -553,10 +585,22 @@ export default function (pi: ExtensionAPI) {
 
 		// nonCapturing: el panel flota sin quitar el teclado al editor. No se espera
 		// la promesa para no bloquear el comando; se cierra con /sidebar.
+		const dock = panelDock();
 		void ctx.ui.custom<void>(
 			(tui, theme, _kb, done) => {
-				closeSidebar = done;
-				requestRender = () => tui.requestRender();
+				// El dock se libera antes de done(): pi-tui redibuja en nextTick, antes que el finally.
+				closeSidebar = () => {
+					dock.sidebarVisible = false;
+					done();
+				};
+				requestRender = (force = false) => tui.requestRender(force);
+				const publishHeight = (lines: string[]) => {
+					if (dock.sidebarHeight !== lines.length) {
+						dock.sidebarHeight = lines.length;
+						tui.requestRender(); // el TDD lee la altura nueva en el siguiente frame
+					}
+					return lines;
+				};
 				return {
 					render(width: number): string[] {
 						const metrics = collectContextMetrics(ctx);
@@ -577,22 +621,20 @@ export default function (pi: ExtensionAPI) {
 							isClaudeProvider: claudeActive,
 							claudeUsage: cachedClaudeUsage,
 						};
-						if (!overlayMinimized) {
-							return renderSidebar(state, width, theme);
-						}
-						const minLines = renderSidebarMinimized(state, width, theme);
-						while (minLines.length < 26) {
-							minLines.push(" ".repeat(Math.max(1, width)));
-						}
-						return minLines;
+						return publishHeight(
+							overlayMinimized
+								? renderSidebarMinimized(state, width, theme)
+								: renderSidebar(state, width, theme),
+						);
 					},
 					handleMouse(event: any) {
-						if (event.type === "click" || event.type === "press") {
+						const action = headerClickToggles(event, overlayMinimized);
+						if (!action) return undefined;
+						if (action === "toggle") {
 							overlayMinimized = !overlayMinimized;
-							tui.requestRender();
-							return { handled: true, render: true };
+							tui.requestRender(true);
 						}
-						return undefined;
+						return { handled: true, render: false };
 					},
 					invalidate() {},
 				};
@@ -603,11 +645,19 @@ export default function (pi: ExtensionAPI) {
 					anchor: "top-right",
 					width: OVERLAY_WIDTH,
 					margin: { top: 1, right: 1 },
-					visible: (w) => w >= 100,
+					visible: (w) => {
+						const shown = w >= 100;
+						if (dock.sidebarVisible !== shown) {
+							dock.sidebarVisible = shown;
+							requestRender?.(); // el TDD se recoloca en el siguiente frame
+						}
+						return shown;
+					},
 					nonCapturing: true,
 				},
 			},
 		).finally(() => {
+			dock.sidebarVisible = false;
 			if (autoRefreshTimer) {
 				clearInterval(autoRefreshTimer);
 				autoRefreshTimer = null;
@@ -627,7 +677,7 @@ export default function (pi: ExtensionAPI) {
 				if (!visible) {
 					await openSidebar(ctx);
 				} else if (requestRender) {
-					requestRender();
+					requestRender(true);
 				}
 				ctx.ui?.notify?.(`Panel lateral ${overlayMinimized ? "minimizado" : "restaurado"}`, "info");
 				return;
@@ -649,7 +699,7 @@ export default function (pi: ExtensionAPI) {
 			if (!visible) {
 				await openSidebar(ctx);
 			} else if (requestRender) {
-				requestRender();
+				requestRender(true);
 			}
 			ctx.ui?.notify?.(`Panel lateral ${overlayMinimized ? "minimizado" : "restaurado"}`, "info");
 		},

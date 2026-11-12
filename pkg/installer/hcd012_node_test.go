@@ -20,9 +20,17 @@ export const ModelRuntime = { create: async () => { calls.push("ModelRuntime"); 
 export const createAgentSession = async () => { calls.push("createAgentSession"); throw new Error("no provider in tests"); };
 export const SessionManager = { inMemory: () => ({}) };
 export const SettingsManager = { inMemory: () => ({}) };`,
+	// truncateToWidth recorta de verdad (como pi-tui): un stub identidad ocultó
+	// el defecto C-004 de la auditoría v1.9.0 (el recorte eliminaba [−]).
 	"@earendil-works/pi-tui": `
-export const visibleWidth = (s) => s.replace(/\x1b\[[0-9;]*m/g, "").length;
-export const truncateToWidth = (s) => s;`,
+const plain = (s) => s.replace(/\x1b\[[0-9;]*m/g, "");
+export const visibleWidth = (s) => [...plain(s)].length;
+export const truncateToWidth = (s, width, ellipsis = "…") => {
+	const chars = [...plain(s)];
+	if (chars.length <= width) return s;
+	const keep = Math.max(0, width - [...ellipsis].length);
+	return chars.slice(0, keep).join("") + ellipsis;
+};`,
 }
 
 // runNodeExt copia las extensiones indicadas a un directorio temporal con los

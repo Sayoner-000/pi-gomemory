@@ -1,70 +1,53 @@
 package installer
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// TestHCD018TDDLiveExecutionMultiTest verifica que el adaptador de backend procesa
-// la salida JSON de go test registrando cada test individual en el TDDStore,
-// y que al correr suites multi-dominio las suites no quedan vacías (0/0).
+// TestHCD018TDDLiveExecutionMultiTest verifica que el adaptador de backend registra
+// cada test individual de `go test -json` en el TDDStore (pasados y fallidos) y que
+// la suite no queda vacía (0/0).
+//
+// HCD-020: antes simulaba pi.exec con un JSON inventado sobre cwd "/dummy"; ese
+// contrato ocultaba que /tdd no ejecutaba nada real. Ahora corre un módulo Go real.
 func TestHCD018TDDLiveExecutionMultiTest(t *testing.T) {
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
-import tddExtensionFactory, { createTDDStore } from "./gomemory-tdd.ts";
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "go.mod"), "module multi\n\ngo 1.22\n")
+	writeFile(t, filepath.Join(dir, "shop", "shop_test.go"), `package shop
 
-const fakeJsonOutput = [
-	'{"Action":"run","Test":"TestLogin"}',
-	'{"Action":"pass","Test":"TestLogin","Elapsed":0.05}',
-	'{"Action":"run","Test":"TestCart"}',
-	'{"Action":"pass","Test":"TestCart","Elapsed":0.08}',
-	'{"Action":"run","Test":"TestCheckout"}',
-	'{"Action":"fail","Test":"TestCheckout","Elapsed":0.15}',
-].join("\n");
+import "testing"
+
+func TestLogin(t *testing.T)    {}
+func TestCart(t *testing.T)     {}
+func TestCheckout(t *testing.T) { t.Fatal("checkout roto") }
+`)
+	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
+import tddExtensionFactory from "./gomemory-tdd.ts";
 
 let registeredTool = null;
-const fakePi = {
+tddExtensionFactory({
 	registerCommand: () => {},
 	registerTool: (def) => { registeredTool = def; },
 	on: () => () => {},
-	exec: async (cmd, args) => {
-		if (cmd === "go" && args.includes("-json")) {
-			return { code: 1, stdout: fakeJsonOutput, stderr: "" };
-		}
-		return { code: 0, stdout: "{}", stderr: "" };
-	},
-};
-
-tddExtensionFactory(fakePi);
+	exec: async () => ({ code: 0, stdout: "", stderr: "" }),
+});
 
 const fails = [];
-if (!registeredTool) {
-	fails.push("no se registro la tool run_test_suite");
+const res = await registeredTool.execute("call-1", { suite: "backend" }, undefined, undefined, { cwd: `+jsStr(dir)+` });
+const backend = res.details.suites.find((s) => s.id === "backend");
+if (!backend || backend.tests.length < 3) {
+	fails.push("backend debe tener al menos 3 tests, tiene " + backend?.tests.length);
 } else {
-	// Ejecutar la suite
-	registeredTool.execute("call-1", { suite: "all" }, null, null, { cwd: "/dummy" }).then(res => {
-		const state = res.details;
-		const backendSuite = state.suites.find(s => s.id === "backend");
-		if (!backendSuite) {
-			fails.push("falta suite backend");
-		} else if (backendSuite.tests.length < 3) {
-			fails.push("backend debe tener al menos 3 tests parseados, tiene " + backendSuite.tests.length);
-		} else {
-			const login = backendSuite.tests.find(t => t.name === "TestLogin");
-			const checkout = backendSuite.tests.find(t => t.name === "TestCheckout");
-			if (!login || login.status !== "passed") fails.push("TestLogin debio ser passed");
-			if (!checkout || checkout.status !== "failed") fails.push("TestCheckout debio ser failed");
-		}
-
-		if (state.stats.total < 3) {
-			fails.push("total de tests debe ser >= 3, dio " + state.stats.total);
-		}
-
-		console.log(fails.length ? "FAIL: " + fails.join(" | ") : "PASS");
-	});
+	const byName = (n) => backend.tests.find((t) => t.name === n);
+	if (byName("TestLogin")?.status !== "passed") fails.push("TestLogin debió ser passed");
+	if (byName("TestCheckout")?.status !== "failed") fails.push("TestCheckout debió ser failed");
 }
+if (res.details.stats.total < 3) fails.push("total de tests debe ser >= 3, dio " + res.details.stats.total);
+console.log(fails.length ? "FAIL: " + fails.join(" | ") : "PASS");
 `)
-
 	if !strings.Contains(out, "PASS") {
-		t.Fatalf("TestHCD018TDDLiveExecutionMultiTest fallo (rojo esperado):\n%s", out)
+		t.Fatalf("TestHCD018TDDLiveExecutionMultiTest: %s", out)
 	}
 }
