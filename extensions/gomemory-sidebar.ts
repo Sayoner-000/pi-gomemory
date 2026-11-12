@@ -26,6 +26,8 @@ const OVERLAY_WIDTH = 36;
 interface PanelDock {
 	sidebarVisible: boolean;
 	sidebarHeight: number;
+	/** Controles que publica gomemory-tdd.ts para que /min alterne ambos paneles. */
+	tdd?: { isVisible(): boolean; isMinimized(): boolean; setMinimized(minimized: boolean): void };
 }
 const DOCK_KEY = Symbol.for("pi-gomemory.dock");
 function panelDock(): PanelDock {
@@ -693,15 +695,23 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("min", {
-		description: "Alterna el modo minimizado/expandido de los paneles (/min)",
+		description: "Minimiza o restaura a la vez /sidebar y /tdd (/min)",
 		handler: async (_args, ctx) => {
-			overlayMinimized = !overlayMinimized;
+			// El TDD publica sus controles en el dock (otra extensión, otro módulo).
+			const tdd = panelDock().tdd;
+			const tddShown = Boolean(tdd?.isVisible());
+			// Si alguno está expandido se minimizan todos; si todos están minimizados se restauran.
+			const anyExpanded = !overlayMinimized || (tddShown && !tdd.isMinimized());
+			const minimize = anyExpanded;
+
+			overlayMinimized = minimize;
 			if (!visible) {
 				await openSidebar(ctx);
 			} else if (requestRender) {
 				requestRender(true);
 			}
-			ctx.ui?.notify?.(`Panel lateral ${overlayMinimized ? "minimizado" : "restaurado"}`, "info");
+			if (tddShown) tdd.setMinimized(minimize);
+			ctx.ui?.notify?.(`Paneles ${minimize ? "minimizados" : "restaurados"}`, "info");
 		},
 	});
 

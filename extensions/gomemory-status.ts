@@ -85,7 +85,8 @@ export default function (pi: ExtensionAPI) {
 					// Desglose de tokens
 					const inText = theme.fg("muted", `↑${fmt(input)}`);
 					const outText = theme.fg("muted", `↓${fmt(output)}`);
-					const cacheText = cacheRead > 0 ? theme.fg("dim", `⚡${fmt(cacheRead)} `) : "";
+					// Glifos de texto, sin emoji (criterio de HCD-020 Q3): ↺ = lecturas de caché.
+					const cacheText = cacheRead > 0 ? theme.fg("dim", `↺${fmt(cacheRead)} `) : "";
 					const costText = cost > 0 ? theme.style(`$${cost.toFixed(3)}`, { fg: "warning" }) : theme.fg("dim", "$0.000");
 
 					const left = `${logo} ${barStyled} ${ctxText} │ ${inText} ${outText} ${cacheText}│ ${costText}`;
@@ -94,7 +95,7 @@ export default function (pi: ExtensionAPI) {
 					const branch = footerData.getGitBranch ? footerData.getGitBranch() : "";
 					const branchStr = branch ? ` (${branch})` : "";
 					const modelStr = ctx.model?.id || "default";
-					const thinkingStr = ctx.thinkingLevel && ctx.thinkingLevel !== "off" ? ` [🧠 ${ctx.thinkingLevel}]` : "";
+					const thinkingStr = ctx.thinkingLevel && ctx.thinkingLevel !== "off" ? ` [thinking ${ctx.thinkingLevel}]` : "";
 					const right = theme.fg("dim", `${modelStr}${thinkingStr}${branchStr}`);
 
 					// Padding y truncado seguro

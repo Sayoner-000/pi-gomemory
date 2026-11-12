@@ -900,8 +900,16 @@ export function formatAgentReport(state: TDDState, suiteIds: string[]): string {
 const OVERLAY_TOP = 1;
 const MIN_TDD_ROWS = 3;
 
-/** Lo publica gomemory-sidebar.ts: el TDD se apila debajo del sidebar en la columna derecha. */
+/**
+ * Estado compartido con gomemory-sidebar.ts: el sidebar publica su altura (el TDD se
+ * apila debajo) y el TDD publica sus controles para que /min alterne ambos paneles.
+ */
 const DOCK_KEY = Symbol.for("pi-gomemory.dock");
+function panelDock(): any {
+	const g = globalThis as any;
+	g[DOCK_KEY] ??= { sidebarVisible: false, sidebarHeight: 0 };
+	return g[DOCK_KEY];
+}
 function sidebarRows(): number {
 	const dock = (globalThis as any)[DOCK_KEY];
 	return dock?.sidebarVisible ? Math.max(0, dock.sidebarHeight || 0) + 1 : 0;
@@ -923,6 +931,16 @@ export default function (pi: ExtensionAPI) {
 	let closeOverlay: (() => void) | null = null;
 	let requestOverlayRender: ((force?: boolean) => void) | null = null;
 	let overlayMinimized = false;
+
+	// Controles para /min (registrado en gomemory-sidebar.ts): alterna ambos paneles a la vez.
+	panelDock().tdd = {
+		isVisible: () => overlayVisible,
+		isMinimized: () => overlayMinimized,
+		setMinimized: (minimized: boolean) => {
+			overlayMinimized = minimized;
+			requestOverlayRender?.(true);
+		},
+	};
 
 	// Iniciar suites básicas por defecto
 	store.initSuites([
@@ -1056,6 +1074,8 @@ export default function (pi: ExtensionAPI) {
 	let runsPending = 0;
 	/** Hay una ejecución de watch esperando turno: más turnos no añaden otra. */
 	let watchPending = false;
+	/** Suites de la última ejecución terminada (para /tdd report); null si aún no hubo ninguna. */
+	let lastRunSuites: SuiteDomain[] | null = null;
 
 	function runTestSuite(domainOrAll?: string, ctx?: any, opts: RunOptions = {}): Promise<SuiteDomain[]> {
 		runsPending++;
@@ -1120,7 +1140,8 @@ export default function (pi: ExtensionAPI) {
 			clearInterval(ticker);
 			requestOverlayRender?.();
 		}
-		return plans.map((p) => p.id);
+		lastRunSuites = plans.map((p) => p.id);
+		return lastRunSuites;
 	}
 
 	// ── Comando /tdd ────────────────────────────────────────────────────────
@@ -1163,13 +1184,18 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			if (sub === "report") {
-				const st = store.getState();
-				const report = [
-					`# TDD Test Execution Report`,
-					`Status: ${st.status.toUpperCase()} · Pass rate: ${st.progressPercent}% (${st.stats.passed}/${st.stats.total})`,
-					...st.suites.map((s) => `- ${s.name}: ${s.tests.filter((t) => t.status === "passed").length}/${s.tests.length} ✓`),
-				].join("\n");
-				ctx.ui?.notify?.("Reporte generado", "info");
+				if (!lastRunSuites) {
+					ctx.ui?.notify?.("Aún no hay ejecución que informar: usa /tdd run", "info");
+					return;
+				}
+				// En el chat y en el contexto del modelo, sin disparar un turno (HCD-022 Q1):
+				// la persona lo ve y puede pedir «corrige esos fallos» sin volver a ejecutar.
+				const st = structuredClone(store.getState());
+				pi.sendMessage(
+					{ customType: "gomemory-tdd-report", content: formatAgentReport(st, lastRunSuites), display: true, details: st },
+					{ triggerTurn: false },
+				);
+				ctx.ui?.notify?.("Informe TDD enviado al chat", "info");
 				return;
 			}
 
