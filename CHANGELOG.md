@@ -4,6 +4,21 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.11.0] - 2026-11-11
+
+### Added
+- **Límites del plan de Anthropic en `/sidebar` (HCD-023):** con Pi conectado a Anthropic por OAuth (Claude Pro/Max), el bloque «▼ Anthropic · plan» muestra el porcentaje usado de la sesión (ventana de 5 h) y de la semana, con el tiempo hasta cada reinicio y una barra que cambia a amarillo al 50 % y a rojo al 80 %. Si Anthropic envía límites semanales por modelo (Opus, Sonnet), también aparecen. Se actualiza al abrir el panel, en cada turno y cada 30 s.
+- **Comando `pi-gomemory-setup anthropic-usage`:** devuelve esos límites en JSON. Usa el token OAuth que Pi guarda en `~/.pi/agent/auth.json` y consulta la API de uso de Anthropic, la misma que usan claude.ai y el `/usage` de Claude Code. No renueva el token, porque eso lo hace Pi.
+
+### Changed
+- Los errores del bloque de Anthropic se muestran completos en varias líneas en lugar de recortarse, para no perder la parte accionable («abre pi para renovarlo», «ejecuta pi-gomemory-setup update»).
+
+### Security
+- `anthropic-usage` lee como máximo 1 MiB de respuesta y sus errores nunca incluyen el token. Sin sesión OAuth, con el token caducado, ante una respuesta distinta de HTTP 200 o sin límites, devuelve un error explícito y nunca cifras viejas o inventadas.
+
+### Documentation
+- Bloque de Anthropic en `docs/usage.md`, comando `anthropic-usage` en el README y referencias de versión, badge, instalador y script de build actualizados a `v1.11.0`.
+
 ## [v1.10.1] - 2026-11-11
 
 ### Fixed

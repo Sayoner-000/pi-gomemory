@@ -40,16 +40,16 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.10.1_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.10.1_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.10.1_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.10.1_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.11.0_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.11.0_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.11.0_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.11.0_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.10.1_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.11.0_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install

@@ -93,6 +93,10 @@ Muestra u oculta, encima del editor, las tareas de la unidad HCD activa (`✓` v
 ### Panel lateral estilo OpenCode (`/sidebar`)
 Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), cuotas de Google AI Pro o Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
 
+**Límites del plan de Anthropic.** Si Pi está conectado a Anthropic con OAuth (suscripción Claude Pro/Max, `/login` en pi), el bloque «▼ Anthropic · plan» muestra el porcentaje usado de la **sesión** (ventana de 5 h) y de la **semana**, con el tiempo hasta cada reinicio. Si Anthropic los envía, añade también los límites semanales de Opus o Sonnet. Los datos salen de `pi-gomemory-setup anthropic-usage`, que consulta la API de uso de Anthropic con el token que guarda Pi (no lo renueva: eso lo hace Pi). Se actualiza al abrir el panel, en cada turno y cada 30 s.
+
+Si la consulta falla, el bloque muestra el error completo y nunca cifras viejas o inventadas; por ejemplo, token caducado (abre pi para renovarlo) o binario sin `anthropic-usage` (ejecuta `pi-gomemory-setup update`).
+
 - Clic en `[−]` de la cabecera: minimiza el panel a una sola fila (`[ HCD · ... [+] ]`); clic en `[+]`: lo restaura. El ratón solo funciona en el modo `fullscreen` de Pi (el predeterminado); en `--tui-mode regular` usa los comandos.
 - `/sidebar min` (o alias `/sidebar m`, `/sidebar -`): alterna el modo minimizado desde el teclado.
 - `/min`: minimiza o restaura a la vez `/sidebar` y `/tdd`. Si alguno está expandido, minimiza los dos; si los dos están minimizados, los restaura.
