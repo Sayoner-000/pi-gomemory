@@ -142,13 +142,17 @@ func npmPackageVersion(piAgentDir, pkg string) func(context.Context) (string, er
 	}
 }
 
+// depsHTTPClient es el cliente de httpJSON. Su timeout propio acota la espera
+// aunque el llamador no pase un contexto con plazo (HCD-033, C-002).
+var depsHTTPClient = &http.Client{Timeout: depsProbeTimeout}
+
 func httpJSON(ctx context.Context, url string, dst any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("User-Agent", "pi-gomemory-setup")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := depsHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
