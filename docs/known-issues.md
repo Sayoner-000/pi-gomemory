@@ -1,8 +1,18 @@
-# Problemas conocidos — v1.13.3
+# Problemas conocidos — v1.13.4
 
 ## Retraso del aviso de releases en v1.13.0 y anteriores
 
 La comprobación de versiones solo volvía a la red si su última consulta tenía más de 24 h, así que una release podía tardar hasta un día en anunciarse en el launcher y en el pie de Pi. Desde v1.13.1 vuelve a la red como mucho una vez por hora ([HCD-031](../hcd/HCD-031-una-release-nueva-tarda-hasta-24-h-en-an.md)): el retraso queda acotado a una hora, no desaparece. En versiones anteriores, borra `~/.pi/agent/pi-gomemory-deps.json` y ejecuta `pi-gomemory-setup deps-refresh` para forzar la consulta.
+
+## ADM del 2026-11-13 sobre v1.13.3
+
+La [auditoría defensiva](audits/2026-11-13-defensive-qa.md) encontró tres hallazgos de severidad media, reproducidos sobre v1.13.3 con `bash docs/audits/2026-11-13-adm-repro.sh`. Los cierra [HCD-034](../hcd/HCD-034-uninstall-y-update-no-pierden-datos-ni-a.md), publicada en v1.13.4.
+
+| Hallazgo | Riesgo en v1.13.3 y anteriores | Estado | Mitigación si sigues en v1.13.3 o anterior |
+|---|---|---|---|
+| H-01 | `uninstall` borra un archivo, una skill o una entrada de configuración que editaste mientras esperaba confirmación, porque solo comprobaba la propiedad al construir el plan | **Corregido** en v1.13.4 (`TestHCD034C01` a `TestHCD034C05`): cada retirada se revalida justo antes de escribir; lo que cambió se conserva como `[omitir] … — cambió después del plan` | No edites nada en `~/.pi/agent` ni en `~/.pi-gomemory` mientras `uninstall` espera confirmación; usa `--dry-run` y confirma enseguida |
+| H-02 | Un archivo gestionado que no se puede leer se trata como inexistente y `uninstall` anuncia «No queda nada que retirar» | **Corregido** en v1.13.4 (`TestHCD034C06` a `TestHCD034C08`, `TestHCD034C11`): solo la ausencia es inocua; cualquier otro error da `[fallido]` y el comando termina con error | Tras desinstalar, revisa `~/.pi/agent` y `~/.pi-gomemory` y retira a mano lo que quede |
+| H-03 | `update` aceptaba un ejecutable cortado a 200 MiB si el miembro del tarball era mayor | **Corregido** en v1.13.4 (`TestHCD034C09`, `TestHCD034C10`): `extractBinary` rechaza un ejecutable vacío, mayor que el límite o truncado, y `update` conserva el binario anterior | Ninguna necesaria hoy: el ejecutable publicado ocupa mucho menos de 200 MiB |
 
 ## Auditoría ACR/ADM de v1.12.1
 

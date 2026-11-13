@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.13.4](releases/v1.13.4.md)
+Cierre de H-01, H-02 y H-03 de la auditoría defensiva del 2026-11-13: `uninstall` revalida cada retirada antes de escribir y falla si no pudo leer algo; `update` rechaza un ejecutable vacío, truncado o mayor de 200 MiB.
+
 [Notas de v1.13.3](releases/v1.13.3.md)
 Cierre de C-002 y C-003: las consultas de versiones tienen timeout propio y el empaquetado ejecuta las pruebas con el detector de carreras.
 

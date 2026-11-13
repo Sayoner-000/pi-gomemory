@@ -4,6 +4,17 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.4] - 2026-11-13
+
+### Fixed
+- **`uninstall` no borra lo que cambió después del plan (HCD-034, H-01):** cada retirada comprueba, justo antes de escribir, que el archivo, la skill, el enlace, la entrada de `mcp.json` o `settings.json`, el bloque de `AGENTS.md`, la entrada `packages` (antes de `pi remove`) o `pi-cc-extensions.json` siguen como los examinó el plan. Lo que cambió se conserva y aparece como `[omitir] … — cambió después del plan`; lo que desapareció, como `[omitir] … — ya no existe`. El mensaje final indica cuántos elementos se conservaron por cambio.
+- **`uninstall` no anuncia éxito si no pudo leer algo (HCD-034, H-02):** solo la ausencia de un recurso es inocua. Cualquier otro error al inspeccionar o al releer da `[fallido]` y el comando termina con error, en lugar de mostrar «No queda nada que retirar». Un launcher ilegible en una carpeta que no respalda la instalación se omite e informa, aunque no quede nada que retirar.
+- **`update` no instala un ejecutable incompleto (HCD-034, H-03):** `extractBinary` rechaza un ejecutable vacío, mayor de 200 MiB o truncado; el binario instalado no cambia.
+
+### Documentation
+- Auditoría defensiva del 2026-11-13 con su reproducción (`docs/audits/2026-11-13-adm-repro.sh`) y problemas conocidos con H-01, H-02 y H-03 corregidos.
+- Badge, referencias de descarga, guía HTML e instaladores sincronizados con `v1.13.4`.
+
 ## [v1.13.3] - 2026-11-13
 
 ### Fixed
