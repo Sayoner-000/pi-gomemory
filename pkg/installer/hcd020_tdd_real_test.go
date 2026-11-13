@@ -183,7 +183,44 @@ func TestHCD020PlaywrightLine(t *testing.T) {
 	fixture := strings.ReplaceAll(playwrightLineFixture, "__ROOT__", proj)
 	writeFile(t, filepath.Join(bin, "pw-out.txt"), fixture)
 	// npx falso: emite la salida real con una pausa a mitad para observar el avance en vivo.
-	writeExec(t, filepath.Join(bin, "npx"), `[ "$1 $2 $3" = "playwright test --reporter=line" ] || exit 9
+	writeExec(t, filepath.Join(bin, "npx"), `[ "$1 $2" = "playwright test" ] || exit 9
+if [ -n "$PLAYWRIGHT_JSON_OUTPUT_NAME" ]; then
+  cat << 'EOF' > "$PLAYWRIGHT_JSON_OUTPUT_NAME"
+{
+  "suites": [
+    {
+      "file": "tests/demo.spec.mjs",
+      "line": 3,
+      "column": 1,
+      "specs": [
+        {
+          "title": "suma correcta",
+          "file": "tests/demo.spec.mjs",
+          "line": 3,
+          "column": 1,
+          "tests": [{ "status": "expected", "results": [{ "status": "passed", "duration": 50 }] }]
+        },
+        {
+          "title": "total del carrito",
+          "file": "tests/demo.spec.mjs",
+          "line": 7,
+          "column": 1,
+          "tests": [{ "status": "unexpected", "results": [{ "status": "failed", "duration": 30, "errors": [{ "message": "Expected: 13\nReceived: 7" }] }] }]
+        },
+        {
+          "title": "espera lenta",
+          "file": "tests/demo.spec.mjs",
+          "line": 17,
+          "column": 1,
+          "tests": [{ "status": "expected", "results": [{ "status": "passed", "duration": 150 }] }]
+        }
+      ]
+    }
+  ],
+  "stats": { "expected": 2, "unexpected": 1 }
+}
+EOF
+fi
 head -5 "`+filepath.Join(bin, "pw-out.txt")+`"; sleep 0.4; tail -n +6 "`+filepath.Join(bin, "pw-out.txt")+`"; exit 1`)
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `process.env.PATH = `+jsStr(bin)+` + ":" + process.env.PATH;
 `+tddToolHarness+`

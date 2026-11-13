@@ -9,8 +9,10 @@
  * - Panel lateral flotante overlay no bloqueante (anchor: top-right) y visor modal
  */
 
-import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { spawn, type ChildProcess } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { isAbsolute, join, relative } from "node:path";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
@@ -68,12 +70,13 @@ export interface TDDStats {
 	total: number;
 	passed: number;
 	failed: number;
+	flaky: number;
 	running: number;
 	queued: number;
 }
 
 export interface TDDState {
-	status: "idle" | "running" | "passed" | "failed";
+	status: "idle" | "running" | "passed" | "failed" | "flaky";
 	progressPercent: number;
 	durationMs: number;
 	suites: TestSuite[];
@@ -116,7 +119,7 @@ export function createTDDStore(): TDDStore {
 		progressPercent: 0,
 		durationMs: 0,
 		suites: [],
-		stats: { total: 0, passed: 0, failed: 0, running: 0, queued: 0 },
+		stats: { total: 0, passed: 0, failed: 0, flaky: 0, running: 0, queued: 0 },
 		watchMode: false,
 	};
 
@@ -138,6 +141,7 @@ export function createTDDStore(): TDDStore {
 		let total = 0;
 		let passed = 0;
 		let failed = 0;
+		let flaky = 0;
 		let running = 0;
 		let queued = 0;
 
@@ -147,20 +151,23 @@ export function createTDDStore(): TDDStore {
 				total++;
 				if (test.status === "passed") passed++;
 				else if (test.status === "failed") failed++;
+				else if (test.status === "flaky") flaky++;
 				else if (test.status === "running") running++;
 				else queued++;
 			}
 		}
 
-		state.stats = { total, passed, failed, running, queued };
-		state.progressPercent = total > 0 ? Math.round((passed / total) * 100) : 0;
+		state.stats = { total, passed, failed, flaky, running, queued };
+		state.progressPercent = total > 0 ? Math.round(((passed + flaky) / total) * 100) : 0;
 		state.lastUpdated = Date.now();
 
 		// Entre un test y el siguiente no hay ninguno en curso, pero la suite sigue viva.
 		if (running > 0 || state.suites.some((s) => s.status === "running")) {
 			state.status = "running";
-		} else if (failed > 0) {
+		} else if (failed > 0 || state.suites.some((s) => s.status === "failed")) {
 			state.status = "failed";
+		} else if (flaky > 0 || state.suites.some((s) => s.status === "flaky")) {
+			state.status = "flaky";
 		} else if (total > 0 && passed === total) {
 			state.status = "passed";
 		} else {
@@ -302,7 +309,7 @@ export function createTDDStore(): TDDStore {
 				progressPercent: 0,
 				durationMs: 0,
 				suites: [],
-				stats: { total: 0, passed: 0, failed: 0, running: 0, queued: 0 },
+				stats: { total: 0, passed: 0, failed: 0, flaky: 0, running: 0, queued: 0 },
 				watchMode: state.watchMode,
 			};
 			notify();
@@ -456,8 +463,35 @@ export interface StreamResult {
 	code: number;
 	/** El comando no existe en PATH. */
 	missing: boolean;
+	/** La ejecución se interrumpió por timeout. */
+	timedOut?: boolean;
+	/** La ejecución fue cancelada por señal de aborto. */
+	aborted?: boolean;
 	/** Últimas líneas de salida, para diagnosticar un fallo sin tests reconocidos. */
 	tail: string[];
+}
+
+/**
+ * Mata el grupo de procesos acotado del hijo en POSIX (detached: true)
+ * o el proceso individual si no tiene grupo propio o está en Windows.
+ * Nunca envía señales a grupos no positivos (<= 1) para evitar señalizar al anfitrión.
+ */
+function killProcessGroup(child: ChildProcess, signal: NodeJS.Signals = "SIGTERM"): void {
+	const pid = child?.pid;
+	if (!pid || pid <= 1) return;
+	if (process.platform !== "win32") {
+		try {
+			process.kill(-pid, signal);
+			return;
+		} catch {
+			// El grupo puede haber terminado ya; fallback al proceso
+		}
+	}
+	try {
+		child.kill(signal);
+	} catch {
+		// proceso ya terminado
+	}
 }
 
 /**
@@ -467,7 +501,7 @@ export interface StreamResult {
 export function streamLines(
 	cmd: string,
 	args: string[],
-	opts: { cwd?: string; signal?: AbortSignal; timeoutMs?: number },
+	opts: { cwd?: string; signal?: AbortSignal; timeoutMs?: number; env?: NodeJS.ProcessEnv },
 	onLine: (line: string) => void,
 ): Promise<StreamResult> {
 	return new Promise((resolve) => {
@@ -481,14 +515,67 @@ export function streamLines(
 				// un parser defectuoso no debe tumbar la ejecución
 			}
 		};
-		let child: ReturnType<typeof spawn>;
-		try {
-			child = spawn(cmd, args, { cwd: opts.cwd, shell: false, stdio: ["ignore", "pipe", "pipe"], signal: opts.signal });
-		} catch {
-			resolve({ code: 127, missing: true, tail });
+
+		if (opts.signal?.aborted) {
+			resolve({ code: 1, missing: false, aborted: true, timedOut: false, tail });
 			return;
 		}
-		const timer = opts.timeoutMs ? setTimeout(() => child.kill("SIGTERM"), opts.timeoutMs) : undefined;
+
+		let child: ReturnType<typeof spawn>;
+		try {
+			child = spawn(cmd, args, {
+				cwd: opts.cwd,
+				shell: false,
+				stdio: ["ignore", "pipe", "pipe"],
+				detached: process.platform !== "win32",
+				env: opts.env ? { ...process.env, ...opts.env } : process.env,
+			});
+		} catch (err: any) {
+			const isMissing = err?.code === "ENOENT";
+			resolve({
+				code: isMissing ? 127 : 1,
+				missing: isMissing,
+				aborted: Boolean(opts.signal?.aborted),
+				timedOut: false,
+				tail,
+			});
+			return;
+		}
+
+		let timedOut = false;
+		let aborted = false;
+		let missing = false;
+		let terminated = false;
+		let killTimer: NodeJS.Timeout | undefined;
+		let timeoutTimer: NodeJS.Timeout | undefined;
+
+		const terminate = (sig: NodeJS.Signals = "SIGTERM") => {
+			if (terminated) return;
+			terminated = true;
+			killProcessGroup(child, sig);
+			killTimer = setTimeout(() => {
+				killProcessGroup(child, "SIGKILL");
+				child.stdout?.destroy();
+				child.stderr?.destroy();
+			}, 800);
+		};
+
+		if (opts.timeoutMs) {
+			timeoutTimer = setTimeout(() => {
+				timedOut = true;
+				terminate("SIGTERM");
+			}, opts.timeoutMs);
+		}
+
+		const onAbort = () => {
+			aborted = true;
+			terminate("SIGTERM");
+		};
+
+		if (opts.signal) {
+			opts.signal.addEventListener("abort", onAbort, { once: true });
+		}
+
 		for (const stream of [child.stdout, child.stderr]) {
 			let buf = "";
 			stream?.setEncoding("utf8");
@@ -505,13 +592,34 @@ export function streamLines(
 				buf = "";
 			});
 		}
-		let missing = false;
+
 		child.on("error", (err: any) => {
 			if (err?.code === "ENOENT") missing = true;
 		});
-		child.on("close", (code) => {
-			if (timer) clearTimeout(timer);
-			resolve({ code: missing ? 127 : code ?? 1, missing, tail });
+
+		child.on("close", (code, signal) => {
+			if (timeoutTimer) clearTimeout(timeoutTimer);
+			if (killTimer) clearTimeout(killTimer);
+			if (opts.signal) {
+				opts.signal.removeEventListener("abort", onAbort);
+			}
+
+			let exitCode = code ?? (signal ? 1 : 0);
+			if (missing) {
+				exitCode = 127;
+			} else if (timedOut) {
+				exitCode = exitCode !== 0 ? exitCode : 124;
+			} else if (aborted) {
+				exitCode = exitCode !== 0 ? exitCode : 1;
+			}
+
+			resolve({
+				code: exitCode,
+				missing,
+				timedOut,
+				aborted,
+				tail,
+			});
 		});
 	});
 }
@@ -547,9 +655,10 @@ interface LineParser {
 }
 
 /** Parser en vivo de `go test -json`: un test por evento run/pass/fail con su Output real. */
-function goTestParser(store: TDDStore, suiteId: string): LineParser {
+export function goTestParser(store: TDDStore, suiteId: SuiteDomain): LineParser {
 	const output = new Map<string, string[]>();
 	const pkgOutput = new Map<string, string[]>();
+	const runningTests = new Set<string>();
 	let failed = false;
 	const keyOf = (ev: any) => `${ev.Package ?? ""}::${ev.Test}`;
 	return {
@@ -581,12 +690,14 @@ function goTestParser(store: TDDStore, suiteId: string): LineParser {
 			const key = keyOf(ev);
 			if (ev.Action === "run") {
 				output.set(key, []);
+				runningTests.add(key);
 				store.startTest(suiteId, key, ev.Test);
 			} else if (ev.Action === "output") {
 				const arr = output.get(key) ?? [];
 				arr.push(ev.Output ?? "");
 				output.set(key, arr.slice(-60));
 			} else if (ev.Action === "pass" || ev.Action === "skip" || ev.Action === "fail") {
+				runningTests.delete(key);
 				const ms = Math.round((ev.Elapsed ?? 0) * 1000);
 				if (ev.Action === "fail") {
 					failed = true;
@@ -597,41 +708,188 @@ function goTestParser(store: TDDStore, suiteId: string): LineParser {
 			}
 		},
 		finish(res) {
+			let interruptedReason = "";
+			if (res.timedOut) {
+				interruptedReason = "interrumpido por límite de tiempo (timeout)";
+			} else if (res.aborted) {
+				interruptedReason = "interrumpido por cancelación (abort)";
+			} else if (res.code !== 0) {
+				interruptedReason = `proceso terminado anormalmente con código ${res.code}`;
+			}
+
+			if (runningTests.size > 0) {
+				for (const key of runningTests) {
+					failed = true;
+					const testOutput = output.get(key) ?? [];
+					let failure = goFailureFromOutput(testOutput);
+					if (!failure || failure.message === "Fallo sin salida") {
+						const tailMsg = res.tail.filter((l) => l.trim()).slice(-5).join("\n");
+						const msg = interruptedReason || (tailMsg ? `go test: ${tailMsg}` : `go test terminó sin emitir resultado (código ${res.code})`);
+						failure = { message: clip(msg) };
+					} else if (interruptedReason) {
+						failure.message = clip(`${failure.message}\n(${interruptedReason})`);
+					}
+					store.finishTest(suiteId, key, "failed", 0, failure);
+				}
+				runningTests.clear();
+			}
+
 			if (res.code !== 0 && !failed) {
 				const id = "go-test::(proceso)";
 				store.startTest(suiteId, id, "go test");
-				store.finishTest(suiteId, id, "failed", 0, { message: clip(res.tail.join("\n") || `go test salió con código ${res.code}`) });
+				const reason = interruptedReason || clip(res.tail.join("\n") || `go test salió con código ${res.code}`);
+				store.finishTest(suiteId, id, "failed", 0, { message: reason });
 				failed = true;
 			}
+			store.finishSuite(suiteId, failed ? "failed" : "passed");
 			return failed;
 		},
 	};
 }
 
+function reconcilePlaywrightJson(
+	store: TDDStore,
+	suiteId: SuiteDomain,
+	report: any,
+	cwd?: string,
+	lineFailures?: Map<string, TestFailure>,
+): boolean {
+	if (!report || !Array.isArray(report.suites)) {
+		return false;
+	}
+
+	const existingTests = store.getState().suites.find((s) => s.id === suiteId)?.tests ?? [];
+
+	const walkSuite = (s: any) => {
+		if (Array.isArray(s.suites)) {
+			for (const childSuite of s.suites) walkSuite(childSuite);
+		}
+		if (Array.isArray(s.specs)) {
+			for (const spec of s.specs) {
+				const file = spec.file || s.file || "";
+				const line = spec.line ?? s.line ?? 0;
+				const col = spec.column ?? s.column ?? 0;
+				const loc = `${file}:${line}:${col}`;
+				const title = spec.title || "";
+
+				if (Array.isArray(spec.tests)) {
+					for (const test of spec.tests) {
+						const project = test.projectName || "";
+						const id = project ? `[${project}]::${loc}::${title}` : `${loc}::${title}`;
+						const displayName = project ? `[${project}] › ${title}` : title;
+
+						const matched = existingTests.find((t) => {
+							if (t.id === id) return true;
+							const projMatch = project ? t.id.includes(`[${project}]`) : !t.id.includes("[");
+							const titleMatch = t.name.includes(title) || t.id.endsWith(`::${title}`);
+							const lineMatch = line > 0 ? t.id.includes(`:${line}:`) : true;
+							return projMatch && titleMatch && lineMatch;
+						});
+						const finalId = matched ? matched.id : id;
+
+						let status: StepStatus = "passed";
+						let failure: TestFailure | undefined;
+						let durationMs = 0;
+
+						if (Array.isArray(test.results)) {
+							for (const r of test.results) {
+								durationMs += r.duration ?? 0;
+							}
+						}
+
+						if (test.status === "flaky") {
+							status = "flaky";
+							const lineFail = lineFailures?.get(finalId);
+							const firstFail = test.results?.find(
+								(r: any) => r.status === "failed" || r.status === "timedOut" || (r.errors && r.errors.length > 0),
+							);
+							const errMsg = firstFail?.errors?.[0]?.message || firstFail?.error?.message;
+							if (errMsg) {
+								failure = {
+									message: clip(clean(errMsg)),
+									location: lineFail?.location || relLocation(loc, cwd),
+									step: lineFail?.step,
+								};
+							} else {
+								failure = lineFail || { message: "Fallo inicial en prueba inestable (flaky)" };
+							}
+						} else if (test.status === "unexpected") {
+							status = "failed";
+							const lineFail = lineFailures?.get(finalId);
+							const lastFail = test.results?.find(
+								(r: any) => r.status === "failed" || r.status === "timedOut" || (r.errors && r.errors.length > 0),
+							);
+							const errMsg = lastFail?.errors?.[0]?.message || lastFail?.error?.message;
+							if (errMsg) {
+								failure = {
+									message: clip(clean(errMsg)),
+									location: lineFail?.location || relLocation(loc, cwd),
+									step: lineFail?.step,
+								};
+							} else {
+								failure = lineFail || { message: "Fallo inesperado de prueba" };
+							}
+						} else if (test.status === "skipped") {
+							status = "skipped";
+						} else if (test.status === "expected") {
+							status = "passed";
+						}
+
+						if (!matched) {
+							store.startTest(suiteId, finalId, displayName);
+						}
+						store.finishTest(suiteId, finalId, status, durationMs, failure);
+					}
+				}
+			}
+		}
+	};
+
+	for (const s of report.suites) {
+		walkSuite(s);
+	}
+	return true;
+}
+
 /**
- * Parser en vivo del reporter `line` de Playwright: «[n/t] archivo:l:c › título» inicia el test;
- * «N) archivo:l:c › título › paso ───» abre su fallo, con Error/Expected/Received y «at ruta:l:c».
+ * Parser en vivo del reporter `line` de Playwright, reconciliado con el informe JSON oficial.
+ * «[n/t] [proyecto] › archivo:l:c › título» inicia el test.
+ * «N) [proyecto] › archivo:l:c › título › paso ───» abre su fallo.
  */
-function playwrightLineParser(store: TDDStore, suiteId: string, cwd?: string): LineParser {
-	const START = /^\[\d+\/\d+\]\s+(?:\[[^\]]+\]\s+›\s+)?(\S+:\d+:\d+)\s+›\s+(.+?)\s*$/;
-	const FAIL_HEAD = /^\s+\d+\)\s+(?:\[[^\]]+\]\s+›\s+)?(\S+:\d+:\d+)\s+›\s+(.+?)\s*─*\s*$/;
+export function playwrightLineParser(
+	store: TDDStore,
+	suiteId: SuiteDomain,
+	cwd?: string,
+	jsonPath?: string,
+): LineParser {
+	const START = /^\[\d+\/\d+\]\s+(?:\[([^\]]+)\]\s+›\s+)?(\S+:\d+:\d+)\s+›\s+(.+?)\s*$/;
+	const FAIL_HEAD = /^\s+\d+\)\s+(?:\[([^\]]+)\]\s+›\s+)?(\S+:\d+:\d+)\s+›\s+(.+?)\s*─*\s*$/;
 	const SUMMARY = /^\s+\d+\s+(failed|passed|flaky|skipped|interrupted|did not run)\b/;
-	const titles = new Map<string, string>(); // loc → título
-	const failedKeys = new Set<string>();
-	const started: string[] = [];
-	let current: { key: string; step?: string; lines: string[] } | null = null;
+	const titles = new Map<string, string>(); // id → cleanTitle
+	const locs = new Map<string, string>(); // id → loc
+	const lineFailures = new Map<string, TestFailure>();
+	const started = new Set<string>();
+	let sawPassedSummary = false;
+	let current: { id: string; step?: string; lines: string[] } | null = null;
+
+	const idOf = (project: string | undefined, loc: string, title: string) => {
+		const cleanTitle = title.replace(/\s+\(retry\s+#\d+\)$/, "").trim();
+		return project ? `[${project}]::${loc}::${cleanTitle}` : `${loc}::${cleanTitle}`;
+	};
 
 	const closeFailure = () => {
 		if (!current) return;
 		const body = current.lines.map((l) => l.trim());
 		const msg = body.filter((l) => /^(Error|Expected|Received|Timeout|TimeoutError|expect)\b|^Call log:/.test(l));
 		const at = body.map((l) => l.match(/^at\s+(.+:\d+:\d+)$/)?.[1]).find(Boolean);
-		store.finishTest(suiteId, current.key, "failed", 0, {
+		const loc = locs.get(current.id) || current.id;
+		const failure: TestFailure = {
 			message: clip((msg.length ? msg : body.filter(Boolean).slice(0, 6)).join("\n")),
-			location: at ? relLocation(at, cwd) : current.key,
+			location: at ? relLocation(at, cwd) : relLocation(loc, cwd),
 			step: current.step,
-		});
-		failedKeys.add(current.key);
+		};
+		lineFailures.set(current.id, failure);
+		store.finishTest(suiteId, current.id, "failed", 0, failure);
 		current = null;
 	};
 
@@ -641,37 +899,103 @@ function playwrightLineParser(store: TDDStore, suiteId: string, cwd?: string): L
 			const start = line.match(START);
 			if (start) {
 				closeFailure();
-				const [, loc, title] = start;
-				titles.set(loc, title);
-				if (!started.includes(loc)) started.push(loc);
-				store.startTest(suiteId, loc, title);
+				const [, project, loc, title] = start;
+				const cleanTitle = title.replace(/\s+\(retry\s+#\d+\)$/, "").trim();
+				const id = idOf(project, loc, cleanTitle);
+				titles.set(id, cleanTitle);
+				locs.set(id, loc);
+				started.add(id);
+				const displayName = project ? `[${project}] › ${cleanTitle}` : cleanTitle;
+				if (!lineFailures.has(id)) {
+					store.startTest(suiteId, id, displayName);
+				}
 				return;
 			}
 			const head = line.match(FAIL_HEAD);
 			if (head) {
 				closeFailure();
-				const [, loc, rest] = head;
-				const title = titles.get(loc);
-				if (!title) store.startTest(suiteId, loc, rest.split(" › ")[0]);
-				const step = title && rest.startsWith(`${title} › `) ? rest.slice(title.length + 3) : undefined;
-				current = { key: loc, step, lines: [] };
+				const [, project, loc, rest] = head;
+				const titlePart = rest.split(" › ")[0].replace(/\s+\(retry\s+#\d+\)$/, "").trim();
+				const id = idOf(project, loc, titlePart);
+				if (!titles.has(id)) {
+					titles.set(id, titlePart);
+					locs.set(id, loc);
+					started.add(id);
+					const displayName = project ? `[${project}] › ${titlePart}` : titlePart;
+					store.startTest(suiteId, id, displayName);
+				}
+				const cleanTitle = titles.get(id) || titlePart;
+				const step = rest.startsWith(`${cleanTitle} › `) ? rest.slice(cleanTitle.length + 3) : undefined;
+				current = { id, step, lines: [] };
 				return;
 			}
 			if (SUMMARY.test(line)) {
 				closeFailure();
+				if (/\b\d+\s+passed\b/.test(line)) {
+					sawPassedSummary = true;
+				}
 				return;
 			}
 			current?.lines.push(line);
 		},
 		finish(res) {
 			closeFailure();
-			for (const key of started) if (!failedKeys.has(key)) store.finishTest(suiteId, key, "passed", 0);
-			if (res.code !== 0 && failedKeys.size === 0) {
-				store.startTest(suiteId, "pw::(proceso)", "playwright test");
-				store.finishTest(suiteId, "pw::(proceso)", "failed", 0, { message: clip(res.tail.join("\n") || `playwright salió con código ${res.code}`) });
-				return true;
+
+			let jsonReportParsed = false;
+			if (jsonPath && existsSync(jsonPath)) {
+				try {
+					const content = readFileSync(jsonPath, "utf8");
+					if (content.trim()) {
+						const data = JSON.parse(content);
+						jsonReportParsed = reconcilePlaywrightJson(store, suiteId, data, cwd, lineFailures);
+					}
+				} catch {
+					jsonReportParsed = false;
+				} finally {
+					try {
+						rmSync(jsonPath, { force: true });
+					} catch {}
+				}
 			}
-			return failedKeys.size > 0;
+
+			if (!jsonReportParsed) {
+				// Si no hay JSON oficial, solo se aprueban tests si la ejecución concluyó
+				// con la línea de resumen de aprobados. Una interrupción sin resumen NUNCA aprueba pruebas (C-006 / C-11).
+				if (sawPassedSummary) {
+					for (const id of started) {
+						if (lineFailures.has(id)) {
+							store.finishTest(suiteId, id, "failed", 0, lineFailures.get(id));
+						} else {
+							store.finishTest(suiteId, id, "passed", 0);
+						}
+					}
+				} else {
+					for (const id of started) {
+						const existing = lineFailures.get(id);
+						const failure = existing || {
+							message: clip(res.tail.join("\n") || `playwright finalizó sin informe de resultados (código ${res.code})`),
+							location: locs.get(id) ? relLocation(locs.get(id)!, cwd) : undefined,
+						};
+						store.finishTest(suiteId, id, "failed", 0, failure);
+					}
+				}
+				if (started.size === 0 && res.code !== 0) {
+					const id = "pw::(proceso)";
+					store.startTest(suiteId, id, "playwright test");
+					store.finishTest(suiteId, id, "failed", 0, {
+						message: clip(res.tail.join("\n") || `playwright salió con código ${res.code}`),
+					});
+				}
+			}
+
+			const suite = store.getState().suites.find((s) => s.id === suiteId);
+			const anyFailed = suite?.tests.some((t) => t.status === "failed");
+			const anyFlaky = suite?.tests.some((t) => t.status === "flaky");
+			const allPassed = suite?.tests.length ? suite.tests.every((t) => t.status === "passed") : false;
+			const suiteStatus: StepStatus = anyFailed ? "failed" : anyFlaky ? "flaky" : allPassed ? "passed" : (res.code === 0 && jsonReportParsed ? "passed" : "failed");
+			store.finishSuite(suiteId, suiteStatus);
+
+			return anyFailed || (!jsonReportParsed && res.code !== 0);
 		},
 	};
 }
@@ -800,9 +1124,11 @@ export function renderTDDOverlay(state: TDDState, width: number, theme: Theme): 
 
 		const counted = suite.tests.filter((t) => t.status !== "skipped");
 		const passedCount = counted.filter((t) => t.status === "passed").length;
-		const iconColor = suite.status === "passed" ? "success" : suite.status === "failed" ? "error" : "accent";
+		const flakyCount = counted.filter((t) => t.status === "flaky").length;
+		const iconColor = suite.status === "passed" ? "success" : suite.status === "failed" ? "error" : suite.status === "flaky" ? "warning" : "accent";
 		const dur = suite.durationMs ? theme.fg("dim", ` · ${formatMs(suite.durationMs)}`) : "";
-		row(` ${theme.fg(iconColor, statusIcon(suite.status, now))} ${suite.name} (${passedCount}/${counted.length})${dur}`);
+		const flakyInfo = flakyCount > 0 ? ` · ${flakyCount} flaky` : "";
+		row(` ${theme.fg(iconColor, statusIcon(suite.status, now))} ${suite.name} (${passedCount}/${counted.length}${flakyInfo})${dur}`);
 
 		if (suite.tests.length === 0 && suite.status === "pending") {
 			row(theme.fg("dim", "   ○ sin ejecutar · /tdd run"));
@@ -823,6 +1149,14 @@ export function renderTDDOverlay(state: TDDState, width: number, theme: Theme): 
 			if (test.diagnostic) row(theme.fg("warning", `     ↳ ${test.diagnostic.summary}`));
 		}
 
+		for (const test of suite.tests.filter((t) => t.status === "flaky")) {
+			const tDur = test.durationMs > 0 ? theme.fg("dim", ` ${formatMs(test.durationMs)}`) : "";
+			row(`   ${theme.fg("warning", "~")} ${test.name}${tDur} ${theme.fg("dim", "(flaky)")}`);
+			if (test.failure?.location) row(theme.fg("dim", `     › ${test.failure.location}`));
+			const summary = failureHeadline(test.failure?.message ?? "");
+			if (summary) row(theme.fg("warning", `     ↳ fallo inicial: ${summary}`));
+		}
+
 		if (passedCount > 0) row(theme.fg("success", `   ✓ ${passedCount} aprobados`));
 	}
 
@@ -841,8 +1175,9 @@ export function renderTDDOverlay(state: TDDState, width: number, theme: Theme): 
 
 export function renderTDDWidget(state: TDDState, theme: Theme): string[] {
 	const icon = statusIcon(state.status);
-	const barColor = state.status === "failed" ? "error" : "success";
-	const mainLine = `[TDD] ${theme.fg(barColor, `${state.progressPercent}%`)} · ${state.stats.passed}/${state.stats.total} ✓`;
+	const barColor = state.status === "failed" ? "error" : state.status === "flaky" ? "warning" : "success";
+	const flakyStr = state.stats.flaky > 0 ? ` · ${state.stats.flaky} ~` : "";
+	const mainLine = `[TDD] ${theme.fg(barColor, `${state.progressPercent}%`)} · ${state.stats.passed}/${state.stats.total} ✓${flakyStr}`;
 
 	const domainBadges = state.suites
 		.map((s) => {
@@ -860,6 +1195,8 @@ const OVERLAY_WIDTH = 44;
 const WIDGET_ID = "gomemory-tdd-widget";
 const CHECK_TIMEOUT_MS = 10 * 60 * 1000;
 const UPDATE_THROTTLE_MS = 300;
+/** Tools que pueden cambiar archivos y justifican una ejecución de watch (bash por prudencia). */
+const WATCH_TOOLS = new Set(["edit", "write", "bash"]);
 
 /**
  * Informe para el agente: resultado por suite y cada fallo con mensaje, ubicación,
@@ -870,6 +1207,7 @@ export function formatAgentReport(state: TDDState, suiteIds: string[]): string {
 	const ran = suites.filter((s) => s.status !== "skipped");
 	const tests = ran.flatMap((s) => s.tests.filter((t) => t.status !== "skipped").map((t) => ({ s, t })));
 	const failed = tests.filter((x) => x.t.status === "failed");
+	const flaky = tests.filter((x) => x.t.status === "flaky");
 	const passed = tests.filter((x) => x.t.status === "passed").length;
 
 	if (ran.length === 0) {
@@ -878,12 +1216,15 @@ export function formatAgentReport(state: TDDState, suiteIds: string[]): string {
 			...suites.map((s) => `- ${s.name}: omitida (${s.skipReason ?? "no aplica"})`),
 		].join("\n");
 	}
-	const out = [`TDD: ${passed}/${tests.length} tests pasados · ${failed.length} fallidos.`];
+	const flakyPart = flaky.length > 0 ? ` · ${flaky.length} flaky` : "";
+	const out = [`TDD: ${passed}/${tests.length} tests pasados · ${failed.length} fallidos${flakyPart}.`];
 	for (const s of suites) {
 		if (s.status === "skipped") out.push(`- ${s.name}: omitida (${s.skipReason ?? "no aplica"})`);
 		else {
 			const n = s.tests.filter((t) => t.status !== "skipped");
-			out.push(`- ${s.name}: ${s.status} (${n.filter((t) => t.status === "passed").length}/${n.length})`);
+			const sf = n.filter((t) => t.status === "flaky").length;
+			const sfPart = sf > 0 ? ` · ${sf} flaky` : "";
+			out.push(`- ${s.name}: ${s.status} (${n.filter((t) => t.status === "passed").length}/${n.length}${sfPart})`);
 		}
 	}
 	if (failed.length) {
@@ -893,6 +1234,18 @@ export function formatAgentReport(state: TDDState, suiteIds: string[]): string {
 			out.push(`${i + 1}. [${s.name}] ${t.name}${where ? ` — ${where}` : ""}`);
 			for (const l of (t.failure?.message ?? "sin mensaje").split("\n")) out.push(`   ${l}`);
 			if (t.diagnostic) out.push(`   Diagnóstico: ${t.diagnostic.summary}. Sugerencia: ${t.diagnostic.suggestedFix}`);
+		});
+	}
+	if (flaky.length) {
+		out.push("", "Pruebas inestables (flaky):");
+		flaky.forEach(({ s, t }, i) => {
+			const where = [t.failure?.location, t.failure?.step && `paso «${t.failure.step}»`].filter(Boolean).join(", ");
+			out.push(`${i + 1}. [${s.name}] ${t.name}${where ? ` — ${where}` : ""} (aprobada en reintento)`);
+			if (t.failure?.message) {
+				out.push(`   Fallo inicial:`);
+				for (const l of t.failure.message.split("\n")) out.push(`     ${l}`);
+			}
+			if (t.diagnostic) out.push(`   Diagnóstico: ${t.diagnostic.summary}`);
 		});
 	}
 	return out.join("\n");
@@ -1051,13 +1404,42 @@ export default function (pi: ExtensionAPI) {
 			return { failed: true };
 		}
 
-		const parser =
-			check.parser === "go-test"
-				? goTestParser(store, suiteId)
-				: check.parser === "playwright-line"
-					? playwrightLineParser(store, suiteId, cwd)
-					: exitCodeParser(store, suiteId, check, startedAt);
-		const res = await run(parser);
+		let parser: LineParser;
+		let extraEnv: NodeJS.ProcessEnv | undefined;
+		let tmpJsonPath: string | undefined;
+
+		if (check.parser === "playwright-line") {
+			tmpJsonPath = join(tmpdir(), `.pw-report-${randomUUID()}.json`);
+			extraEnv = { PLAYWRIGHT_JSON_OUTPUT_NAME: tmpJsonPath };
+			parser = playwrightLineParser(store, suiteId, cwd, tmpJsonPath);
+		} else if (check.parser === "go-test") {
+			parser = goTestParser(store, suiteId);
+		} else {
+			parser = exitCodeParser(store, suiteId, check, startedAt);
+		}
+
+		let cmdArgs = check.args;
+		if (check.parser === "playwright-line") {
+			cmdArgs = [...check.args];
+			const repIdx = cmdArgs.findIndex((a) => a.startsWith("--reporter="));
+			if (repIdx >= 0) {
+				if (!cmdArgs[repIdx].includes("json")) {
+					cmdArgs[repIdx] = `${cmdArgs[repIdx]},json`;
+				}
+			} else if (!cmdArgs.includes("--reporter")) {
+				cmdArgs.push("--reporter=line,json");
+			}
+		}
+
+		const res = await streamLines(
+			check.cmd,
+			cmdArgs,
+			{ cwd, signal: opts.signal, timeoutMs: CHECK_TIMEOUT_MS, env: extraEnv },
+			(line) => {
+				parser.onLine(line);
+				opts.onProgress?.();
+			},
+		);
 		if (res.missing) {
 			if (check.parser === "exit-code") store.finishTest(suiteId, check.id, "skipped", 0);
 			return { skip: `${check.cmd} no está instalado` };
@@ -1074,12 +1456,16 @@ export default function (pi: ExtensionAPI) {
 	let runsPending = 0;
 	/** Hay una ejecución de watch esperando turno: más turnos no añaden otra. */
 	let watchPending = false;
+	/** El agente cambió archivos desde la última ejecución completa: watch tiene algo que comprobar. */
+	let watchDirty = false;
 	/** Suites de la última ejecución terminada (para /tdd report); null si aún no hubo ninguna. */
 	let lastRunSuites: SuiteDomain[] | null = null;
 
 	function runTestSuite(domainOrAll?: string, ctx?: any, opts: RunOptions = {}): Promise<SuiteDomain[]> {
 		runsPending++;
 		const next = runChain.then(() => {
+			// Una ejecución completa cubre los cambios previos: watch no la repite.
+			if (!domainOrAll || domainOrAll === "all") watchDirty = false;
 			opts.onStart?.();
 			return doRunTestSuite(domainOrAll, ctx, opts);
 		});
@@ -1134,7 +1520,11 @@ export default function (pi: ExtensionAPI) {
 					}
 				}
 				if (ran === 0) store.skipSuite(plan.id, skips.join(" · ") || "no aplica");
-				else store.finishSuite(plan.id, failed ? "failed" : "passed", Date.now() - started);
+				else {
+					const suite = store.getState().suites.find((s) => s.id === plan.id);
+					const status = suite?.status && suite.status !== "running" ? suite.status : (failed ? "failed" : "passed");
+					store.finishSuite(plan.id, status, Date.now() - started);
+				}
 			}
 		} finally {
 			clearInterval(ticker);
@@ -1242,9 +1632,15 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// ── Reactividad en vivo (Watch mode ante fin de turno) ──────────────────
-	pi.on("turn_end", async (_event, ctx) => {
-		if (store.getState().watchMode) await runWatch(ctx);
+	// ── Reactividad en vivo (Watch mode al asentarse el agente) ─────────────
+	// No en turn_end: pi lo dispara y lo espera en cada turno, así que la suite
+	// se relanzaba entre cada tool call y bloqueaba al agente.
+	pi.on("tool_execution_end", async (event: any) => {
+		if (!event?.isError && WATCH_TOOLS.has(event?.toolName)) watchDirty = true;
+	});
+	pi.on("agent_settled", async (event: any, ctx) => {
+		if (!store.getState().watchMode || !watchDirty || event?.aborted) return;
+		void runWatch(ctx); // sin await: agent_settled no debe esperar a la suite
 	});
 
 	pi.on("session_shutdown", async () => {

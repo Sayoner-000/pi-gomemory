@@ -83,14 +83,19 @@ let tool;
 factory({
 	registerCommand: (n, d) => (commands[n] = d),
 	registerTool: (d) => (tool = d),
-	on: (e, h) => { handlers[e] = h; return () => {}; },
+	on: (e, h) => { (handlers[e] ||= []).push(h); return () => {}; },
 	exec: async () => { throw new Error("pi.exec no se usa"); },
 });
 const ctx = { cwd: `+jsStr(proj)+`, hasUI: false, ui: { notify: (m) => notes.push(m) } };
 await commands.tdd.handler("watch", ctx);
 const first = tool.execute("c1", { suite: "all" }, undefined, undefined, ctx);
 await new Promise((r) => setTimeout(r, 50));
-const turns = Array.from({ length: 5 }, () => handlers.turn_end({}, ctx));
+const emit = (e, ev) => Promise.all((handlers[e] || []).map((h) => h(ev, ctx)));
+const turns = [];
+for (let i = 0; i < 5; i++) {
+	await emit("tool_execution_end", { toolName: "edit", isError: false });
+	turns.push(emit("agent_settled", { aborted: false }));
+}
 const manual = commands.tdd.handler("run", ctx);
 await Promise.all([first, ...turns, manual]);
 const runs = readFileSync(`+jsStr(count)+`, "utf8").split("\n").filter((l) => l === "test").length;

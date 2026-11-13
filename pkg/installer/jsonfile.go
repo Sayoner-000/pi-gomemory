@@ -37,7 +37,14 @@ func writeJSONObject(path string, obj any) error {
 	if err != nil {
 		return fmt.Errorf("serializar %s: %w", path, err)
 	}
-	if err := writeFileAtomic(path, append(data, '\n'), 0644); err != nil {
+	// Keep existing sharing choices; newly created configuration is private.
+	mode := os.FileMode(0600)
+	if info, err := os.Stat(path); err == nil {
+		mode = info.Mode().Perm()
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("read permissions for %s: %w", path, err)
+	}
+	if err := writeFileAtomic(path, append(data, '\n'), mode); err != nil {
 		return fmt.Errorf("escribir %s: %w", path, err)
 	}
 	return nil

@@ -266,7 +266,7 @@ func pruneLegacyPiSkills(dir, home string) error {
 				}
 			}
 		} else if e.IsDir() {
-			if isPristineEmbeddedCopy(p) {
+			if isPristineEmbeddedCopy(p) && onlySkillFile(p) {
 				remove = true
 			} else {
 				// También retira copias heredadas de versiones previas que no tenían .pi-gomemory

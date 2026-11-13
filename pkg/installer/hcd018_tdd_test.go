@@ -240,9 +240,11 @@ if (!tools.some(t => t.name === "run_test_suite")) {
 	fails.push("tool run_test_suite no registrada");
 }
 
-if (!events.includes("turn_end")) {
-	fails.push("evento turn_end no suscrito para watch mode");
+for (const e of ["tool_execution_end", "agent_settled"]) {
+	if (!events.includes(e)) fails.push("evento " + e + " no suscrito para watch mode");
 }
+// turn_end se espera en cada turno: suscribir watch ahí bloquea al agente en bucle.
+if (events.includes("turn_end")) fails.push("watch no debe suscribirse a turn_end");
 
 console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 `)
