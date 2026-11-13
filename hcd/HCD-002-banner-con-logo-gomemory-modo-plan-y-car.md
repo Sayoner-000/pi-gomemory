@@ -171,4 +171,4 @@ Criterios: C-06, C-01, C-03
       ok  	pi-gomemory/pkg/installer	(cached)
 
 ## Siguiente
-pendiente
+Cancelada: cancelo HCD-002 0e437b273a47

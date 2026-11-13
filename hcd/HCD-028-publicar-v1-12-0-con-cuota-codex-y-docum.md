@@ -67,10 +67,10 @@ Constitución §10 (validación de comportamiento), §15 (integridad de artefact
       fae830c655f5189682a5af761b2007716da16110	refs/tags/v1.12.0^{}
 - 2026-11-12 06:08 -05:00 · tarea 2 · manual · caducada
       Revisión final en tag v1.12.0/fae830c: README, changelog, docs vigentes, guía HTML v1.12 y referencias de descarga sincronizados. Notas GitHub enlazan a archivos del tag con URL absoluta. HCD-027 y flaky señalados explícitamente como pendientes. ADR, auditorías y guía v1.11 conservados como históricos. Datos de pruebas sintéticos y ningún secreto real observado en el cambio; sin escáner automático. Binario instalado actualizado atómicamente desde descarga validada, v1.12.0; sidebar instalado coincide con el código, sin reinstalación completa.
-- 2026-11-13 05:41 -05:00 · tarea 1 · verde · vigente · `env -u PLAYWRIGHT_TEST_CLI go test -race ./... -count=1 && go vet ./... && bash -n install.sh scripts/build-release.sh && git diff --check` (salida 0)
+- 2026-11-13 05:41 -05:00 · tarea 1 · verde · caducada · `env -u PLAYWRIGHT_TEST_CLI go test -race ./... -count=1 && go vet ./... && bash -n install.sh scripts/build-release.sh && git diff --check` (salida 0)
       ?   	pi-gomemory	[no test files]
       ok  	pi-gomemory/pkg/installer	33.289s
-- 2026-11-13 05:41 -05:00 · tarea 3 · verde · vigente · `cd /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/rel-v1.12.0 && bash scripts/build-release.sh v1.12.0 && (cd dist && shasum -a 256 -c SHA256SUMS) && make build VERSION=v1.12.0 && bin/pi-gomemory-setup version` (salida 0)
+- 2026-11-13 05:41 -05:00 · tarea 3 · verde · caducada · `cd /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/rel-v1.12.0 && bash scripts/build-release.sh v1.12.0 && (cd dist && shasum -a 256 -c SHA256SUMS) && make build VERSION=v1.12.0 && bin/pi-gomemory-setup version` (salida 0)
         -> Compilando darwin/amd64...
         -> Empaquetando pi-gomemory-setup_v1.12.0_darwin_amd64.tar.gz...
         -> Compilando linux/amd64...
@@ -91,15 +91,48 @@ Constitución §10 (validación de comportamiento), §15 (integridad de artefact
       pi-gomemory-setup_v1.12.0_linux_arm64.tar.gz: OK
       go build -ldflags="-s -w -X main.version=v1.12.0" -o bin/pi-gomemory-setup .
       v1.12.0
-- 2026-11-13 05:42 -05:00 · tarea 4 · verde · vigente · `gh release view v1.12.0 --json tagName,isDraft,isPrerelease,url,assets --jq '{tagName,isDraft,isPrerelease,url,n:(.assets|length)}' && git ls-remote --tags origin v1.12.0 && gh release download v1.12.0 --dir /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/rel-dl-1794566549 && (cd /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/rel-dl-1794566549 && shasum -a 256 -c SHA256SUMS)` (salida 0)
+- 2026-11-13 05:42 -05:00 · tarea 4 · verde · caducada · `gh release view v1.12.0 --json tagName,isDraft,isPrerelease,url,assets --jq '{tagName,isDraft,isPrerelease,url,n:(.assets|length)}' && git ls-remote --tags origin v1.12.0 && gh release download v1.12.0 --dir /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/rel-dl-1794566549 && (cd /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/rel-dl-1794566549 && shasum -a 256 -c SHA256SUMS)` (salida 0)
       {"isDraft":false,"isPrerelease":false,"n":5,"tagName":"v1.12.0","url":"https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.12.0"}
       9c1e7ac5c61a50ccac42abaed204d851ecfb6b71	refs/tags/v1.12.0
       pi-gomemory-setup_v1.12.0_darwin_amd64.tar.gz: OK
       pi-gomemory-setup_v1.12.0_darwin_arm64.tar.gz: OK
       pi-gomemory-setup_v1.12.0_linux_amd64.tar.gz: OK
       pi-gomemory-setup_v1.12.0_linux_arm64.tar.gz: OK
-- 2026-11-13 05:42 -05:00 · tarea 2 · manual · vigente
+- 2026-11-13 05:42 -05:00 · tarea 2 · manual · caducada
       Inspeccionado 2026-11-13: v1.12.0 referenciada en README.md, CHANGELOG.md (sección [v1.12.0] 2026-11-12, historial v1.11 conservado), install.sh, docs/index.md, installation.md, usage.md, architecture.md, Guia-PI-GOMEMORY-v1.12.html y known-issues.md; known-issues distingue la release histórica v1.12.0 (HCD-026) de HCD-027, ahora cerrada en el árbol de trabajo.
+- 2026-11-13 05:50 -05:00 · tarea 1 · verde · vigente · `env -u PLAYWRIGHT_TEST_CLI go test -race ./... -count=1 && go vet ./... && bash -n install.sh scripts/build-release.sh && git diff --check` (salida 0)
+      ?   	pi-gomemory	[no test files]
+      ok  	pi-gomemory/pkg/installer	32.919s
+- 2026-11-13 05:50 -05:00 · tarea 3 · verde · vigente · `cd /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/rel-v1.12.0b && bash scripts/build-release.sh v1.12.0 && (cd dist && shasum -a 256 -c SHA256SUMS) && make build VERSION=v1.12.0 && bin/pi-gomemory-setup version` (salida 0)
+        -> Compilando darwin/amd64...
+        -> Empaquetando pi-gomemory-setup_v1.12.0_darwin_amd64.tar.gz...
+        -> Compilando linux/amd64...
+        -> Empaquetando pi-gomemory-setup_v1.12.0_linux_amd64.tar.gz...
+        -> Compilando linux/arm64...
+        -> Empaquetando pi-gomemory-setup_v1.12.0_linux_arm64.tar.gz...
+      ==> Calculando sumas de verificación SHA256...
+      ✓ Pack de distribución generado exitosamente en dist/:
+      total 24304
+      -rw-r--r--@ 1 josegomezj  wheel   3.1M Nov 13 05:51 pi-gomemory-setup_v1.12.0_darwin_amd64.tar.gz
+      -rw-r--r--@ 1 josegomezj  wheel   2.9M Nov 13 05:51 pi-gomemory-setup_v1.12.0_darwin_arm64.tar.gz
+      -rw-r--r--@ 1 josegomezj  wheel   3.1M Nov 13 05:51 pi-gomemory-setup_v1.12.0_linux_amd64.tar.gz
+      -rw-r--r--@ 1 josegomezj  wheel   2.8M Nov 13 05:51 pi-gomemory-setup_v1.12.0_linux_arm64.tar.gz
+      -rw-r--r--@ 1 josegomezj  wheel   446B Nov 13 05:51 SHA256SUMS
+      pi-gomemory-setup_v1.12.0_darwin_amd64.tar.gz: OK
+      pi-gomemory-setup_v1.12.0_darwin_arm64.tar.gz: OK
+      pi-gomemory-setup_v1.12.0_linux_amd64.tar.gz: OK
+      pi-gomemory-setup_v1.12.0_linux_arm64.tar.gz: OK
+      go build -ldflags="-s -w -X main.version=v1.12.0" -o bin/pi-gomemory-setup .
+      v1.12.0
+- 2026-11-13 05:51 -05:00 · tarea 4 · verde · vigente · `gh release view v1.12.0 --json tagName,isDraft,isPrerelease,url,assets --jq '{tagName,isDraft,isPrerelease,url,n:(.assets|length)}' && git ls-remote --tags origin v1.12.0 && gh release download v1.12.0 --dir /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/dl028.Wkj7 && (cd /private/tmp/claude-501/-Users-josegomezj-home-rcw-pi-gomemory/e5208ac0-305c-4fce-9fcf-cbbdffe105d2/scratchpad/dl028.Wkj7 && shasum -a 256 -c SHA256SUMS)` (salida 0)
+      {"isDraft":false,"isPrerelease":false,"n":5,"tagName":"v1.12.0","url":"https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.12.0"}
+      9c1e7ac5c61a50ccac42abaed204d851ecfb6b71	refs/tags/v1.12.0
+      pi-gomemory-setup_v1.12.0_darwin_amd64.tar.gz: OK
+      pi-gomemory-setup_v1.12.0_darwin_arm64.tar.gz: OK
+      pi-gomemory-setup_v1.12.0_linux_amd64.tar.gz: OK
+      pi-gomemory-setup_v1.12.0_linux_arm64.tar.gz: OK
+- 2026-11-13 05:51 -05:00 · tarea 2 · manual · vigente
+      Reinspeccionado 2026-11-13 tras publicar v1.12.1: v1.12.0 conserva su sección en CHANGELOG.md y sus notas docs/releases/v1.12.0.md enlazadas desde README.md y docs/index.md; las referencias vigentes (badge, install.sh, build-release.sh, installation.md, guía HTML) pasaron a v1.12.1 y las históricas de la cuota Codex («desde v1.12.0») se conservan.
 
 ## Siguiente
-Consultar el motor; ejecutar las comprobaciones y registrar evidencia sin editarla manualmente. Al terminar, solicitar aprobación de cierre de la revisión de trabajo exacta; la autorización de publicar no se convierte en una cita de cierre.
+Cerrada con aprobación sobre la revisión e6acddd6796b.
