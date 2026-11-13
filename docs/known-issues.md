@@ -1,4 +1,4 @@
-# Problemas conocidos — v1.13.1
+# Problemas conocidos — v1.13.2
 
 ## Retraso del aviso de releases en v1.13.0 y anteriores
 
@@ -8,12 +8,12 @@ La comprobación de versiones solo volvía a la red si su última consulta tení
 
 La [revisión combinada ACR y ADM](audits/2026-11-13-acr-adm-v1.12.1.md) de v1.12.1 (`2be2613`) terminó en `APPROVED`, sin defectos críticos ni altos. Al contrastarla con el código se reprodujo C-001, se encontró un segundo punto con el mismo defecto y apareció un hallazgo nuevo (C-004).
 
-| Hallazgo | Severidad | Riesgo | Estado en v1.13.0 | Mitigación |
+| Hallazgo | Severidad | Riesgo | Estado | Mitigación |
 |---|---|---|---|---|
-| C-001 | Baja | `install`, `update` y `uninstall` reescriben `~/.pi/agent/AGENTS.md` con modo `0644` fijo (`pkg/installer/instructions.go:69`, `pkg/installer/uninstall.go`). Si lo tenías en `0600`, queda legible para otros usuarios del equipo | **Abierto** | Vuelve a ejecutar `chmod 600 ~/.pi/agent/AGENTS.md` después de cada instalación o actualización y no guardes datos privados en ese archivo |
+| C-001 | Baja | `install`, `update` y `uninstall` reescribían `~/.pi/agent/AGENTS.md` con modo `0644` fijo (`pkg/installer/instructions.go`, `pkg/installer/uninstall.go`). Si lo tenías en `0600`, quedaba legible para otros usuarios del equipo | **Corregido** en v1.13.2 ([HCD-032](../hcd/HCD-032-install-y-uninstall-conservan-los-permis.md), `TestHCD032AgentsModePreserved`): se conserva el modo existente y uno nuevo se crea con `0644` | En v1.13.1 y anteriores, vuelve a ejecutar `chmod 600 ~/.pi/agent/AGENTS.md` después de cada instalación o actualización |
 | C-002 | Baja | `httpJSON` (`pkg/installer/deps.go`) usa `http.DefaultClient`. Hoy no puede bloquearse porque su único llamador pasa un plazo de 20 s, pero un llamador futuro sin plazo sí podría | **Abierto** (latente) | Ninguna necesaria en esta versión |
 | C-003 | Info | `scripts/build-release.sh` ejecuta `go test` sin `-race` | **Abierto** | Ejecuta `go test -race ./...` antes de empaquetar |
-| C-004 | Baja | `uninstall` con otro `HOME` borraba el launcher que está junto a `pi-gomemory-setup`, aunque perteneciera a la instalación real | **Corregido** ([HCD-030](../hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md), `TestHCD030LauncherOutsideHome`) | En v1.12.1 y anteriores, no ejecutes `uninstall` con otro `HOME` usando el binario instalado; si ya ocurrió, restaura con `pi-gomemory-setup harness` |
+| C-004 | Baja | `uninstall` con otro `HOME` borraba el launcher que está junto a `pi-gomemory-setup`, aunque perteneciera a la instalación real | **Corregido** en v1.13.0 ([HCD-030](../hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md), `TestHCD030LauncherOutsideHome`) | En v1.12.1 y anteriores, no ejecutes `uninstall` con otro `HOME` usando el binario instalado; si ya ocurrió, restaura con `pi-gomemory-setup harness` |
 
 ## Aviso de actualizaciones en v1.12.1 y anteriores
 

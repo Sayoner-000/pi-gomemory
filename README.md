@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.13.1"><img src="https://img.shields.io/badge/version-1.13.1-blue" alt="Version 1.13.1"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.13.2"><img src="https://img.shields.io/badge/version-1.13.2-blue" alt="Version 1.13.2"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -184,7 +184,7 @@ Desde v1.12.0, con el proveedor `openai-codex` activo, `/sidebar` muestra «▼ 
 
 ## Limitaciones conocidas
 
-Desde v1.12.1 están corregidos los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) (permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD), así como el bucle de `/tdd watch`. v1.13.0 corrige que `uninstall` con otro `HOME` borrara el launcher de la instalación real ([HCD-030](hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md)). Sigue abierto que `install`, `update` y `uninstall` dejan `~/.pi/agent/AGENTS.md` con permisos `0644`. Este y los demás límites vigentes están en [problemas conocidos](docs/known-issues.md).
+Desde v1.12.1 están corregidos los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) (permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD), así como el bucle de `/tdd watch`. v1.13.0 corrige que `uninstall` con otro `HOME` borrara el launcher de la instalación real ([HCD-030](hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md)). `install`, `update` y `uninstall` conservan los permisos que tenga `~/.pi/agent/AGENTS.md` ([HCD-032](hcd/HCD-032-install-y-uninstall-conservan-los-permis.md)). Los límites vigentes están en [problemas conocidos](docs/known-issues.md).
 
 ## Desarrollo
 
@@ -199,6 +199,7 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 ## Documentación
 
 - [Guía HTML v1.13](docs/Guia-PI-GOMEMORY-v1.13.html): recorrido completo del harness
+- [Notas de v1.13.2](docs/releases/v1.13.2.md): `install`, `update` y `uninstall` conservan los permisos de `AGENTS.md`
 - [Notas de v1.13.1](docs/releases/v1.13.1.md): las releases nuevas se anuncian como mucho una hora después de publicarse
 - [Notas de v1.13.0](docs/releases/v1.13.0.md): aviso de actualizaciones fiable y en el pie de Pi; `uninstall` acotado a su HOME
 - [Notas de v1.12.1](docs/releases/v1.12.1.md): correcciones de HCD-027 y del modo watch

@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.13.2](releases/v1.13.2.md)
+`install`, `update` y `uninstall` conservan los permisos que tenga `~/.pi/agent/AGENTS.md` (C-001 de la auditoría de v1.12.1).
+
 [Notas de v1.13.1](releases/v1.13.1.md)
 La comprobación de versiones vuelve a la red cada hora: una release nueva se anuncia como mucho una hora después de publicarse.
 
@@ -29,7 +32,7 @@ Cierre de los seis hallazgos de HCD-027 y corrección del bucle de `/tdd watch`.
 Cambios de cuota Codex, plataformas, verificación de binarios y límites de la entrega.
 
 [Problemas conocidos](known-issues.md)
-Hallazgos abiertos de la auditoría ACR/ADM de v1.12.1 (entre ellos, los permisos `0644` de `AGENTS.md`) y los corregidos en v1.13.0 y v1.12.1, con sus mitigaciones, y los límites de validación vigentes.
+Hallazgos de la auditoría ACR/ADM de v1.12.1, abiertos y corregidos, y los corregidos en v1.13.0 y v1.12.1, con sus mitigaciones, y los límites de validación vigentes.
 
 [Decisiones de arquitectura (ADR)](adr/README.md)
 Registro de las decisiones vigentes: repositorio central de skills, extensiones TUI de HCD y orquestación de dependencias.

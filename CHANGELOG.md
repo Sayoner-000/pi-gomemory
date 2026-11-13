@@ -4,6 +4,15 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.2] - 2026-11-13
+
+### Security
+- **Permisos de `AGENTS.md` (HCD-032, C-001):** `install`, `update` y `uninstall` reescribían `~/.pi/agent/AGENTS.md` con modo `0644` fijo y ampliaban el acceso de un archivo restringido a `0600`. Ahora conservan el modo existente; uno nuevo se crea con `0644`. Si no se puede leer el modo, el archivo no se modifica.
+
+### Documentation
+- Problemas conocidos marca C-001 como corregido; README, instalación y arquitectura retiran la mitigación `chmod 600`.
+- Badge, referencias de descarga e instaladores sincronizados con `v1.13.2`.
+
 ## [v1.13.1] - 2026-11-13
 
 ### Fixed

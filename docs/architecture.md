@@ -100,7 +100,7 @@ Extensión en TypeScript del TDD Live Inspector (`/tdd`, tool `run_test_suite`).
 
 ## Riesgos y límites
 
-Desde v1.12.1 la escritura JSON conserva el modo existente (y crea `0600` los archivos nuevos), la limpieza legacy respeta los archivos añadidos y el ejecutor TDD cierra interrupciones y timeouts como fallos. Desde v1.13.0, `uninstall` solo retira el launcher de carpetas que pertenecen a la instalación de su `HOME`: `launcherDirs` devuelve aparte la carpeta del ejecutable cuando queda fuera de `HOME` y nada la respalda, y el plan la marca como omitida. `AGENTS.md` todavía se escribe con modo `0644` fijo. Los límites que siguen vigentes están en [problemas conocidos](known-issues.md).
+Desde v1.12.1 la escritura JSON conserva el modo existente (y crea `0600` los archivos nuevos), la limpieza legacy respeta los archivos añadidos y el ejecutor TDD cierra interrupciones y timeouts como fallos. Desde v1.13.0, `uninstall` solo retira el launcher de carpetas que pertenecen a la instalación de su `HOME`: `launcherDirs` devuelve aparte la carpeta del ejecutable cuando queda fuera de `HOME` y nada la respalda, y el plan la marca como omitida. `install` y `uninstall` reescriben `AGENTS.md` conservando su modo (`modeOrDefault`, `0644` si es nuevo); si no pueden leer el modo, no lo escriben. Los límites que siguen vigentes están en [problemas conocidos](known-issues.md).
 
 ## Sanitización de skills
 
