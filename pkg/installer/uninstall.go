@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -11,7 +12,42 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"syscall"
 	"time"
+)
+
+// Motivos de las acciones que se revalidan al aplicar (HCD-034).
+const (
+	reasonChanged       = "cambió después del plan"
+	reasonGone          = "ya no existe"
+	reasonUninspectable = "no se pudo inspeccionar: "
+)
+
+// errChangedAfterPlan y errGoneAfterPlan los devuelve una acción que, al
+// revalidar justo antes de escribir, encuentra el recurso cambiado o ausente.
+var (
+	errChangedAfterPlan = errors.New(reasonChanged)
+	errGoneAfterPlan    = errors.New(reasonGone)
+)
+
+// isAbsent indica si err significa que el recurso no existe (Q5).
+func isAbsent(err error) bool {
+	return errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR)
+}
+
+// goneOr traduce la ausencia a errGoneAfterPlan y deja pasar el resto.
+func goneOr(err error) error {
+	if isAbsent(err) {
+		return errGoneAfterPlan
+	}
+	return err
+}
+
+// readLink y selfExecutable son os.Readlink y os.Executable; las pruebas los
+// sustituyen para provocar errores que no se pueden fabricar en disco.
+var (
+	readLink       = os.Readlink
+	selfExecutable = os.Executable
 )
 
 // Tipos de acción de un plan de desinstalación.
@@ -32,11 +68,13 @@ type UninstallFlags struct {
 }
 
 // UninstallAction es un paso del plan. apply solo existe en las acciones que retiran.
+// notice marca las omisiones que se muestran aunque no quede nada que retirar.
 type UninstallAction struct {
 	Kind   string
 	Target string
 	Reason string
 	apply  func() error
+	notice bool
 }
 
 // UninstallPlan es la lista ordenada de acciones; construirlo no escribe nada.
@@ -46,6 +84,19 @@ type UninstallPlan struct {
 
 func (p *UninstallPlan) add(kind, target, reason string, apply func() error) {
 	p.Actions = append(p.Actions, UninstallAction{Kind: kind, Target: target, Reason: reason, apply: apply})
+}
+
+// addNotice añade una omisión que se imprime siempre (Q7).
+func (p *UninstallPlan) addNotice(target, reason string) {
+	p.Actions = append(p.Actions, UninstallAction{Kind: ActionSkip, Target: target, Reason: reason, notice: true})
+}
+
+// inspectFailed registra un error de inspección: la ausencia es inocua y el
+// resto es fallido (Q2).
+func (p *UninstallPlan) inspectFailed(target string, err error) {
+	if !isAbsent(err) {
+		p.add(ActionFail, target, err.Error(), nil)
+	}
 }
 
 // Pending cuenta las acciones que retirarían algo.
@@ -80,16 +131,57 @@ func ownedHash(m *Manifest, path string, fallback []byte) string {
 
 // planOwnedFile añade la retirada de path si su contenido coincide con el instalado.
 func (p *UninstallPlan) planOwnedFile(m *Manifest, path string, fallback []byte) string {
+	return p.planOwned(m, path, fallback, false)
+}
+
+// planOwned es planOwnedFile; candidate indica una carpeta de launcher que no
+// respaldan el manifiesto ni PI_GOMEMORY_BIN_DIR, cuyo archivo ilegible se
+// omite porque puede no ser de pi-gomemory (Q5).
+func (p *UninstallPlan) planOwned(m *Manifest, path string, fallback []byte, candidate bool) string {
 	data, err := os.ReadFile(path)
-	if err != nil {
+	switch {
+	case err == nil:
+	case isAbsent(err):
 		return ""
+	case candidate:
+		p.addNotice(path, reasonUninspectable+err.Error())
+		return ""
+	default:
+		p.add(ActionFail, path, err.Error(), nil)
+		return ActionFail
 	}
 	if want := ownedHash(m, path, fallback); want != "" && contentHash(data) == want {
-		p.add(ActionRemove, path, "instalado por pi-gomemory", func() error { return os.Remove(path) })
+		planned := contentHash(data)
+		p.add(ActionRemove, path, "instalado por pi-gomemory", func() error {
+			if err := ownedFileUnchanged(path, planned); err != nil {
+				return err
+			}
+			return os.Remove(path)
+		})
 		return ActionRemove
 	}
 	p.add(ActionSkip, path, "editado: no coincide con lo instalado", nil)
 	return ActionSkip
+}
+
+// ownedFileUnchanged comprueba que path sigue siendo un archivo regular con
+// la huella que examinó el plan; un symlink en su lugar cuenta como cambio.
+func ownedFileUnchanged(path, planned string) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return goneOr(err)
+	}
+	if !info.Mode().IsRegular() {
+		return errChangedAfterPlan
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return goneOr(err)
+	}
+	if contentHash(data) != planned {
+		return errChangedAfterPlan
+	}
+	return nil
 }
 
 // executablePath es os.Executable; los tests lo sustituyen para simular dónde
@@ -142,50 +234,123 @@ func isHostSkillLink(target, home string) bool {
 }
 
 // isRemovableEmbeddedCopy exige una copia intacta con solo SKILL.md y la marca.
-func isRemovableEmbeddedCopy(dir string) bool {
-	if !isPristineEmbeddedCopy(dir) {
-		return false
+// Devuelve error si no pudo inspeccionarla por algo distinto de la ausencia.
+func isRemovableEmbeddedCopy(dir string) (bool, error) {
+	read := func(name string) ([]byte, error) {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if isAbsent(err) {
+			return nil, nil
+		}
+		return data, err
+	}
+	marker, err := read(skillMarkerFile)
+	if err != nil || marker == nil {
+		return false, err
+	}
+	content, err := read("SKILL.md")
+	if err != nil || content == nil {
+		return false, err
+	}
+	if strings.TrimSpace(string(marker)) != contentHash(content) {
+		return false, nil
 	}
 	entries, err := os.ReadDir(dir)
-	if err != nil || len(entries) != 2 {
-		return false
+	if err != nil {
+		if isAbsent(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if len(entries) != 2 {
+		return false, nil
 	}
 	for _, e := range entries {
 		if e.Name() != "SKILL.md" && e.Name() != skillMarkerFile {
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 // planSkillDir planifica las skills de dir (repositorio central o ruta antigua de Pi).
 func (p *UninstallPlan) planSkillDir(dir, home string) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		p.inspectFailed(dir, err)
 		return
 	}
 	for _, e := range entries {
 		path := filepath.Join(dir, e.Name())
-		switch {
-		case e.Type()&os.ModeSymlink != 0:
-			target, err := os.Readlink(path)
-			if err == nil && isHostSkillLink(target, home) {
-				p.add(ActionRemove, path, "enlace a skill del anfitrión (no se sigue)", func() error { return os.Remove(path) })
-			} else {
+		if e.Type()&os.ModeSymlink != 0 {
+			target, err := readLink(path)
+			switch {
+			case err != nil:
+				p.inspectFailed(path, err)
+			case isHostSkillLink(target, home):
+				p.add(ActionRemove, path, "enlace a skill del anfitrión (no se sigue)", func() error {
+					if err := hostLinkUnchanged(path, target); err != nil {
+						return err
+					}
+					return os.Remove(path)
+				})
+			default:
 				p.add(ActionSkip, path, "enlace propio", nil)
 			}
-		case !e.IsDir():
 			continue
-		case isRemovableEmbeddedCopy(path):
-			p.add(ActionRemove, path, "skill embebida intacta", func() error { return os.RemoveAll(path) })
+		}
+		if !e.IsDir() {
+			continue
+		}
+		removable, err := isRemovableEmbeddedCopy(path)
+		if err != nil {
+			p.add(ActionFail, path, err.Error(), nil)
+			continue
+		}
+		if removable {
+			p.add(ActionRemove, path, "skill embebida intacta", func() error {
+				if _, err := os.Lstat(path); err != nil {
+					return goneOr(err)
+				}
+				ok, err := isRemovableEmbeddedCopy(path)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return errChangedAfterPlan
+				}
+				return os.RemoveAll(path)
+			})
+			continue
+		}
+		marker := filepath.Join(path, skillMarkerFile)
+		switch _, err := os.Stat(marker); {
+		case err == nil:
+			p.add(ActionSkip, path, "skill embebida editada o con archivos añadidos", nil)
+		case isAbsent(err):
+			p.add(ActionSkip, path, "skill propia", nil)
 		default:
-			if _, err := os.Stat(filepath.Join(path, skillMarkerFile)); err == nil {
-				p.add(ActionSkip, path, "skill embebida editada o con archivos añadidos", nil)
-			} else {
-				p.add(ActionSkip, path, "skill propia", nil)
-			}
+			p.add(ActionFail, marker, err.Error(), nil)
 		}
 	}
+}
+
+// hostLinkUnchanged comprueba que path sigue siendo un enlace al mismo destino.
+func hostLinkUnchanged(path, target string) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return goneOr(err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return errChangedAfterPlan
+	}
+	cur, err := readLink(path)
+	if err != nil {
+		return goneOr(err)
+	}
+	if cur != target {
+		return errChangedAfterPlan
+	}
+	return nil
 }
 
 func sameJSON(a, b []byte) bool {
@@ -208,9 +373,20 @@ func editJSON(path string, fn func(map[string]json.RawMessage) error) error {
 	return writeJSONObject(path, obj)
 }
 
+// editPlannedJSON es editJSON para una retirada planificada: si el archivo ya
+// no existe devuelve errGoneAfterPlan en lugar de crearlo vacío. fn revalida
+// y devuelve errChangedAfterPlan o errGoneAfterPlan sin escribir nada.
+func editPlannedJSON(path string, fn func(map[string]json.RawMessage) error) error {
+	if _, err := os.Stat(path); err != nil {
+		return goneOr(err)
+	}
+	return editJSON(path, fn)
+}
+
 func (p *UninstallPlan) planMCP(piAgentDir string) {
 	path := filepath.Join(piAgentDir, "mcp.json")
 	if _, err := os.Stat(path); err != nil {
+		p.inspectFailed(path, err)
 		return
 	}
 	obj, err := readJSONObject(path)
@@ -239,10 +415,21 @@ func (p *UninstallPlan) planMCP(piAgentDir string) {
 		}
 		n := name
 		p.add(ActionRemove, target, "servidor MCP registrado por pi-gomemory", func() error {
-			return editJSON(path, func(o map[string]json.RawMessage) error {
+			return editPlannedJSON(path, func(o map[string]json.RawMessage) error {
+				raw, ok := o["mcpServers"]
+				if !ok {
+					return errGoneAfterPlan
+				}
 				s := map[string]json.RawMessage{}
-				if err := json.Unmarshal(o["mcpServers"], &s); err != nil {
-					return err
+				if err := json.Unmarshal(raw, &s); err != nil {
+					return errChangedAfterPlan
+				}
+				cur, ok := s[n]
+				if !ok {
+					return errGoneAfterPlan
+				}
+				if !sameJSON(cur, want) {
+					return errChangedAfterPlan
 				}
 				delete(s, n)
 				return setJSONField(o, "mcpServers", s)
@@ -276,19 +463,41 @@ func stripInstructions(content string) (string, bool) {
 	return before + after, true
 }
 
+// instructionsBlock devuelve el bloque de pi-gomemory que stripInstructions quitaría.
+func instructionsBlock(content string) (string, bool) {
+	start := strings.Index(content, instructionsStart)
+	end := strings.Index(content, instructionsEnd)
+	switch {
+	case start >= 0 && end > start:
+		return content[start : end+len(instructionsEnd)], true
+	case strings.Contains(content, GomemoryPiInstructions):
+		return GomemoryPiInstructions, true
+	}
+	return "", false
+}
+
 func (p *UninstallPlan) planAgents(piAgentDir string) {
 	path := filepath.Join(piAgentDir, "AGENTS.md")
 	data, err := os.ReadFile(path)
 	if err != nil {
+		p.inspectFailed(path, err)
 		return
 	}
-	if _, ok := stripInstructions(string(data)); !ok {
+	planned, ok := instructionsBlock(string(data))
+	if !ok {
 		return
 	}
 	p.add(ActionRemove, path+" › bloque pi-gomemory", "protocolo escrito por pi-gomemory", func() error {
 		cur, err := os.ReadFile(path)
 		if err != nil {
-			return err
+			return goneOr(err)
+		}
+		block, ok := instructionsBlock(string(cur))
+		if !ok {
+			return errGoneAfterPlan
+		}
+		if block != planned {
+			return errChangedAfterPlan
 		}
 		out, _ := stripInstructions(string(cur))
 		if strings.TrimSpace(out) == "" {
@@ -305,6 +514,7 @@ func (p *UninstallPlan) planAgents(piAgentDir string) {
 func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
 	path := filepath.Join(piAgentDir, "settings.json")
 	if _, err := os.Stat(path); err != nil {
+		p.inspectFailed(path, err)
 		return
 	}
 	obj, err := readJSONObject(path)
@@ -316,11 +526,22 @@ func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
 	_ = json.Unmarshal(obj["theme"], &theme)
 	if theme == "gomemory" {
 		target := path + " › theme"
-		if themeFile == ActionSkip {
+		switch themeFile {
+		case ActionSkip:
 			p.add(ActionKeep, target, "el archivo del tema está editado y se conserva", nil)
-		} else {
+		case ActionFail:
+			p.add(ActionKeep, target, "el archivo del tema no se pudo inspeccionar y se conserva", nil)
+		default:
 			p.add(ActionRemove, target, "tema gomemory activado por pi-gomemory", func() error {
-				return editJSON(path, func(o map[string]json.RawMessage) error {
+				return editPlannedJSON(path, func(o map[string]json.RawMessage) error {
+					raw, ok := o["theme"]
+					if !ok {
+						return errGoneAfterPlan
+					}
+					var cur string
+					if json.Unmarshal(raw, &cur) != nil || cur != "gomemory" {
+						return errChangedAfterPlan
+					}
 					delete(o, "theme")
 					return nil
 				})
@@ -336,9 +557,24 @@ func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
 				continue
 			}
 			p.add(ActionRemove, path+" › skills ("+SkillRepoSetting+")", "registro del repositorio de skills", func() error {
-				return editJSON(path, func(o map[string]json.RawMessage) error {
+				return editPlannedJSON(path, func(o map[string]json.RawMessage) error {
+					raw, ok := o["skills"]
+					if !ok {
+						return errGoneAfterPlan
+					}
 					var cur, out []string
-					_ = json.Unmarshal(o["skills"], &cur)
+					if json.Unmarshal(raw, &cur) != nil {
+						return errChangedAfterPlan
+					}
+					found := false
+					for _, x := range cur {
+						if filepath.Clean(expandHome(x, home)) == repo {
+							found = true
+						}
+					}
+					if !found {
+						return errGoneAfterPlan
+					}
 					for _, x := range cur {
 						if filepath.Clean(expandHome(x, home)) != repo {
 							out = append(out, x)
@@ -356,9 +592,27 @@ func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
 }
 
 func (p *UninstallPlan) planPlainFile(path, reason string) {
-	if _, err := os.Lstat(path); err == nil {
-		p.add(ActionRemove, path, reason, func() error { return os.Remove(path) })
+	if _, err := os.Lstat(path); err != nil {
+		p.inspectFailed(path, err)
+		return
 	}
+	p.add(ActionRemove, path, reason, func() error { return os.Remove(path) })
+}
+
+// backedLauncherDirs son las carpetas de launcher que respaldan el manifiesto
+// (o, sin manifiesto, LocalBinDir) y PI_GOMEMORY_BIN_DIR; las demás son
+// candidatas (HCD-034, Q5).
+func backedLauncherDirs(m *Manifest, opts *Options) map[string]bool {
+	backed := map[string]bool{}
+	if m != nil && m.BinDir != "" {
+		backed[filepath.Clean(m.BinDir)] = true
+	} else {
+		backed[filepath.Clean(opts.LocalBinDir)] = true
+	}
+	if v := os.Getenv("PI_GOMEMORY_BIN_DIR"); v != "" {
+		backed[filepath.Clean(v)] = true
+	}
+	return backed
 }
 
 // BuildUninstallPlan decide, sin escribir nada, qué se retira, conserva u omite.
@@ -366,7 +620,7 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 	plan := &UninstallPlan{}
 	m, err := ReadManifest(opts.HomeDir)
 	if err != nil {
-		plan.add(ActionFail, ManifestPath(opts.HomeDir), err.Error(), nil)
+		plan.inspectFailed(ManifestPath(opts.HomeDir), err)
 		m = nil
 	}
 
@@ -377,13 +631,17 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 	themeData, _ := fs.ReadFile(assets, "themes/gomemory.json")
 	themeFile := plan.planOwnedFile(m, filepath.Join(opts.PiAgentDir, "themes", "gomemory.json"), themeData)
 	dirs, foreign := launcherDirs(m, opts)
+	backed := backedLauncherDirs(m, opts)
 	for _, dir := range dirs {
-		plan.planOwnedFile(m, filepath.Join(dir, "pi-gomemory"), []byte(GenerateHarnessScript()))
+		plan.planOwned(m, filepath.Join(dir, "pi-gomemory"), []byte(GenerateHarnessScript()), !backed[dir])
 	}
 	if foreign != "" {
 		path := filepath.Join(foreign, "pi-gomemory")
-		if _, err := os.Lstat(path); err == nil {
-			plan.add(ActionSkip, path, "fuera de HOME y sin manifiesto: retíralo a mano o usa PI_GOMEMORY_BIN_DIR", nil)
+		switch _, err := os.Lstat(path); {
+		case err == nil:
+			plan.addNotice(path, "fuera de HOME y sin manifiesto: retíralo a mano o usa PI_GOMEMORY_BIN_DIR")
+		case !isAbsent(err):
+			plan.addNotice(path, reasonUninspectable+err.Error())
 		}
 	}
 
@@ -409,7 +667,9 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 // pi-cc-extensions.json si coincide con los valores por defecto embebidos.
 func (p *UninstallPlan) planPackages(assets fs.FS, piAgentDir string) {
 	settings := filepath.Join(piAgentDir, "settings.json")
-	if obj, err := readJSONObject(settings); err == nil {
+	if obj, err := readJSONObject(settings); err != nil {
+		p.add(ActionFail, settings, err.Error(), nil)
+	} else {
 		var pkgs []string
 		_ = json.Unmarshal(obj["packages"], &pkgs)
 		for _, pp := range pinnedPackages {
@@ -417,8 +677,12 @@ func (p *UninstallPlan) planPackages(assets fs.FS, piAgentDir string) {
 				if s != pp.source {
 					continue
 				}
-				src := pp.source
+				src, name := pp.source, pp.name
 				p.add(ActionRemove, settings+" › packages."+pp.name, "paquete fijado por pi-gomemory", func() error {
+					// Se revalida antes de pi remove, que desinstalaría el paquete.
+					if err := pinnedEntryUnchanged(settings, name, src); err != nil {
+						return err
+					}
 					if piBin, err := exec.LookPath("pi"); err == nil {
 						ctxRem, cancelRem := context.WithTimeout(context.Background(), 15*time.Second)
 						defer cancelRem()
@@ -447,20 +711,65 @@ func (p *UninstallPlan) planPackages(assets fs.FS, piAgentDir string) {
 	cfg := filepath.Join(piAgentDir, "pi-cc-extensions.json")
 	cur, err := os.ReadFile(cfg)
 	if err != nil {
+		p.inspectFailed(cfg, err)
 		return
 	}
 	defaults, _ := fs.ReadFile(assets, "config/pi-cc-extensions.json")
 	if sameJSON(cur, defaults) {
-		p.add(ActionRemove, cfg, "configuración por defecto de pi-cc-extensions", func() error { return os.Remove(cfg) })
+		p.add(ActionRemove, cfg, "configuración por defecto de pi-cc-extensions", func() error {
+			now, err := os.ReadFile(cfg)
+			if err != nil {
+				return goneOr(err)
+			}
+			if !sameJSON(now, defaults) {
+				return errChangedAfterPlan
+			}
+			return os.Remove(cfg)
+		})
 	} else {
 		p.add(ActionSkip, cfg, "configuración de pi-cc-extensions personalizada", nil)
 	}
 }
 
+// pinnedEntryUnchanged comprueba que settings.json sigue teniendo la entrada
+// packages con la fuente fijada src; otra versión del mismo paquete es un cambio.
+func pinnedEntryUnchanged(settings, name, src string) error {
+	if _, err := os.Stat(settings); err != nil {
+		return goneOr(err)
+	}
+	obj, err := readJSONObject(settings)
+	if err != nil {
+		return err
+	}
+	raw, ok := obj["packages"]
+	if !ok {
+		return errGoneAfterPlan
+	}
+	var cur []json.RawMessage
+	if json.Unmarshal(raw, &cur) != nil {
+		return errChangedAfterPlan
+	}
+	other := false
+	for _, c := range cur {
+		var s string
+		if json.Unmarshal(c, &s) == nil && s == src {
+			return nil
+		}
+		if npmPackageName(c) == name {
+			other = true
+		}
+	}
+	if other {
+		return errChangedAfterPlan
+	}
+	return errGoneAfterPlan
+}
+
 // planSelf borra el ejecutable en curso sin resolver enlaces y solo si está en el BIN_DIR efectivo.
 func (p *UninstallPlan) planSelf(m *Manifest, opts *Options) {
-	exe, err := os.Executable()
+	exe, err := selfExecutable()
 	if err != nil {
+		p.add(ActionFail, "pi-gomemory-setup (--self)", err.Error(), nil)
 		return
 	}
 	if base := filepath.Base(exe); !strings.HasPrefix(base, "pi-gomemory-setup") {
@@ -468,6 +777,7 @@ func (p *UninstallPlan) planSelf(m *Manifest, opts *Options) {
 		exe = filepath.Join(opts.LocalBinDir, "pi-gomemory-setup")
 	}
 	if _, err := os.Lstat(exe); err != nil {
+		p.inspectFailed(exe, err)
 		return
 	}
 	dir := filepath.Clean(filepath.Dir(exe))
@@ -511,6 +821,11 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) e
 			PrintPlan(w, plan)
 			return fmt.Errorf("%d comprobaciones fallaron; no se puede confirmar que no quede nada", n)
 		}
+		for _, a := range plan.Actions {
+			if a.notice {
+				fmt.Fprintf(w, "  [%s] %s — %s\n", a.Kind, a.Target, a.Reason)
+			}
+		}
 		fmt.Fprintln(w, "✓ No queda nada que retirar de pi-gomemory.")
 		return nil
 	}
@@ -543,16 +858,26 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) e
 	}
 
 	counts := map[string]int{}
+	changed := 0
 	for _, a := range plan.Actions {
 		kind, reason := a.Kind, a.Reason
+		revalidated := false
 		if a.apply != nil {
 			if err := a.apply(); err != nil {
-				kind, reason = ActionFail, err.Error()
+				switch {
+				case errors.Is(err, errChangedAfterPlan):
+					kind, reason, revalidated = ActionSkip, reasonChanged, true
+					changed++
+				case errors.Is(err, errGoneAfterPlan) || isAbsent(err):
+					kind, reason, revalidated = ActionSkip, reasonGone, true
+				default:
+					kind, reason = ActionFail, err.Error()
+				}
 			}
 		}
 		counts[kind]++
 		record(kind, a.Target, reason)
-		if kind == ActionFail && !flags.Verbose {
+		if !flags.Verbose && (kind == ActionFail || revalidated) {
 			fmt.Fprintf(w, "  [%s] %s — %s\n", kind, a.Target, reason)
 		}
 	}
@@ -570,6 +895,10 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) e
 		counts[ActionRemove], counts[ActionKeep], counts[ActionSkip], counts[ActionFail])
 	if counts[ActionFail] > 0 {
 		return fmt.Errorf("%d acciones fallaron", counts[ActionFail])
+	}
+	if changed > 0 {
+		fmt.Fprintf(w, "✓ pi-gomemory desinstalado; se conservaron %d elementos que cambiaron después del plan\n", changed)
+		return nil
 	}
 	fmt.Fprintln(w, "✓ pi-gomemory desinstalado. Para reinstalar: pi-gomemory-setup install")
 	return nil

@@ -29,6 +29,10 @@ const (
 	maxDownloadBytes   = 200 << 20
 )
 
+// maxBinaryBytes es el tamaño máximo del ejecutable dentro del tarball. Es una
+// variable para que las pruebas lo reduzcan (HCD-034, H-03).
+var maxBinaryBytes int64 = 200 << 20
+
 // DefaultReleasesAPI apunta a la redirección de la última release en github.com,
 // que no consume el cupo de 60 consultas por hora de api.github.com.
 // DefaultReleasesBaseURL es la base de descarga de los tarballs.
@@ -325,7 +329,17 @@ func extractBinary(tarball []byte, name string) ([]byte, error) {
 			return nil, fmt.Errorf("leer tarball: %w", err)
 		}
 		if filepath.Base(h.Name) == name && h.Typeflag == tar.TypeReg {
-			return io.ReadAll(io.LimitReader(tr, maxDownloadBytes))
+			if h.Size <= 0 || h.Size > maxBinaryBytes {
+				return nil, fmt.Errorf("%s: tamaño %d fuera de rango (1..%d bytes)", name, h.Size, maxBinaryBytes)
+			}
+			bin, err := io.ReadAll(io.LimitReader(tr, h.Size))
+			if err != nil {
+				return nil, fmt.Errorf("leer %s: %w", name, err)
+			}
+			if int64(len(bin)) != h.Size {
+				return nil, fmt.Errorf("%s incompleto: %d de %d bytes", name, len(bin), h.Size)
+			}
+			return bin, nil
 		}
 	}
 }
