@@ -9,13 +9,53 @@ import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
+/** Aviso de actualizaciones del meta-harness (HCD-029); la instalación sigue en el launcher. */
+export const UPDATES_LABEL = "↑ actualizaciones disponibles";
+const UPDATES_STATUS_KEY = "gomemory-updates";
+/** `pi-gomemory-setup deps-status` sale con 10 cuando hay algo desactualizado. */
+const DEPS_OUTDATED_EXIT = 10;
+
 export default function (pi: ExtensionAPI) {
 	let customFooterEnabled = true;
+	let updatesAvailable = false;
+	let requestRender: (() => void) | null = null;
+
+	/** Publica el aviso: en el pie propio si está activo; si no, en el pie por defecto con setStatus. */
+	function showUpdates(ctx: any, available: boolean) {
+		updatesAvailable = available;
+		ctx.ui?.setStatus?.(UPDATES_STATUS_KEY, !customFooterEnabled && available ? UPDATES_LABEL : undefined);
+		requestRender?.();
+	}
+
+	/**
+	 * Consulta el estado de la última comprobación (rápido, local), refresca en
+	 * segundo plano (red, respeta la caché de 24 h) y vuelve a consultar: una
+	 * release nueva aparece en la misma apertura sin retrasar el arranque.
+	 */
+	async function checkUpdates(ctx: any) {
+		if (process.env.PI_GOMEMORY_NO_UPDATE_CHECK) return;
+		const outdated = async () => {
+			try {
+				const r = await pi.exec("pi-gomemory-setup", ["deps-status"], { timeout: 10_000 });
+				return r.code === DEPS_OUTDATED_EXIT;
+			} catch {
+				return false; // setup ausente o con error: no se afirma nada
+			}
+		};
+		showUpdates(ctx, await outdated());
+		try {
+			await pi.exec("pi-gomemory-setup", ["deps-refresh"], { timeout: 60_000 });
+		} catch {
+			// sin red: se mantiene el resultado anterior
+		}
+		showUpdates(ctx, await outdated());
+	}
 
 	function setupFooter(ctx: any) {
 		if (!ctx.ui || !customFooterEnabled) return;
 
 		ctx.ui.setFooter((tui: any, theme: any, footerData: any) => {
+			requestRender = () => tui.requestRender();
 			const unsubBranch = footerData.onBranchChange ? footerData.onBranchChange(() => tui.requestRender()) : () => {};
 
 			return {
@@ -96,7 +136,8 @@ export default function (pi: ExtensionAPI) {
 					const branchStr = branch ? ` (${branch})` : "";
 					const modelStr = ctx.model?.id || "default";
 					const thinkingStr = ctx.thinkingLevel && ctx.thinkingLevel !== "off" ? ` [thinking ${ctx.thinkingLevel}]` : "";
-					const right = theme.fg("dim", `${modelStr}${thinkingStr}${branchStr}`);
+					const updates = updatesAvailable ? theme.style(UPDATES_LABEL, { fg: "warning", bold: true }) + "  " : "";
+					const right = updates + theme.fg("dim", `${modelStr}${thinkingStr}${branchStr}`);
 
 					// Padding y truncado seguro
 					const leftLen = visibleWidth(left);
@@ -113,6 +154,8 @@ export default function (pi: ExtensionAPI) {
 	// Activar footer en arranque de sesión
 	pi.on("session_start", async (_event, ctx) => {
 		setupFooter(ctx);
+		// Sin esperar: la consulta en red nunca retrasa el arranque de la sesión.
+		if (ctx.ui) void checkUpdates(ctx);
 	});
 
 	// Comando para alternar la barra de tokens y TUI gomemory
@@ -125,8 +168,10 @@ export default function (pi: ExtensionAPI) {
 				ctx.ui.notify("Barra de estado y tokens gomemory activada", "info");
 			} else {
 				ctx.ui.setFooter(undefined);
+				requestRender = null;
 				ctx.ui.notify("Barra por defecto de Pi restaurada", "info");
 			}
+			showUpdates(ctx, updatesAvailable);
 		},
 	});
 }

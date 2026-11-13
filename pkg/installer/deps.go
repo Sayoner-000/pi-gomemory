@@ -19,6 +19,9 @@ import (
 const (
 	depsCacheFile    = "pi-gomemory-deps.json"
 	depsProbeTimeout = 20 * time.Second
+	// liveVersionTimeout acota la relectura local de la versión instalada,
+	// que corre en el arranque del launcher antes de abrir Pi.
+	liveVersionTimeout = 3 * time.Second
 )
 
 // DepProbe describe un componente del meta-harness: cómo leer su versión
@@ -309,6 +312,9 @@ func DepsStatus(cachePath string) []DepState {
 // DepsStatusFor devuelve lo desactualizado según la caché, pero con el comando
 // y la instrucción manual del probe actual del mismo nombre: la caché es un
 // archivo editable y nunca decide qué se ejecuta. Los nombres sin probe se omiten.
+// La versión instalada se relee del probe (local y rápido): tras actualizar por
+// otra vía la caché aún guarda la anterior y anunciaría algo ya instalado. Si no
+// se puede leer, se conserva la de la caché.
 func DepsStatusFor(cachePath string, probes []DepProbe) []DepState {
 	byName := make(map[string]DepProbe, len(probes))
 	for _, p := range probes {
@@ -321,9 +327,29 @@ func DepsStatusFor(cachePath string, probes []DepProbe) []DepState {
 			continue
 		}
 		d.Update, d.Manual = p.Update, p.Manual
+		if cur := liveVersion(p); cur != "" {
+			d.Current = cur
+			if !d.Outdated() {
+				continue
+			}
+		}
 		out = append(out, d)
 	}
 	return out
+}
+
+// liveVersion lee la versión instalada con el probe; "" si no hay lector o falla.
+func liveVersion(p DepProbe) string {
+	if p.Current == nil {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), liveVersionTimeout)
+	defer cancel()
+	v, err := p.Current(ctx)
+	if err != nil {
+		return ""
+	}
+	return v
 }
 
 // RunDepsUpdate actualiza lo desactualizado con los comandos de los probes y
