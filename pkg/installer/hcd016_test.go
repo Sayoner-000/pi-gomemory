@@ -272,7 +272,7 @@ func TestH09SyncSkillRepoAndUninstallPackages(t *testing.T) {
 	}
 }
 
-// H-11: RefreshDeps respeta el TTL de 24h y GenerateHarnessScript trunca contextos mayores a 64 KiB
+// H-11: RefreshDeps respeta el TTL de la caché (una hora desde HCD-031) y GenerateHarnessScript trunca contextos mayores a 64 KiB
 func TestH11HarnessTTLAndPromptCap(t *testing.T) {
 	opts := sandbox(t)
 	cachePath := DefaultDepsCachePath(opts.PiAgentDir)
@@ -299,10 +299,10 @@ func TestH11HarnessTTLAndPromptCap(t *testing.T) {
 	}
 
 	called = false
-	// Segunda llamada 1 hora despues: debe retornar de cache sin invocar probes
-	res2 := RefreshDeps(probes, cachePath, now.Add(1*time.Hour))
+	// Segunda llamada 30 minutos despues: debe retornar de cache sin invocar probes
+	res2 := RefreshDeps(probes, cachePath, now.Add(30*time.Minute))
 	if called {
-		t.Fatalf("RefreshDeps volvio a consultar la red antes de expirar el TTL de 24h")
+		t.Fatalf("RefreshDeps volvio a consultar la red antes de expirar el TTL de una hora")
 	}
 	if len(res2) == 0 || res2[0].Name != "test-dep" {
 		t.Fatalf("RefreshDeps no retorno datos de cache: %+v", res2)

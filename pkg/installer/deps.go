@@ -19,6 +19,10 @@ import (
 const (
 	depsCacheFile    = "pi-gomemory-deps.json"
 	depsProbeTimeout = 20 * time.Second
+	// depsCacheTTL limita las consultas en red a una por hora: una release se
+	// anuncia como mucho una hora después de publicarse (HCD-031) y las ~7
+	// consultas quedan lejos del límite de la API de GitHub sin autenticar.
+	depsCacheTTL = time.Hour
 	// liveVersionTimeout acota la relectura local de la versión instalada,
 	// que corre en el arranque del launcher antes de abrir Pi.
 	liveVersionTimeout = 3 * time.Second
@@ -241,14 +245,14 @@ func DefaultDepProbes(version, piAgentDir string) []DepProbe {
 }
 
 // RefreshDeps consulta en paralelo cada componente y guarda el resultado en
-// cachePath. Si la caché existe y tiene menos de 24h (depsCacheTTL), se omite
-// la consulta en red para no saturar en cada arranque.
+// cachePath. Si la caché existe y tiene menos de depsCacheTTL (una hora), se
+// omite la consulta en red para no saturar en cada arranque.
 func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState {
 	if cachePath != "" {
 		if data, err := os.ReadFile(cachePath); err == nil {
 			var c depsCache
 			if json.Unmarshal(data, &c) == nil && !c.CheckedAt.IsZero() {
-				if now.Sub(c.CheckedAt) < 24*time.Hour {
+				if now.Sub(c.CheckedAt) < depsCacheTTL {
 					return c.Deps
 				}
 			}
