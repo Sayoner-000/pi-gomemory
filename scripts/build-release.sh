@@ -7,9 +7,9 @@ set -euo pipefail
 VERSION="${1:-v1.13.2}"
 DIST_DIR="dist"
 
-echo "==> Ejecutando go vet y go test antes de empaquetar..."
+echo "==> Ejecutando go vet y go test -race antes de empaquetar..."
 go vet ./...
-go test ./...
+go test -race ./...
 
 if ! command -v shasum &>/dev/null && ! command -v sha256sum &>/dev/null; then
   echo "✗ Se requiere shasum o sha256sum para generar SHA256SUMS" >&2
