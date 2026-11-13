@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.12.0"><img src="https://img.shields.io/badge/version-1.12.0-blue" alt="Version 1.12.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.12.1"><img src="https://img.shields.io/badge/version-1.12.1-blue" alt="Version 1.12.1"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -157,7 +157,7 @@ Con `usage`, si la API no responde o el token caducó, el comando termina con un
 | `/tdd` | TDD Live Inspector: ejecuta las pruebas reales del proyecto y muestra el recorrido en vivo |
 | `/tdd run [suite]` | Ejecuta `all`, `backend`, `frontend`, `playwright`, `ci` o `data`; si hay otra ejecución en curso, queda en cola |
 | `/tdd min` | Minimiza o restaura el inspector (también con clic en `[−]` / `[+]`) |
-| `/tdd watch` | Ejecuta las pruebas tras cada turno; varios turnos seguidos se agrupan en una ejecución |
+| `/tdd watch` | Ejecuta las pruebas una vez cuando el agente termina, solo si cambió archivos (`edit`, `write` o `bash`); no bloquea al agente |
 | `/tdd report` | Publica en el chat, y en el contexto del modelo, el informe de la última ejecución con cada fallo |
 | `/tokens` | Muestra u oculta la barra de tokens y coste |
 
@@ -182,7 +182,7 @@ Desde v1.12.0, con el proveedor `openai-codex` activo, `/sidebar` muestra «▼ 
 
 ## Limitaciones conocidas
 
-Los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) siguen pendientes: permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD. Esta versión no implementa esas correcciones ni la política `flaky` propuesta. Consulta [los riesgos y mitigaciones](docs/known-issues.md) antes de reinstalar o confiar en resultados TDD interrumpidos.
+Desde v1.12.1 están corregidos los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) (permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD), así como el bucle de `/tdd watch`. Los límites de validación que siguen vigentes están en [problemas conocidos](docs/known-issues.md).
 
 ## Desarrollo
 
@@ -197,7 +197,8 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 ## Documentación
 
 - [Guía HTML v1.12](docs/Guia-PI-GOMEMORY-v1.12.html): recorrido completo del harness
-- [Notas de v1.12.0](docs/releases/v1.12.0.md): cambios, binarios y limitaciones
+- [Notas de v1.12.1](docs/releases/v1.12.1.md): correcciones de HCD-027 y del modo watch
+- [Notas de v1.12.0](docs/releases/v1.12.0.md): cuota de OpenAI Codex
 - [Arquitectura](docs/architecture.md): cómo se embeben y fusionan los recursos
 - [Instalación](docs/installation.md): requisitos y opciones
 - [Uso](docs/usage.md): comandos, cuotas y comandos dentro de Pi

@@ -40,24 +40,24 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.12.0_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.12.0_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.12.0_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.12.0_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.12.1_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.12.1_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.12.1_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.12.1_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.12.0_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.12.1_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar v1.12.0, comprueba `pi-gomemory-setup version` y que `pi-gomemory-setup help` incluya `codex-usage`. Ejecuta `/reload` en Pi para cargar la extensión actualizada. La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
+Después de instalar v1.12.1, comprueba `pi-gomemory-setup version` y que `pi-gomemory-setup help` incluya `codex-usage`. Ejecuta `/reload` en Pi para cargar la extensión actualizada. La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
 
-**Antes de reinstalar:** revisa [problemas conocidos](known-issues.md). HCD-027 todavía no corrige la ampliación de permisos JSON ni la limpieza de skills legacy con archivos añadidos. Respalda esa configuración y las skills afectadas fuera de los directorios gestionados; usa directorios privados y comprueba los permisos después de instalar.
+**Si vienes de v1.12.0 o anterior:** esas versiones podían ampliar los permisos de los JSON de configuración y borrar archivos añadidos a skills legacy. v1.12.1 lo corrige; aun así, revisa [problemas conocidos](known-issues.md) y comprueba los permisos de `~/.pi/agent` después de actualizar.
 
 ## Repositorio de skills
 

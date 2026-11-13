@@ -16,11 +16,14 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.12.1](releases/v1.12.1.md)
+Cierre de los seis hallazgos de HCD-027 y corrección del bucle de `/tdd watch`.
+
 [Notas de v1.12.0](releases/v1.12.0.md)
 Cambios de cuota Codex, plataformas, verificación de binarios y límites de la entrega.
 
 [Problemas conocidos](known-issues.md)
-Hallazgos pendientes de HCD-027 y mitigaciones; no se consideran corregidos por publicar esta versión.
+Hallazgos de HCD-027 corregidos en v1.12.1, con sus mitigaciones para versiones anteriores, y los límites de validación vigentes.
 
 [Decisiones de arquitectura (ADR)](adr/README.md)
 Registro de las decisiones vigentes: repositorio central de skills, extensiones TUI de HCD y orquestación de dependencias.

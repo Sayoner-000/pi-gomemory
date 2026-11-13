@@ -4,6 +4,23 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.12.1] - 2026-11-13
+
+### Fixed
+- **Permisos de configuración JSON (HCD-027, C-002):** reescribir `mcp.json` y otros JSON conserva el modo existente; los archivos nuevos se crean con `0600` y, ante un error de escritura, el original queda intacto y sin temporales residuales.
+- **Limpieza de skills legacy (HCD-027, C-001):** solo se retiran copias gestionadas intactas que contienen únicamente `SKILL.md` y su marca; scripts, notas y subdirectorios añadidos conservan sus bytes.
+- **Terminación del ejecutor TDD (HCD-027, C-003):** timeout y aborto son causas explícitas no exitosas, aunque el proceso salga con 0 tras SIGTERM. Se termina el grupo de procesos propio (SIGTERM y luego SIGKILL) y la siguiente ejecución en cola arranca a tiempo.
+- **Resultados Go interrumpidos (HCD-027, C-005):** las pruebas Go pendientes al terminar el proceso quedan como fallidas con diagnóstico; ninguna queda en `running`.
+- **Resultados Playwright (HCD-027, C-004 y C-006):** cada prueba se identifica por proyecto y ubicación, y su estado final sale del informe JSON oficial. Una salida parcial o interrumpida ya no aparece como aprobada. Las pruebas recuperadas en un reintento se cuentan como `flaky`, aparte, y un fallo definitivo prevalece.
+- **Bucle de `/tdd watch`:** el modo watch se ejecutaba en cada `turn_end`, que Pi espera en cada turno, así que la suite completa corría entre tool calls y bloqueaba al agente. Ahora corre una sola vez cuando el agente termina (`agent_settled`), solo si hubo `edit`, `write` o `bash`, y sin bloquear. Si el agente ya ejecutó `run_test_suite all` tras su último cambio, no se repite.
+
+### Changed
+- La prueba de integración con Playwright real es opcional: sin `PLAYWRIGHT_TEST_CLI` se omite con su motivo, en lugar de dejar `/tdd`, `go test ./...` y CI en rojo. Con la variable apuntando a una ruta inexistente sigue fallando.
+
+### Documentation
+- Problemas conocidos, guía HTML, uso, instalación y arquitectura reflejan el cierre de HCD-027 y el nuevo disparador del modo watch. Matriz de verificación e informes de dos revisores independientes en `docs/audits/`.
+- Badge, referencias de descarga e instaladores sincronizados con `v1.12.1`.
+
 ## [v1.12.0] - 2026-11-12
 
 ### Added

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2322e3f7'/%3E%3Cstop offset='.55' stop-color='%232c8ff0'/%3E%3Cstop offset='1' stop-color='%236b56d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z'/%3E%3C/svg%3E">
-<title>Guía del harness pi-gomemory v1.12.0</title>
+<title>Guía del harness pi-gomemory v1.12.1</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -426,7 +426,7 @@
 <body>
 
 <nav class="printbar" aria-label="Documento">
-  <a class="brand" href="#portada"><svg class="logo" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22e3f7"/><stop offset=".55" stop-color="#2c8ff0"/><stop offset="1" stop-color="#6b56d4"/></linearGradient></defs><path fill="url(#lg1)" d="M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z"/><ellipse cx="13" cy="24" rx="3" ry="6" fill="#fff" opacity=".35"/></svg><b>Guía <em>pi-gomemory</em></b><small>v1.12.0 · Pi 1.5.2 · gomemory 2.54.1</small></a>
+  <a class="brand" href="#portada"><svg class="logo" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22e3f7"/><stop offset=".55" stop-color="#2c8ff0"/><stop offset="1" stop-color="#6b56d4"/></linearGradient></defs><path fill="url(#lg1)" d="M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z"/><ellipse cx="13" cy="24" rx="3" ry="6" fill="#fff" opacity=".35"/></svg><b>Guía <em>pi-gomemory</em></b><small>v1.12.1 · Pi 1.5.2 · gomemory 2.54.1</small></a>
   <div class="toc">
     <a href="#cap-1"><span>1</span>Qué es</a>
     <a href="#cap-2"><span>2</span>Requisitos</a>
@@ -474,7 +474,7 @@
     <div class="cover-route">
       <div class="eco-block"><div class="eco-label">Agente</div><div class="eco-title">Pi</div><div class="eco-ver">pi 1.5.2 · dentro de Herdr</div></div>
       <div class="eco-link" aria-hidden="true"></div>
-      <div class="eco-block main"><div class="eco-label">Harness</div><div class="eco-title">pi-gomemory</div><div class="eco-ver">v1.12.0 · un binario, todo embebido</div></div>
+      <div class="eco-block main"><div class="eco-label">Harness</div><div class="eco-title">pi-gomemory</div><div class="eco-ver">v1.12.1 ·un binario, todo embebido</div></div>
       <div class="eco-link" aria-hidden="true"></div>
       <div class="eco-block"><div class="eco-label">Memoria</div><div class="eco-title">gomemory</div><div class="eco-ver">mem 2.54.1 · HCD</div></div>
       <div class="eco-link" aria-hidden="true"></div>
@@ -485,9 +485,9 @@
 
     <div class="cover-meta">
       <p><strong>Propósito</strong>Que Pi recuerde decisiones entre sesiones, consulte el grafo antes de leer archivos a ciegas y trabaje con el protocolo HCD sin que tengas que montarlo a mano</p>
-      <p><strong>Versiones comprobadas</strong>pi-gomemory 1.12.0 · Pi 1.5.2 · gomemory 2.54.1 · pi-antigravity 0.12.0 · pi-cc-extensions 1.0.16</p>
+      <p><strong>Versiones comprobadas</strong>pi-gomemory 1.12.1 · Pi 1.5.2 · gomemory 2.54.1 · pi-antigravity 0.12.0 · pi-cc-extensions 1.0.16</p>
       <p><strong>Plataformas</strong>macOS y Linux, amd64 y arm64</p>
-      <p><strong>Estado</strong>Release <code>v1.12.0</code> (2026-11-12): cuota de OpenAI Codex en el panel lateral y comando <code>pi-gomemory-setup codex-usage</code>. HCD-027 permanece pendiente; esta versión no implementa sus correcciones.</p>
+      <p><strong>Estado</strong>Release <code>v1.12.1</code> (2026-11-13): cierra los seis hallazgos de HCD-027 (permisos JSON, skills legacy y resultados/terminación TDD) y corrige el bucle de <code>/tdd watch</code>. La cuota de OpenAI Codex y <code>pi-gomemory-setup codex-usage</code> llegaron en <code>v1.12.0</code>.</p>
     </div>
   </div>
 </div>
@@ -520,7 +520,7 @@
 
   <section class="edition" aria-label="Esta edición">
     <div><h3>Sobre esta <span>edición</span></h3>
-    <p>Guía actualizada para pi-gomemory v1.12.0. Conserva el formato de la Guía SDD_HCD de gomemory y se apoya en el README, en <code>docs/</code> y en el código de esta versión. La guía v1.11 se conserva como edición histórica.</p></div>
+    <p>Guía actualizada para pi-gomemory v1.12.1. Conserva el formato de la Guía SDD_HCD de gomemory y se apoya en el README, en <code>docs/</code> y en el código de esta versión. La guía v1.11 se conserva como edición histórica.</p></div>
     <ul>
       <li><strong>Cuota de OpenAI Codex.</strong> Barras de porcentaje restante y reinicios, con consulta JSON mediante <code>codex-usage</code>. Capítulo 9.</li>
       <li><strong>Cuotas de Anthropic.</strong> Sesión y semana leídas de cabeceras del modelo, con consulta inicial de respaldo y sin sondeo recurrente. Capítulo 9.</li>
@@ -610,7 +610,7 @@ make install</pre></div>
       <h4>O descarga el binario a mano</h4>
       <p class="why">Para máquinas sin acceso directo a GitHub o cuando prefieres verificar cada paso. Elige el tarball de tu sistema: <code>darwin_arm64</code>, <code>darwin_amd64</code>, <code>linux_amd64</code> o <code>linux_arm64</code>.</p>
       <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.12.0_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.12.1_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install</pre></div>
@@ -875,7 +875,7 @@ pi-gomemory-setup codex-usage        <span class="c"># porcentaje usado y reinic
   <div class="chapter" style="--rot:20deg"><div class="chapter-inner"><span class="dropnum">10</span><div><h2>Pruebas en vivo <span>con /tdd</span></h2><p class="pg-sub">Las pruebas reales del proyecto, test a test, con cada fallo de vuelta al agente.</p></div></div></div>
 
   <p class="lead"><code>/tdd</code> abre el TDD Live Inspector debajo del panel lateral, en la misma columna. Detecta qué suites tiene sentido ejecutar en el proyecto abierto y las lanza.</p>
-  <div class="infobox rose"><span class="lbl">Problemas conocidos pendientes</span><p>HCD-027 no está implementada en v1.12.0. Siguen pendientes los defectos de permisos MCP, limpieza de skills legacy y resultados o terminación TDD, incluida la separación de proyectos Playwright. La política <code>flaky</code> acordada no es comportamiento publicado. Consulta <a href="known-issues.md">problemas conocidos y mitigaciones</a>; confirma los resultados interrumpidos con el ejecutor original.</p></div>
+  <div class="infobox"><span class="lbl">Resultados fiables desde v1.12.1</span><p>Interrupciones y timeouts se cierran como fallos con su causa, cada prueba Playwright se identifica por proyecto y su estado sale del informe JSON oficial, y las recuperadas en un reintento se cuentan como <code>flaky</code>. Las versiones anteriores y sus mitigaciones están en <a href="known-issues.md">problemas conocidos</a>.</p></div>
 
   <div class="table-wrap"><table>
     <thead><tr><th>Suite</th><th>Se activa con</th><th>Comando</th></tr></thead>
@@ -898,7 +898,7 @@ pi-gomemory-setup codex-usage        <span class="c"># porcentaje usado y reinic
       <tr><td><code>/tdd</code></td><td>Muestra u oculta el panel y lanza todas las suites.</td></tr>
       <tr><td><code>/tdd run [suite]</code></td><td><code>all</code>, <code>backend</code>, <code>frontend</code>, <code>playwright</code>, <code>ci</code> o <code>data</code>. Si ya hay una ejecución en curso, la nueva queda en cola.</td></tr>
       <tr><td><code>/tdd min</code></td><td>Minimiza o restaura el inspector (también <code>/tdd m</code>, <code>/tdd -</code> o clic en <code>[−]</code>).</td></tr>
-      <tr><td><code>/tdd watch</code></td><td>Ejecuta las pruebas al final de cada turno. Varios turnos durante una ejecución se agrupan en una sola pendiente.</td></tr>
+      <tr><td><code>/tdd watch</code></td><td>Ejecuta las pruebas una vez cuando el agente termina el prompt, solo si cambió archivos (<code>edit</code>, <code>write</code> o <code>bash</code>). No bloquea al agente ni se dispara en prompts de solo lectura.</td></tr>
       <tr><td><code>/tdd report</code></td><td>Publica en el chat el informe de la última ejecución, con cada fallo. Queda en el contexto del modelo sin iniciar un turno.</td></tr>
     </tbody>
   </table></div>
@@ -1142,7 +1142,7 @@ pi-gomemory-setup install                     <span class="c"># reinstalación l
       <li><a href="usage.md">usage.md</a> · comandos y paneles</li>
       <li><a href="SPLASH.md">SPLASH.md</a> · <a href="PORTAPAPELES.md">PORTAPAPELES.md</a></li>
     </ul>
-    <div class="colophon-meta"><span><b>Edición</b> 1</span><span><b>pi-gomemory</b> 1.12.0</span><span><b>Pi</b> 1.5.2</span><span><b>gomemory</b> 2.54.1</span><span><b>Basada en</b> Guía SDD_HCD gomemory v2.54</span></div>
+    <div class="colophon-meta"><span><b>Edición</b> 1</span><span><b>pi-gomemory</b> 1.12.1</span><span><b>Pi</b> 1.5.2</span><span><b>gomemory</b> 2.54.1</span><span><b>Basada en</b> Guía SDD_HCD gomemory v2.54</span></div>
   </div>
   <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 16</span></div>
 </div>

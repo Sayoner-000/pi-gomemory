@@ -96,11 +96,11 @@ gomemory-sidebar.ts:
 Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral derecho (`anchor: "top-right"`, 36 cols, responsive) con la sesión/HCD activo, métricas de contexto en vivo (tokens, porcentaje y coste) y conectividad de servidores MCP. Se activa o desactiva con `/sidebar` y no captura el teclado (`nonCapturing`). Publica su altura en un estado compartido (`globalThis[Symbol.for("pi-gomemory.dock")]`) para que `/tdd` se apile debajo. En `fullscreen`, pi-tui entrega un clic como `press → release → click`; el panel alterna solo con el `click` de su cabecera.
 
 gomemory-tdd.ts:
-Extensión en TypeScript del TDD Live Inspector (`/tdd`, tool `run_test_suite`). `detectSuites` decide qué ejecutar según los archivos del proyecto. `streamLines` lanza cada comando con `spawn` (sin shell) y entrega la salida línea a línea, porque `pi.exec` solo la devuelve al terminar. Los parsers de `go test -json` y del reporter `line` de Playwright llevan cada test al `TDDStore` en vivo, con su mensaje, archivo:línea y duración reales. Las ejecuciones se encadenan para no pisar el mismo store, y el modo watch agrupa los turnos en una sola ejecución pendiente.
+Extensión en TypeScript del TDD Live Inspector (`/tdd`, tool `run_test_suite`). `detectSuites` decide qué ejecutar según los archivos del proyecto. `streamLines` lanza cada comando con `spawn` (sin shell) y entrega la salida línea a línea, porque `pi.exec` solo la devuelve al terminar. Los parsers de `go test -json` y del reporter `line` de Playwright llevan cada test al `TDDStore` en vivo, con su mensaje, archivo:línea y duración reales. Las ejecuciones se encadenan para no pisar el mismo store. El modo watch marca un cambio en `tool_execution_end` (`edit`, `write`, `bash`) y lanza una ejecución, sin esperarla, en `agent_settled`. No usa `turn_end` porque Pi espera ese evento en cada turno y bloquearía al agente entre tool calls. El estado final de Playwright sale de su informe JSON oficial; el flujo de líneas solo alimenta el progreso.
 
-## Riesgos pendientes
+## Riesgos y límites
 
-La versión v1.12.0 publica HCD-026, no las correcciones de HCD-027. La escritura JSON aún puede ampliar permisos, la limpieza legacy puede eliminar archivos añadidos y el ejecutor TDD presenta limitaciones con interrupciones y proyectos Playwright. Véase [problemas conocidos](known-issues.md). Las garantías de fusión de contenido no implican conservación de permisos; las pruebas base verdes no demuestran los casos pendientes.
+Desde v1.12.1 la escritura JSON conserva el modo existente (y crea `0600` los archivos nuevos), la limpieza legacy respeta los archivos añadidos y el ejecutor TDD cierra interrupciones y timeouts como fallos. Los límites que siguen vigentes están en [problemas conocidos](known-issues.md).
 
 ## Sanitización de skills
 

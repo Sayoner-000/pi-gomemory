@@ -121,7 +121,7 @@ El panel consulta al abrirse, al seleccionar modelo, al iniciar sesión, al term
 
 ### Inspector de pruebas en tiempo real (`/tdd`)
 
-**Limitación de v1.12.0:** las correcciones de interrupciones, identidad de proyectos y clasificación `flaky` de HCD-027 aún no están implementadas. Consulta [problemas conocidos](known-issues.md); confirma resultados parciales directamente con el ejecutor de pruebas.
+Desde v1.12.1, las interrupciones y los timeouts se informan como fallos con su causa, cada prueba Playwright se identifica por proyecto y las recuperadas en un reintento se cuentan como `flaky` (véase [problemas conocidos](known-issues.md)).
 Abre el overlay **TDD Live Inspector**. Se coloca debajo del panel lateral, en la misma columna derecha, sin solaparse, y ejecuta las pruebas **reales** del proyecto abierto.
 
 **Suites según el proyecto.** Cada suite se activa solo si el proyecto tiene lo que necesita; si no, aparece como «omitida» con su motivo, nunca como éxito ni como fallo:
@@ -145,7 +145,7 @@ Las suites omitidas aparecen agrupadas al final, bajo «Omitidas (n)».
 - `/tdd`: muestra u oculta el panel y lanza todas las suites.
 - `/tdd run [suite]`: ejecuta `all` o una suite (`backend`, `frontend`, `playwright`, `ci`, `data`). Si ya hay una ejecución en curso, avisa y la nueva queda en cola.
 - `/tdd min` (o alias `/tdd m`, `/tdd -`), o clic en `[−]` / `[+]`: minimiza o restaura el panel.
-- `/tdd watch`: ejecuta las pruebas tras cada turno (`turn_end`). Varios turnos durante una ejecución se agrupan en una sola ejecución pendiente.
+- `/tdd watch`: ejecuta las pruebas una vez cuando el agente termina el prompt (`agent_settled`), solo si cambió archivos con `edit`, `write` o `bash`. No bloquea al agente, no se dispara en prompts de solo lectura y no repite si el agente ya ejecutó `run_test_suite all` tras su último cambio. Los avisos que llegan durante una ejecución se agrupan en una sola pendiente.
 - `/tdd report`: publica en el chat el informe de la última ejecución (resultado por suite y cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia). Queda también en el contexto del modelo sin iniciar un turno, así que puedes pedir «corrige esos fallos» sin volver a ejecutar. Si aún no hubo ejecución, lo indica.
 
 **Herramienta del agente (`run_test_suite`).** Devuelve al modelo cada fallo con su suite, test, mensaje, ubicación, paso, diagnóstico y sugerencia, para que corrija y vuelva a ejecutar. Mientras corre, envía avances.
