@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.3] - 2026-11-13
+
+### Fixed
+- **Timeout propio en `httpJSON` (HCD-033, C-002):** la consulta de versiones en npm usa un cliente HTTP con límite de 20 s en lugar de `http.DefaultClient`, de modo que no depende de que quien llama pase un plazo.
+
+### Changed
+- **`-race` al empaquetar (HCD-033, C-003):** `scripts/build-release.sh` ejecuta `go test -race ./...` antes de compilar los binarios.
+
+### Documentation
+- Problemas conocidos marca C-002 y C-003 como corregidos: los cuatro hallazgos de la auditoría ACR/ADM de v1.12.1 quedan cerrados.
+- Badge, referencias de descarga e instaladores sincronizados con `v1.13.3`.
+
 ## [v1.13.2] - 2026-11-13
 
 ### Security

@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.13.3](releases/v1.13.3.md)
+Cierre de C-002 y C-003: las consultas de versiones tienen timeout propio y el empaquetado ejecuta las pruebas con el detector de carreras.
+
 [Notas de v1.13.2](releases/v1.13.2.md)
 `install`, `update` y `uninstall` conservan los permisos que tenga `~/.pi/agent/AGENTS.md` (C-001 de la auditoría de v1.12.1).
 

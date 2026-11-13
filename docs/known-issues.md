@@ -1,4 +1,4 @@
-# Problemas conocidos — v1.13.2
+# Problemas conocidos — v1.13.3
 
 ## Retraso del aviso de releases en v1.13.0 y anteriores
 
@@ -11,8 +11,8 @@ La [revisión combinada ACR y ADM](audits/2026-11-13-acr-adm-v1.12.1.md) de v1.1
 | Hallazgo | Severidad | Riesgo | Estado | Mitigación |
 |---|---|---|---|---|
 | C-001 | Baja | `install`, `update` y `uninstall` reescribían `~/.pi/agent/AGENTS.md` con modo `0644` fijo (`pkg/installer/instructions.go`, `pkg/installer/uninstall.go`). Si lo tenías en `0600`, quedaba legible para otros usuarios del equipo | **Corregido** en v1.13.2 ([HCD-032](../hcd/HCD-032-install-y-uninstall-conservan-los-permis.md), `TestHCD032AgentsModePreserved`): se conserva el modo existente y uno nuevo se crea con `0644` | En v1.13.1 y anteriores, vuelve a ejecutar `chmod 600 ~/.pi/agent/AGENTS.md` después de cada instalación o actualización |
-| C-002 | Baja | `httpJSON` (`pkg/installer/deps.go`) usa `http.DefaultClient`. Hoy no puede bloquearse porque su único llamador pasa un plazo de 20 s, pero un llamador futuro sin plazo sí podría | **Abierto** (latente) | Ninguna necesaria en esta versión |
-| C-003 | Info | `scripts/build-release.sh` ejecuta `go test` sin `-race` | **Abierto** | Ejecuta `go test -race ./...` antes de empaquetar |
+| C-002 | Baja | `httpJSON` (`pkg/installer/deps.go`) usaba `http.DefaultClient`. No podía bloquearse porque su único llamador pasaba un plazo de 20 s, pero un llamador futuro sin plazo sí podría | **Corregido** en v1.13.3 ([HCD-033](../hcd/HCD-033-timeout-propio-en-httpjson-y-race-al-emp.md), `TestHCD033HTTPJSONClientTimeout`): cliente propio con timeout de 20 s | Ninguna necesaria: en versiones anteriores el plazo del llamador ya lo evitaba |
+| C-003 | Info | `scripts/build-release.sh` ejecutaba `go test` sin `-race` | **Corregido** en v1.13.3 ([HCD-033](../hcd/HCD-033-timeout-propio-en-httpjson-y-race-al-emp.md)): el script ejecuta `go test -race ./...` | Las releases desde v1.12.1 se verificaron además con `go test -race ./...` antes de empaquetar |
 | C-004 | Baja | `uninstall` con otro `HOME` borraba el launcher que está junto a `pi-gomemory-setup`, aunque perteneciera a la instalación real | **Corregido** en v1.13.0 ([HCD-030](../hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md), `TestHCD030LauncherOutsideHome`) | En v1.12.1 y anteriores, no ejecutes `uninstall` con otro `HOME` usando el binario instalado; si ya ocurrió, restaura con `pi-gomemory-setup harness` |
 
 ## Aviso de actualizaciones en v1.12.1 y anteriores
