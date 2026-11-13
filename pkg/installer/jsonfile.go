@@ -50,6 +50,20 @@ func writeJSONObject(path string, obj any) error {
 	return nil
 }
 
+// modeOrDefault devuelve el modo actual de path para conservarlo al
+// reescribirlo, o def si no existe. Otro error impide la escritura: sin conocer
+// el modo no se puede garantizar que no se amplíe (HCD-032).
+func modeOrDefault(path string, def os.FileMode) (os.FileMode, error) {
+	info, err := os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return def, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("leer permisos de %s: %w", path, err)
+	}
+	return info.Mode().Perm(), nil
+}
+
 func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-*")
 	if err != nil {

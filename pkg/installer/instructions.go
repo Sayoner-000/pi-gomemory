@@ -66,7 +66,12 @@ func InstallInstructions(piAgentDir string) error {
 		return fmt.Errorf("leer %s: %w", agentsPath, err)
 	}
 
-	return writeFileAtomic(agentsPath, []byte(mergeInstructions(string(existing))), 0644)
+	// Conserva el modo que la persona dio a AGENTS.md; uno nuevo, 0644 (HCD-032).
+	mode, err := modeOrDefault(agentsPath, 0644)
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(agentsPath, []byte(mergeInstructions(string(existing))), mode)
 }
 
 // mergeInstructions inserta o reemplaza el bloque de pi-gomemory en content.

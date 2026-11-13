@@ -294,7 +294,11 @@ func (p *UninstallPlan) planAgents(piAgentDir string) {
 		if strings.TrimSpace(out) == "" {
 			return os.Remove(path)
 		}
-		return writeFileAtomic(path, []byte(out), 0644)
+		mode, err := modeOrDefault(path, 0644)
+		if err != nil {
+			return err
+		}
+		return writeFileAtomic(path, []byte(out), mode)
 	})
 }
 
