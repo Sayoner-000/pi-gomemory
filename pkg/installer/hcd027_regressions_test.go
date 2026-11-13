@@ -265,4 +265,3 @@ func TestHCD027SkillCleanupCompatibility(t *testing.T) {
 		t.Errorf("user repo directory was deleted: %v", err)
 	}
 }
-
