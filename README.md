@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.13.0"><img src="https://img.shields.io/badge/version-1.13.0-blue" alt="Version 1.13.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.13.1"><img src="https://img.shields.io/badge/version-1.13.1-blue" alt="Version 1.13.1"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -174,7 +174,7 @@ El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo c
 
 Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa la última publicada según la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`) y, desde v1.13.0, compara con la versión que tienes instalada ahora, así que no anuncia algo que ya actualizaste por otra vía. Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar.
 
-Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano y vuelve a consultar, de modo que una release publicada desde la última consulta aparece en la misma apertura. El aviso solo informa: para instalar, responde a la pregunta del launcher o ejecuta `pi-gomemory-setup deps-update`. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
+Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano si la última consulta en red tiene más de una hora y vuelve a consultar, de modo que una release se anuncia como mucho una hora después de publicarse. El aviso solo informa: para instalar, responde a la pregunta del launcher o ejecuta `pi-gomemory-setup deps-update`. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
 
 `pi-antigravity` y `pi-cc-extensions` se instalan fijados a la versión del catálogo oficial de Pi (`npm:pi-antigravity@0.12.0`, `npm:pi-cc-extensions@1.0.16`); cambian solo con una release nueva de pi-gomemory.
 
@@ -199,6 +199,7 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 ## Documentación
 
 - [Guía HTML v1.13](docs/Guia-PI-GOMEMORY-v1.13.html): recorrido completo del harness
+- [Notas de v1.13.1](docs/releases/v1.13.1.md): las releases nuevas se anuncian como mucho una hora después de publicarse
 - [Notas de v1.13.0](docs/releases/v1.13.0.md): aviso de actualizaciones fiable y en el pie de Pi; `uninstall` acotado a su HOME
 - [Notas de v1.12.1](docs/releases/v1.12.1.md): correcciones de HCD-027 y del modo watch
 - [Notas de v1.12.0](docs/releases/v1.12.0.md): cuota de OpenAI Codex

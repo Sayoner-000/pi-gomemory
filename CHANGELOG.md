@@ -4,6 +4,15 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.1] - 2026-11-13
+
+### Fixed
+- **Releases nuevas anunciadas con hasta un día de retraso (HCD-031):** la comprobación de versiones del launcher y del pie de Pi reutilizaba su caché durante 24 h, así que una release publicada poco después de la última consulta no se anunciaba hasta el día siguiente. Ahora vuelve a la red como mucho una vez por hora (`depsCacheTTL`).
+
+### Documentation
+- La entrada de v1.13.0 afirmaba que una release nueva se anunciaba «en la misma apertura». Solo era cierto si la última consulta tenía más de 24 h; desde esta versión el retraso máximo es de una hora. README, uso, instalación, guía HTML v1.13, notas de v1.13.0 y problemas conocidos describen el comportamiento real.
+- Badge, referencias de descarga e instaladores sincronizados con `v1.13.1`.
+
 ## [v1.13.0] - 2026-11-13
 
 ### Added

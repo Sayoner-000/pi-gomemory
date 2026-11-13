@@ -1,4 +1,8 @@
-# Problemas conocidos — v1.13.0
+# Problemas conocidos — v1.13.1
+
+## Retraso del aviso de releases en v1.13.0 y anteriores
+
+La comprobación de versiones solo volvía a la red si su última consulta tenía más de 24 h, así que una release podía tardar hasta un día en anunciarse en el launcher y en el pie de Pi. Desde v1.13.1 vuelve a la red como mucho una vez por hora ([HCD-031](../hcd/HCD-031-una-release-nueva-tarda-hasta-24-h-en-an.md)): el retraso queda acotado a una hora, no desaparece. En versiones anteriores, borra `~/.pi/agent/pi-gomemory-deps.json` y ejecuta `pi-gomemory-setup deps-refresh` para forzar la consulta.
 
 ## Auditoría ACR/ADM de v1.12.1
 

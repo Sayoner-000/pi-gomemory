@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.13.1](releases/v1.13.1.md)
+La comprobación de versiones vuelve a la red cada hora: una release nueva se anuncia como mucho una hora después de publicarse.
+
 [Notas de v1.13.0](releases/v1.13.0.md)
 Aviso de actualizaciones que compara con la versión instalada real y aparece en el pie de Pi; `uninstall` acotado a la instalación de su `HOME`.
 
