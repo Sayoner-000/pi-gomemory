@@ -87,7 +87,7 @@ pi-cc-extensions:
 Configura el formato visual de los diffs de edición y escritura en Pi con barras laterales y prefijos limpios. También habilita el comando `/context` para revisar el peso de los mensajes en la ventana de contexto.
 
 gomemory-status.ts:
-Extensión en TypeScript que añade al pie de la terminal el conteo de tokens de entrada, salida, lecturas de caché y coste acumulado. Se puede activar o desactivar con el comando `/tokens`.
+Extensión en TypeScript que añade al pie de la terminal el conteo de tokens de entrada, salida, lecturas de caché y coste acumulado. Se puede activar o desactivar con el comando `/tokens`. Desde v1.13.0 también anuncia `↑ actualizaciones disponibles` en el extremo derecho: en `session_start` lanza, sin esperarla, la secuencia `deps-status` → `deps-refresh` → `deps-status` mediante `pi.exec` y trata la salida 10 como «hay algo desactualizado». Con el pie propio apagado, publica el aviso con `ctx.ui.setStatus("gomemory-updates", …)`. La lógica de versiones sigue en Go: `DepsStatusFor` combina la última publicada de la caché con la versión instalada que relee cada probe (`liveVersion`, límite de 3 s), y la caché solo decide qué es lo último publicado.
 
 gomemory-tasks.ts:
 Extensión en TypeScript que muestra sobre el editor de Pi las tareas de la unidad HCD activa con su estado de verificación (`✓`, `○`, `◌`, `✗`), actualizándose reactivamente tras cada comando `mem hcd`. Se activa o desactiva con `/tasks`.
@@ -100,7 +100,7 @@ Extensión en TypeScript del TDD Live Inspector (`/tdd`, tool `run_test_suite`).
 
 ## Riesgos y límites
 
-Desde v1.12.1 la escritura JSON conserva el modo existente (y crea `0600` los archivos nuevos), la limpieza legacy respeta los archivos añadidos y el ejecutor TDD cierra interrupciones y timeouts como fallos. Los límites que siguen vigentes están en [problemas conocidos](known-issues.md).
+Desde v1.12.1 la escritura JSON conserva el modo existente (y crea `0600` los archivos nuevos), la limpieza legacy respeta los archivos añadidos y el ejecutor TDD cierra interrupciones y timeouts como fallos. Desde v1.13.0, `uninstall` solo retira el launcher de carpetas que pertenecen a la instalación de su `HOME`: `launcherDirs` devuelve aparte la carpeta del ejecutable cuando queda fuera de `HOME` y nada la respalda, y el plan la marca como omitida. `AGENTS.md` todavía se escribe con modo `0644` fijo. Los límites que siguen vigentes están en [problemas conocidos](known-issues.md).
 
 ## Sanitización de skills
 

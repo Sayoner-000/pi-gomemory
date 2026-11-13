@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.12.1"><img src="https://img.shields.io/badge/version-1.12.1-blue" alt="Version 1.12.1"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.13.0"><img src="https://img.shields.io/badge/version-1.13.0-blue" alt="Version 1.13.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -67,7 +67,7 @@ make install
 | **21 skills** | El ciclo HCD completo (`hcd`, `hcd-define` … `hcd-close`), verificación (`verify-loop`, `search-first`), revisión adversarial y auditoría defensiva | `~/.pi-gomemory/skills/` |
 | **Protocolo de trabajo** | Instrucciones para que Pi consulte la memoria y el grafo antes de buscar con grep, y guarde lo que aprende | `~/.pi/agent/AGENTS.md` |
 | **Modelos de Google AI Pro** | Plugin `pi-antigravity` y el comando `pi-gomemory usage`, que consulta la cuota real de tu cuenta | `~/.pi/agent/settings.json` |
-| **Interfaz** | `pi-cc-extensions` (diffs laterales, `/context`), barra de tokens y coste (`/tokens`), y el tema gomemory en Truecolor | `~/.pi/agent/` |
+| **Interfaz** | `pi-cc-extensions` (diffs laterales, `/context`), barra de tokens y coste (`/tokens`) con aviso de actualizaciones, y el tema gomemory en Truecolor | `~/.pi/agent/` |
 | **Launcher** | `pi-gomemory` prepara el entorno de Herdr y carga el contexto del proyecto | `~/.local/bin/` |
 
 `pi-gomemory-setup doctor` comprueba cada pieza y te dice qué falta.
@@ -159,7 +159,7 @@ Con `usage`, si la API no responde o el token caducó, el comando termina con un
 | `/tdd min` | Minimiza o restaura el inspector (también con clic en `[−]` / `[+]`) |
 | `/tdd watch` | Ejecuta las pruebas una vez cuando el agente termina, solo si cambió archivos (`edit`, `write` o `bash`); no bloquea al agente |
 | `/tdd report` | Publica en el chat, y en el contexto del modelo, el informe de la última ejecución con cada fallo |
-| `/tokens` | Muestra u oculta la barra de tokens y coste |
+| `/tokens` | Muestra u oculta la barra de tokens y coste; el aviso de actualizaciones pasa al pie por defecto de Pi |
 
 El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia. Los paneles `/sidebar` y `/tdd` se apilan en la columna derecha sin solaparse; el clic funciona en el modo `fullscreen` de Pi (el predeterminado). Detalle en [docs/usage.md](docs/usage.md).
 
@@ -172,7 +172,9 @@ El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo c
 
 ### Actualizaciones del meta-harness
 
-Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa el resultado de la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`). Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar. Para desactivarlo, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
+Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa la última publicada según la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`) y, desde v1.13.0, compara con la versión que tienes instalada ahora, así que no anuncia algo que ya actualizaste por otra vía. Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar.
+
+Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano y vuelve a consultar, de modo que una release publicada desde la última consulta aparece en la misma apertura. El aviso solo informa: para instalar, responde a la pregunta del launcher o ejecuta `pi-gomemory-setup deps-update`. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
 
 `pi-antigravity` y `pi-cc-extensions` se instalan fijados a la versión del catálogo oficial de Pi (`npm:pi-antigravity@0.12.0`, `npm:pi-cc-extensions@1.0.16`); cambian solo con una release nueva de pi-gomemory.
 
@@ -182,7 +184,7 @@ Desde v1.12.0, con el proveedor `openai-codex` activo, `/sidebar` muestra «▼ 
 
 ## Limitaciones conocidas
 
-Desde v1.12.1 están corregidos los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) (permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD), así como el bucle de `/tdd watch`. Los límites de validación que siguen vigentes están en [problemas conocidos](docs/known-issues.md).
+Desde v1.12.1 están corregidos los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) (permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD), así como el bucle de `/tdd watch`. v1.13.0 corrige que `uninstall` con otro `HOME` borrara el launcher de la instalación real ([HCD-030](hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md)). Sigue abierto que `install`, `update` y `uninstall` dejan `~/.pi/agent/AGENTS.md` con permisos `0644`. Este y los demás límites vigentes están en [problemas conocidos](docs/known-issues.md).
 
 ## Desarrollo
 
@@ -196,7 +198,8 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 
 ## Documentación
 
-- [Guía HTML v1.12](docs/Guia-PI-GOMEMORY-v1.12.html): recorrido completo del harness
+- [Guía HTML v1.13](docs/Guia-PI-GOMEMORY-v1.13.html): recorrido completo del harness
+- [Notas de v1.13.0](docs/releases/v1.13.0.md): aviso de actualizaciones fiable y en el pie de Pi; `uninstall` acotado a su HOME
 - [Notas de v1.12.1](docs/releases/v1.12.1.md): correcciones de HCD-027 y del modo watch
 - [Notas de v1.12.0](docs/releases/v1.12.0.md): cuota de OpenAI Codex
 - [Arquitectura](docs/architecture.md): cómo se embeben y fusionan los recursos

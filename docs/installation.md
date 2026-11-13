@@ -40,24 +40,24 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.12.1_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.12.1_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.12.1_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.12.1_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.13.0_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.13.0_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.13.0_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.13.0_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.12.1_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.13.0_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar v1.12.1, comprueba `pi-gomemory-setup version` y que `pi-gomemory-setup help` incluya `codex-usage`. Ejecuta `/reload` en Pi para cargar la extensión actualizada. La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
+Después de instalar v1.13.0, comprueba que `pi-gomemory-setup version` devuelve `v1.13.0` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
 
-**Si vienes de v1.12.0 o anterior:** esas versiones podían ampliar los permisos de los JSON de configuración y borrar archivos añadidos a skills legacy. v1.12.1 lo corrige; aun así, revisa [problemas conocidos](known-issues.md) y comprueba los permisos de `~/.pi/agent` después de actualizar.
+**Si vienes de v1.12.0 o anterior:** esas versiones podían ampliar los permisos de los JSON de configuración y borrar archivos añadidos a skills legacy. v1.12.1 lo corrige; aun así, revisa [problemas conocidos](known-issues.md) y comprueba los permisos de `~/.pi/agent` después de actualizar. Ten en cuenta que `install` sigue dejando `~/.pi/agent/AGENTS.md` en `0644`.
 
 ## Repositorio de skills
 
@@ -65,11 +65,13 @@ Después de instalar v1.12.1, comprueba `pi-gomemory-setup version` y que `pi-go
 
 ## Actualización
 
-En cada arranque, el launcher `pi-gomemory` comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions`. La consulta corre en segundo plano y el aviso usa el resultado de la anterior. En una terminal interactiva pregunta si quieres actualizar (10 s; sin respuesta, no actualiza).
+En cada arranque, el launcher `pi-gomemory` comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions`. La consulta corre en segundo plano y el aviso usa la última versión publicada según la consulta anterior, comparada con la que tienes instalada en ese momento. En una terminal interactiva pregunta si quieres actualizar (10 s; sin respuesta, no actualiza).
+
+Dentro de Pi, el pie muestra `↑ actualizaciones disponibles` abajo a la derecha mientras haya algo desactualizado; con `/tokens` apagado, el aviso pasa al pie por defecto de Pi. Solo informa: la instalación sigue en la pregunta del launcher o en `deps-update`.
 
 ```bash
 pi-gomemory-setup version       # versión instalada
-pi-gomemory-setup deps-status   # lo desactualizado según la última consulta
+pi-gomemory-setup deps-status   # lo desactualizado: última publicada según la consulta frente a la versión instalada real (sale con 10)
 pi-gomemory-setup deps-update   # actualiza cada componente con su comando oficial
 pi-gomemory-setup update        # solo pi-gomemory: descarga la release, verifica SHA256SUMS y reinstala
 ```
@@ -90,6 +92,8 @@ pi-gomemory-setup install                 # reinstalación limpia
 Qué retira: extensiones `gomemory-*`, tema, launcher, skills embebidas intactas y enlaces de `~/.pi-gomemory/skills`, las entradas MCP `gomemory`, `codegraph` y `codebase-memory`, el bloque de pi-gomemory en `~/.pi/agent/AGENTS.md`, el registro de skills y el tema en `settings.json`, las cachés y el manifiesto.
 
 Solo borra lo que puede demostrar que instaló: compara la huella SHA256 de cada archivo con `~/.pi-gomemory/manifest.json`. Lo que editaste, tus skills, otros servidores MCP y cualquier clave ajena se conservan y aparecen como omitidos.
+
+El launcher se busca en el `BIN_DIR` del manifiesto, en `PI_GOMEMORY_BIN_DIR`, en `~/.local/bin` y junto a `pi-gomemory-setup`. Desde v1.13.0, si esa última carpeta queda fuera de `HOME` y nada la respalda (por ejemplo, al ejecutar `HOME=/tmp/prueba pi-gomemory-setup uninstall` con el binario instalado), el launcher no se borra: aparece como `[omitir]` con el motivo «fuera de HOME y sin manifiesto». Retíralo a mano o repite con `PI_GOMEMORY_BIN_DIR`.
 
 Nunca toca la memoria de gomemory (`mem`, su base de datos, `.gomemory/` ni `hcd/`) ni desinstala `pi`, `mem`, `codegraph` o `codebase-memory-mcp`.
 

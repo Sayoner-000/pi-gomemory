@@ -60,7 +60,7 @@ Comandos:
   skills-sync   Sincroniza el repositorio central de skills y purga copias legadas
   harness       Genera el launcher pi-gomemory en ~/.local/bin (o PI_GOMEMORY_BIN_DIR)
   version       Muestra la versión instalada
-  deps-status   Lista los componentes desactualizados
+  deps-status   Lista los componentes desactualizados frente a la versión instalada real (sale con 10)
   deps-update   Actualiza los componentes desactualizados
   update        Actualiza pi-gomemory desde la última release verificada
   uninstall     Retira lo instalado por pi-gomemory (ver «Desinstalar» en installation.md)
@@ -152,6 +152,9 @@ Las suites omitidas aparecen agrupadas al final, bajo «Omitidas (n)».
 
 ### Barra de tokens (`/tokens`)
 Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens de entrada, salida, lecturas de caché y coste estimado.
+
+### Aviso de actualizaciones
+Desde v1.13.0, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho, delante del modelo y la rama, cuando `pi-gomemory-setup deps-status` sale con 10. Al iniciar la sesión consulta el estado, ejecuta `deps-refresh` en segundo plano (respeta la caché de 24 h) y vuelve a consultar, así que una release publicada desde la última consulta aparece en la misma apertura sin retrasar el arranque. Con `/tokens` apagado, el aviso se publica en el pie por defecto de Pi. Solo informa: para instalar, responde a la pregunta del launcher o ejecuta `pi-gomemory-setup deps-update`. `PI_GOMEMORY_NO_UPDATE_CHECK=1` lo desactiva.
 
 ### Ventana de contexto (`/context`)
 Muestra el desglose de espacio ocupado en la ventana de contexto del modelo para identificar qué archivos o mensajes consumen más memoria.

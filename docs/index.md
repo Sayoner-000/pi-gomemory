@@ -4,7 +4,7 @@ Esta carpeta contiene la documentación técnica de pi-gomemory, el instalador y
 
 ## Contenido
 
-[Guía del harness pi-gomemory (HTML)](Guia-PI-GOMEMORY-v1.12.html)
+[Guía del harness pi-gomemory (HTML)](Guia-PI-GOMEMORY-v1.13.html)
 Guía larga de uso, con el formato de la Guía SDD_HCD de gomemory: instalación, qué cambia en tu máquina, launcher, memoria y grafos, skills, comandos dentro de Pi, `/sidebar`, `/tdd`, HCD, revisión con Splash/ACR/ADM, una sesión de punta a punta y mantenimiento. Se puede imprimir o guardar como PDF.
 
 [Arquitectura del sistema](architecture.md)
@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.13.0](releases/v1.13.0.md)
+Aviso de actualizaciones que compara con la versión instalada real y aparece en el pie de Pi; `uninstall` acotado a la instalación de su `HOME`.
+
 [Notas de v1.12.1](releases/v1.12.1.md)
 Cierre de los seis hallazgos de HCD-027 y corrección del bucle de `/tdd watch`.
 
@@ -23,7 +26,7 @@ Cierre de los seis hallazgos de HCD-027 y corrección del bucle de `/tdd watch`.
 Cambios de cuota Codex, plataformas, verificación de binarios y límites de la entrega.
 
 [Problemas conocidos](known-issues.md)
-Hallazgos de HCD-027 corregidos en v1.12.1, con sus mitigaciones para versiones anteriores, y los límites de validación vigentes.
+Hallazgos abiertos de la auditoría ACR/ADM de v1.12.1 (entre ellos, los permisos `0644` de `AGENTS.md`) y los corregidos en v1.13.0 y v1.12.1, con sus mitigaciones, y los límites de validación vigentes.
 
 [Decisiones de arquitectura (ADR)](adr/README.md)
 Registro de las decisiones vigentes: repositorio central de skills, extensiones TUI de HCD y orquestación de dependencias.

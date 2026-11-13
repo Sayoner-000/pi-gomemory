@@ -4,6 +4,20 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.0] - 2026-11-13
+
+### Added
+- **Aviso de actualizaciones en el pie de Pi (HCD-029):** `↑ actualizaciones disponibles` aparece en el extremo derecho del pie de gomemory cuando `pi-gomemory-setup deps-status` sale con 10. Al iniciar la sesión consulta, refresca en segundo plano y vuelve a consultar, así que una release nueva se anuncia en la misma apertura sin retrasar el arranque. Con `/tokens` apagado, el aviso se publica en el pie por defecto de Pi. Respeta `PI_GOMEMORY_NO_UPDATE_CHECK`.
+
+### Fixed
+- **Avisos de versiones ya instaladas (HCD-029):** `deps-status` y la pregunta del launcher comparaban con la versión guardada en la caché. Tras actualizar por otra vía seguían anunciando versiones ya instaladas. Ahora la versión instalada se relee de cada componente (límite de 3 s); si no se puede leer, se conserva la de la caché.
+- **`uninstall` con otro `HOME` borraba el launcher real (HCD-030, C-004):** la búsqueda junto a `pi-gomemory-setup` ya no retira un launcher fuera de `HOME` sin respaldo del manifiesto ni de `PI_GOMEMORY_BIN_DIR`: se lista como `[omitir]` con su motivo.
+
+### Documentation
+- README, uso, instalación, arquitectura, índice, guía HTML v1.13 y notas de versión describen el aviso en el pie y el nuevo alcance de `uninstall`.
+- Problemas conocidos recoge la auditoría ACR/ADM de v1.12.1 (`docs/audits/2026-11-13-acr-adm-v1.12.1.md`): C-004 corregido; C-001 (`AGENTS.md` reescrito con `0644`, también en `install`), C-002 y C-003 siguen abiertos.
+- Badge, referencias de descarga e instaladores sincronizados con `v1.13.0`.
+
 ## [v1.12.1] - 2026-11-13
 
 ### Fixed

@@ -1,4 +1,19 @@
-# Problemas conocidos — v1.12.1
+# Problemas conocidos — v1.13.0
+
+## Auditoría ACR/ADM de v1.12.1
+
+La [revisión combinada ACR y ADM](audits/2026-11-13-acr-adm-v1.12.1.md) de v1.12.1 (`2be2613`) terminó en `APPROVED`, sin defectos críticos ni altos. Al contrastarla con el código se reprodujo C-001, se encontró un segundo punto con el mismo defecto y apareció un hallazgo nuevo (C-004).
+
+| Hallazgo | Severidad | Riesgo | Estado en v1.13.0 | Mitigación |
+|---|---|---|---|---|
+| C-001 | Baja | `install`, `update` y `uninstall` reescriben `~/.pi/agent/AGENTS.md` con modo `0644` fijo (`pkg/installer/instructions.go:69`, `pkg/installer/uninstall.go`). Si lo tenías en `0600`, queda legible para otros usuarios del equipo | **Abierto** | Vuelve a ejecutar `chmod 600 ~/.pi/agent/AGENTS.md` después de cada instalación o actualización y no guardes datos privados en ese archivo |
+| C-002 | Baja | `httpJSON` (`pkg/installer/deps.go`) usa `http.DefaultClient`. Hoy no puede bloquearse porque su único llamador pasa un plazo de 20 s, pero un llamador futuro sin plazo sí podría | **Abierto** (latente) | Ninguna necesaria en esta versión |
+| C-003 | Info | `scripts/build-release.sh` ejecuta `go test` sin `-race` | **Abierto** | Ejecuta `go test -race ./...` antes de empaquetar |
+| C-004 | Baja | `uninstall` con otro `HOME` borraba el launcher que está junto a `pi-gomemory-setup`, aunque perteneciera a la instalación real | **Corregido** ([HCD-030](../hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md), `TestHCD030LauncherOutsideHome`) | En v1.12.1 y anteriores, no ejecutes `uninstall` con otro `HOME` usando el binario instalado; si ya ocurrió, restaura con `pi-gomemory-setup harness` |
+
+## Aviso de actualizaciones en v1.12.1 y anteriores
+
+`deps-status` tomaba la versión instalada de la caché `~/.pi/agent/pi-gomemory-deps.json`. Tras actualizar por otra vía (`install`, `mem update`, `pi update`), el launcher seguía anunciando y preguntando por versiones ya instaladas hasta el siguiente refresco. Corregido en v1.13.0 ([HCD-029](../hcd/HCD-029-aviso-de-version-nueva-al-abrir-pi-gomem.md)). En versiones anteriores, `pi-gomemory-setup deps-refresh` corrige la caché.
 
 ## Hallazgos de HCD-027 (cerrados en v1.12.1)
 
