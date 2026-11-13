@@ -1,0 +1,83 @@
+package installer
+
+import (
+ "archive/tar"
+ "bytes"
+ "compress/gzip"
+ "io"
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+ "testing/fstest"
+)
+
+// Contratos seguros: estas cuatro pruebas deben FALLAR antes de corregir.
+func TestADMRevalidateOwnedFile(t *testing.T) {
+ path := filepath.Join(t.TempDir(), "launcher")
+ original := []byte("SYNTH-INSTALLED")
+ if err := os.WriteFile(path, original, 0600); err != nil { t.Fatal(err) }
+ var p UninstallPlan
+ p.planOwnedFile(nil, path, original)
+ if len(p.Actions) != 1 { t.Fatal(p.Actions) }
+ if err := os.WriteFile(path, []byte("SYNTH-USER-EDIT-AFTER-PLAN"), 0600); err != nil { t.Fatal(err) }
+ err := p.Actions[0].apply()
+ _, statErr := os.Stat(path)
+ if os.IsNotExist(statErr) { t.Fatalf("user edit deleted after plan; apply error=%v", err) }
+}
+
+func TestADMRevalidateSkill(t *testing.T) {
+ home := t.TempDir()
+ repo := filepath.Join(home, "skills")
+ dir := filepath.Join(repo, "demo")
+ if err := os.MkdirAll(dir, 0700); err != nil { t.Fatal(err) }
+ body := []byte("SYNTH-SKILL")
+ if err := os.WriteFile(filepath.Join(dir,"SKILL.md"), body, 0600); err != nil { t.Fatal(err) }
+ if err := os.WriteFile(filepath.Join(dir,skillMarkerFile), []byte(contentHash(body)), 0600); err != nil { t.Fatal(err) }
+ var p UninstallPlan
+ p.planSkillDir(repo,home)
+ if len(p.Actions) != 1 || p.Actions[0].apply == nil { t.Fatal(p.Actions) }
+ extra := filepath.Join(dir,"SYNTH-user-notes.txt")
+ if err := os.WriteFile(extra, []byte("SYNTH-NOTES"), 0600); err != nil { t.Fatal(err) }
+ err := p.Actions[0].apply()
+ if _, e := os.Stat(extra); os.IsNotExist(e) { t.Fatalf("new user notes deleted after plan; apply error=%v",err) }
+}
+
+func TestADMUnreadableUninstall(t *testing.T) {
+ home := t.TempDir()
+ agent := filepath.Join(home,".pi","agent")
+ dir := filepath.Join(agent,"extensions")
+ if err := os.MkdirAll(dir,0700); err != nil { t.Fatal(err) }
+ path := filepath.Join(dir,"gomemory-status.ts")
+ if err := os.WriteFile(path, []byte("SYNTH-INSTALLED"), 0000); err != nil { t.Fatal(err) }
+ defer os.Chmod(path,0600)
+ if _, err := os.ReadFile(path); err == nil { t.Skip("requires an unprivileged user") }
+ opts := &Options{HomeDir:home,PiAgentDir:agent,LocalBinDir:filepath.Join(home,"bin")}
+ t.Setenv("PI_GOMEMORY_BIN_DIR", opts.LocalBinDir)
+ plan, planErr := BuildUninstallPlan(fstest.MapFS{}, opts, UninstallFlags{Yes:true})
+ if planErr != nil { t.Fatal(planErr) }
+ for _, action := range plan.Actions {
+  if action.apply != nil && !isUnder(action.Target,home) {
+   t.Fatalf("unsafe reproduction: destructive target outside temporary HOME: %s", action.Target)
+  }
+ }
+ var out bytes.Buffer
+ err := Uninstall(fstest.MapFS{},opts,UninstallFlags{Yes:true},&out)
+ if err == nil { t.Fatalf("unreadable managed path silently ignored: %s",strings.TrimSpace(out.String())) }
+}
+
+func TestADMExtractRejectsOversize(t *testing.T) {
+ var b bytes.Buffer
+ gz := gzip.NewWriter(&b)
+ tw := tar.NewWriter(gz)
+ n := int64(maxDownloadBytes)+1
+ if err := tw.WriteHeader(&tar.Header{Name:"pi-gomemory-setup",Mode:0755,Size:n}); err != nil { t.Fatal(err) }
+ if _, err := io.CopyN(tw,zeroReader{},n); err != nil { t.Fatal(err) }
+ if err := tw.Close(); err != nil { t.Fatal(err) }
+ if err := gz.Close(); err != nil { t.Fatal(err) }
+ data,err := extractBinary(b.Bytes(),"pi-gomemory-setup")
+ if err == nil { t.Fatalf("oversized member accepted and truncated: header=%d returned=%d compressed=%d",n,len(data),b.Len()) }
+}
+
+type zeroReader struct{}
+func (zeroReader) Read(p []byte)(int,error) { clear(p);return len(p),nil }
