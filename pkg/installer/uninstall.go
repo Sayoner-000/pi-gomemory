@@ -92,30 +92,44 @@ func (p *UninstallPlan) planOwnedFile(m *Manifest, path string, fallback []byte)
 	return ActionSkip
 }
 
-// launcherDirs son las carpetas donde puede estar el launcher, sin repetir.
-func launcherDirs(m *Manifest, opts *Options) []string {
-	var dirs []string
+// executablePath es os.Executable; los tests lo sustituyen para simular dónde
+// se ejecuta pi-gomemory-setup.
+var executablePath = os.Executable
+
+// launcherDirs son las carpetas donde puede estar el launcher de esta
+// instalación, sin repetir. La carpeta del ejecutable en curso solo cuenta si
+// está dentro de HOME o ya la respalda el manifiesto o PI_GOMEMORY_BIN_DIR; si
+// no, se devuelve aparte en foreign: con otro HOME pertenece a otra instalación
+// y no se borra (HCD-030, C-004).
+func launcherDirs(m *Manifest, opts *Options) (dirs []string, foreign string) {
+	var candidates []string
 	if m != nil && m.BinDir != "" {
-		dirs = append(dirs, m.BinDir)
+		candidates = append(candidates, m.BinDir)
 	}
-	dirs = append(dirs, opts.LocalBinDir)
+	candidates = append(candidates, opts.LocalBinDir)
 	if v := os.Getenv("PI_GOMEMORY_BIN_DIR"); v != "" {
-		dirs = append(dirs, v)
+		candidates = append(candidates, v)
 	}
-	dirs = append(dirs, filepath.Join(opts.HomeDir, ".local", "bin"))
-	if exe, err := os.Executable(); err == nil {
-		dirs = append(dirs, filepath.Dir(exe))
-	}
+	candidates = append(candidates, filepath.Join(opts.HomeDir, ".local", "bin"))
 	seen := map[string]bool{}
-	var out []string
-	for _, d := range dirs {
+	for _, d := range candidates {
 		c := filepath.Clean(d)
 		if !seen[c] {
 			seen[c] = true
-			out = append(out, c)
+			dirs = append(dirs, c)
 		}
 	}
-	return out
+	if exe, err := executablePath(); err == nil {
+		d := filepath.Clean(filepath.Dir(exe))
+		switch {
+		case seen[d]:
+		case isUnder(d, opts.HomeDir):
+			dirs = append(dirs, d)
+		default:
+			foreign = d
+		}
+	}
+	return dirs, foreign
 }
 
 func isHostSkillLink(target, home string) bool {
@@ -358,8 +372,15 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 	}
 	themeData, _ := fs.ReadFile(assets, "themes/gomemory.json")
 	themeFile := plan.planOwnedFile(m, filepath.Join(opts.PiAgentDir, "themes", "gomemory.json"), themeData)
-	for _, dir := range launcherDirs(m, opts) {
+	dirs, foreign := launcherDirs(m, opts)
+	for _, dir := range dirs {
 		plan.planOwnedFile(m, filepath.Join(dir, "pi-gomemory"), []byte(GenerateHarnessScript()))
+	}
+	if foreign != "" {
+		path := filepath.Join(foreign, "pi-gomemory")
+		if _, err := os.Lstat(path); err == nil {
+			plan.add(ActionSkip, path, "fuera de HOME y sin manifiesto: retíralo a mano o usa PI_GOMEMORY_BIN_DIR", nil)
+		}
 	}
 
 	plan.planSkillDir(SkillRepoDir(opts.HomeDir), opts.HomeDir)
