@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.13.7](releases/v1.13.7.md)
+`PI_GOMEMORY_NO_UPDATE_CHECK` se interpreta igual en el binario, el launcher y el pie de Pi: vacía, `0` o `false` dejan la comprobación activa. `deps-refresh` la respeta.
+
 [Notas de v1.13.6](releases/v1.13.6.md)
 Cierre de H-02, el último hallazgo de la auditoría ACR/ADM del 2026-11-14: la configuración de Pi enlazada con symlinks sigue enlazada tras `install`, `update` y `uninstall`, y los enlaces rotos se rechazan sin tocar nada.
 

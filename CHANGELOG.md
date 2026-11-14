@@ -4,6 +4,16 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.7] - 2026-11-14
+
+### Fixed
+- **`PI_GOMEMORY_NO_UPDATE_CHECK` tiene el mismo efecto en todos los componentes (HCD-037):** el binario, el launcher y el pie de Pi siguen la misma regla. Vacía, `0` o `false` (sin distinguir mayúsculas ni espacios) dejan la comprobación activa; cualquier otro valor la desactiva. Antes, el launcher y el pie la desactivaban con cualquier valor, incluso `=0` o `=false`, mientras que `check-update` seguía comprobando.
+- **`deps-refresh` respeta la variable (HCD-037):** con la comprobación desactivada no consulta la red ni reescribe la caché, y devuelve la última consulta tal como esté. `update` y `deps-update` siguen consultando siempre, porque los pides tú.
+
+### Documentation
+- Problemas conocidos sin la nota de semántica pendiente; instalación, uso y README explican qué valores desactivan la comprobación.
+- Badge, referencias de descarga, guía HTML e instaladores sincronizados con `v1.13.7`.
+
 ## [v1.13.6] - 2026-11-14
 
 ### Fixed

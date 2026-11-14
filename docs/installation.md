@@ -40,22 +40,22 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.13.6_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.13.6_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.13.6_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.13.6_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.13.7_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.13.7_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.13.7_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.13.7_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.13.6_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.13.7_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar v1.13.6, comprueba que `pi-gomemory-setup version` devuelve `v1.13.6` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
+Después de instalar v1.13.7, comprueba que `pi-gomemory-setup version` devuelve `v1.13.7` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
 
 **Si vienes de v1.12.0 o anterior:** esas versiones podían ampliar los permisos de los JSON de configuración y borrar archivos añadidos a skills legacy. v1.12.1 lo corrige; aun así, revisa [problemas conocidos](known-issues.md) y comprueba los permisos de `~/.pi/agent` después de actualizar. `install` conserva los permisos que ya tenga `~/.pi/agent/AGENTS.md`; si no existe, lo crea con `0644`.
 
@@ -78,7 +78,7 @@ pi-gomemory-setup deps-update   # actualiza cada componente con su comando ofici
 pi-gomemory-setup update        # solo pi-gomemory: descarga la release, verifica SHA256SUMS y reinstala
 ```
 
-Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar las comprobaciones automáticas (launcher, pie de Pi y `check-update`), exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Desde v1.13.5, `update` consulta siempre, aunque esa variable esté puesta, porque lo pides tú.
+Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar las comprobaciones automáticas (launcher, pie de Pi, `check-update` y `deps-refresh`), exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Desde v1.13.7 todos aplican la misma regla: sin definir, vacía, `0` o `false` (sin distinguir mayúsculas) dejan la comprobación activa, y cualquier otro valor la desactiva. Desde v1.13.5, `update` consulta siempre, aunque esa variable esté puesta, porque lo pides tú.
 
 Desde v1.13.5, `update` reinstala en el `BIN_DIR` registrado en `~/.pi-gomemory/manifest.json`, aunque la shell no tenga `PI_GOMEMORY_BIN_DIR`. Si la variable tiene valor, manda ella. Si el manifiesto existe pero no se puede leer, `update` falla antes de descargar nada y el binario no cambia.
 

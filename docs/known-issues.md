@@ -1,4 +1,4 @@
-# Problemas conocidos — v1.13.6
+# Problemas conocidos — v1.13.7
 
 ## ACR/ADM del 2026-11-14 sobre v1.13.4
 
@@ -14,7 +14,7 @@ La [auditoría ACR/ADM](audits/2026-11-14-acr-adm.md) encontró cuatro hallazgos
 
 Desde v1.13.6, si uno de esos cuatro archivos es un enlace roto (por ejemplo, con el repositorio de dotfiles sin montar), `install` falla con «el enlace no apunta a un archivo» en lugar de sustituirlo. El launcher ignora a propósito los errores de `skills-sync` para no impedir que Pi arranque, así que en ese caso el error solo aparece al ejecutar `pi-gomemory-setup skills-sync` o `install` a mano.
 
-Sigue pendiente unificar qué valores de `PI_GOMEMORY_NO_UPDATE_CHECK` desactivan la comprobación. En Go, «0» y «false» cuentan como comprobación activada; el launcher y el pie la desactivan con cualquier valor; y `deps-refresh` no la consulta.
+Hasta v1.13.6, `PI_GOMEMORY_NO_UPDATE_CHECK` no tenía el mismo efecto en todos los componentes. Con `=0` o `=false`, el launcher y el pie desactivaban el aviso mientras `check-update` seguía comprobando, y `deps-refresh` consultaba la red con cualquier valor. Desde v1.13.7 todos siguen la misma regla ([HCD-037](../hcd/HCD-037-pi-gomemory-no-update-check-significa-lo.md)): vacía, `0` o `false` dejan la comprobación activa; cualquier otro valor la desactiva, también en `deps-refresh`. En versiones anteriores, usa `=1` para desactivarla y no definas la variable para dejarla activa.
 
 ## Retraso del aviso de releases en v1.13.0 y anteriores
 

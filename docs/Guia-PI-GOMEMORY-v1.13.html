@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2322e3f7'/%3E%3Cstop offset='.55' stop-color='%232c8ff0'/%3E%3Cstop offset='1' stop-color='%236b56d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z'/%3E%3C/svg%3E">
-<title>Guía del harness pi-gomemory v1.13.6</title>
+<title>Guía del harness pi-gomemory v1.13.7</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -426,7 +426,7 @@
 <body>
 
 <nav class="printbar" aria-label="Documento">
-  <a class="brand" href="#portada"><svg class="logo" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22e3f7"/><stop offset=".55" stop-color="#2c8ff0"/><stop offset="1" stop-color="#6b56d4"/></linearGradient></defs><path fill="url(#lg1)" d="M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z"/><ellipse cx="13" cy="24" rx="3" ry="6" fill="#fff" opacity=".35"/></svg><b>Guía <em>pi-gomemory</em></b><small>v1.13.6 · Pi 1.5.2 · gomemory 2.54.1</small></a>
+  <a class="brand" href="#portada"><svg class="logo" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22e3f7"/><stop offset=".55" stop-color="#2c8ff0"/><stop offset="1" stop-color="#6b56d4"/></linearGradient></defs><path fill="url(#lg1)" d="M20 1C24 9 38 21 38 31a18 16.5 0 0 1-36 0C2 21 16 9 20 1Z"/><ellipse cx="13" cy="24" rx="3" ry="6" fill="#fff" opacity=".35"/></svg><b>Guía <em>pi-gomemory</em></b><small>v1.13.7 · Pi 1.5.2 · gomemory 2.54.1</small></a>
   <div class="toc">
     <a href="#cap-1"><span>1</span>Qué es</a>
     <a href="#cap-2"><span>2</span>Requisitos</a>
@@ -474,7 +474,7 @@
     <div class="cover-route">
       <div class="eco-block"><div class="eco-label">Agente</div><div class="eco-title">Pi</div><div class="eco-ver">pi 1.5.2 · dentro de Herdr</div></div>
       <div class="eco-link" aria-hidden="true"></div>
-      <div class="eco-block main"><div class="eco-label">Harness</div><div class="eco-title">pi-gomemory</div><div class="eco-ver">v1.13.6 ·un binario, todo embebido</div></div>
+      <div class="eco-block main"><div class="eco-label">Harness</div><div class="eco-title">pi-gomemory</div><div class="eco-ver">v1.13.7 ·un binario, todo embebido</div></div>
       <div class="eco-link" aria-hidden="true"></div>
       <div class="eco-block"><div class="eco-label">Memoria</div><div class="eco-title">gomemory</div><div class="eco-ver">mem 2.54.1 · HCD</div></div>
       <div class="eco-link" aria-hidden="true"></div>
@@ -485,16 +485,16 @@
 
     <div class="cover-meta">
       <p><strong>Propósito</strong>Que Pi recuerde decisiones entre sesiones, consulte el grafo antes de leer archivos a ciegas y trabaje con el protocolo HCD sin que tengas que montarlo a mano</p>
-      <p><strong>Versiones comprobadas</strong>pi-gomemory 1.13.6 · Pi 1.5.2 · gomemory 2.54.1 · pi-antigravity 0.12.0 · pi-cc-extensions 1.0.16</p>
+      <p><strong>Versiones comprobadas</strong>pi-gomemory 1.13.7 · Pi 1.5.2 · gomemory 2.54.1 · pi-antigravity 0.12.0 · pi-cc-extensions 1.0.16</p>
       <p><strong>Plataformas</strong>macOS y Linux, amd64 y arm64</p>
-      <p><strong>Estado</strong>Release <code>v1.13.6</code> (2026-11-14): si gestionas <code>mcp.json</code>, <code>settings.json</code>, <code>AGENTS.md</code> o <code>pi-cc-extensions.json</code> con enlaces simbólicos, <code>install</code>, <code>update</code> y <code>uninstall</code> escriben en el destino y conservan el enlace, y un enlace roto se rechaza sin tocar nada. Desde <code>v1.13.5</code>, <code>uninstall</code> conserva el manifiesto si algo falla, cancelar <code>/tdd</code> no deja procesos de prueba vivos y <code>update</code> reinstala en el <code>BIN_DIR</code> de la instalación y consulta siempre, aunque esté puesta <code>PI_GOMEMORY_NO_UPDATE_CHECK</code>. Desde <code>v1.13.4</code>, <code>uninstall</code> vuelve a comprobar cada retirada justo antes de escribir, conserva lo que cambió después del plan y falla si no pudo leer algo; <code>update</code> rechaza un ejecutable vacío, truncado o mayor de 200 MiB. Desde <code>v1.13.3</code>, las consultas de versiones tienen timeout propio y el empaquetado ejecuta las pruebas con el detector de carreras. Desde <code>v1.13.2</code>, <code>install</code>, <code>update</code> y <code>uninstall</code> conservan los permisos de <code>~/.pi/agent/AGENTS.md</code>. Desde <code>v1.13.1</code>, una release nueva se anuncia como mucho una hora después de publicarse. Desde <code>v1.13.0</code>, el aviso de actualizaciones compara con la versión instalada real y aparece en el pie de Pi, y <code>uninstall</code> ya no toca el launcher de otra instalación. Los hallazgos de HCD-027 y el bucle de <code>/tdd watch</code> se cerraron en <code>v1.12.1</code>; la cuota de OpenAI Codex llegó en <code>v1.12.0</code>.</p>
+      <p><strong>Estado</strong>Release <code>v1.13.7</code> (2026-11-14): <code>PI_GOMEMORY_NO_UPDATE_CHECK</code> se interpreta igual en el binario, el launcher y el pie (vacía, <code>0</code> o <code>false</code> dejan la comprobación activa) y <code>deps-refresh</code> la respeta. Desde <code>v1.13.6</code>, si gestionas <code>mcp.json</code>, <code>settings.json</code>, <code>AGENTS.md</code> o <code>pi-cc-extensions.json</code> con enlaces simbólicos, <code>install</code>, <code>update</code> y <code>uninstall</code> escriben en el destino y conservan el enlace, y un enlace roto se rechaza sin tocar nada. Desde <code>v1.13.5</code>, <code>uninstall</code> conserva el manifiesto si algo falla, cancelar <code>/tdd</code> no deja procesos de prueba vivos y <code>update</code> reinstala en el <code>BIN_DIR</code> de la instalación y consulta siempre, aunque esté puesta <code>PI_GOMEMORY_NO_UPDATE_CHECK</code>. Desde <code>v1.13.4</code>, <code>uninstall</code> vuelve a comprobar cada retirada justo antes de escribir, conserva lo que cambió después del plan y falla si no pudo leer algo; <code>update</code> rechaza un ejecutable vacío, truncado o mayor de 200 MiB. Desde <code>v1.13.3</code>, las consultas de versiones tienen timeout propio y el empaquetado ejecuta las pruebas con el detector de carreras. Desde <code>v1.13.2</code>, <code>install</code>, <code>update</code> y <code>uninstall</code> conservan los permisos de <code>~/.pi/agent/AGENTS.md</code>. Desde <code>v1.13.1</code>, una release nueva se anuncia como mucho una hora después de publicarse. Desde <code>v1.13.0</code>, el aviso de actualizaciones compara con la versión instalada real y aparece en el pie de Pi, y <code>uninstall</code> ya no toca el launcher de otra instalación. Los hallazgos de HCD-027 y el bucle de <code>/tdd watch</code> se cerraron en <code>v1.12.1</code>; la cuota de OpenAI Codex llegó en <code>v1.12.0</code>.</p>
     </div>
   </div>
 </div>
 
 <!-- ═══ SUMARIO ═══ -->
 <div class="page summary" id="sumario">
-  <div class="summary-head"><h2>Conte<span>nido</span></h2><p>Dieciséis capítulos: de la instalación a una sesión real, con cada comando tal como lo acepta la versión 1.13.6.</p></div>
+  <div class="summary-head"><h2>Conte<span>nido</span></h2><p>Dieciséis capítulos: de la instalación a una sesión real, con cada comando tal como lo acepta la versión 1.13.7.</p></div>
   <nav class="pool" aria-label="Capítulos">
     <div class="pool-col">
       <a href="#cap-1"><span class="pool-n" aria-hidden="true">1</span><span class="pool-t">Qué es pi-gomemory</span><span class="pool-s">Pi de serie, el harness y por qué va en un solo binario</span></a>
@@ -520,7 +520,7 @@
 
   <section class="edition" aria-label="Esta edición">
     <div><h3>Sobre esta <span>edición</span></h3>
-    <p>Guía actualizada para pi-gomemory v1.13.6. Conserva el formato de la Guía SDD_HCD de gomemory y se apoya en el README, en <code>docs/</code> y en el código de esta versión. Las guías v1.11 y v1.12 se conservan como ediciones históricas.</p></div>
+    <p>Guía actualizada para pi-gomemory v1.13.7. Conserva el formato de la Guía SDD_HCD de gomemory y se apoya en el README, en <code>docs/</code> y en el código de esta versión. Las guías v1.11 y v1.12 se conservan como ediciones históricas.</p></div>
     <ul>
       <li><strong>Aviso de actualizaciones en Pi.</strong> <code>↑ actualizaciones disponibles</code> en el pie, sin falsos avisos de versiones ya instaladas. Capítulos 5, 8 y 14.</li>
       <li><strong>Cuota de OpenAI Codex.</strong> Barras de porcentaje restante y reinicios, con consulta JSON mediante <code>codex-usage</code>. Capítulo 9.</li>
@@ -611,7 +611,7 @@ make install</pre></div>
       <h4>O descarga el binario a mano</h4>
       <p class="why">Para máquinas sin acceso directo a GitHub o cuando prefieres verificar cada paso. Elige el tarball de tu sistema: <code>darwin_arm64</code>, <code>darwin_amd64</code>, <code>linux_amd64</code> o <code>linux_arm64</code>.</p>
       <div class="code"><div class="code-head"><span>bash</span><button class="copy" type="button">Copiar</button></div><pre>shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.13.6_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.13.7_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install</pre></div>
@@ -708,7 +708,7 @@ pi-gomemory --model anthropic/claude-sonnet-4-5
 <span class="c"># ver la cuota de Google AI Pro sin abrir Pi</span>
 pi-gomemory usage
 
-<span class="c"># arrancar sin comprobar actualizaciones</span>
+<span class="c"># arrancar sin comprobar actualizaciones (vacía, 0 o false la dejan activa)</span>
 PI_GOMEMORY_NO_UPDATE_CHECK=1 pi-gomemory</pre></div>
 
   <div class="infobox amber"><span class="lbl">Si abres pi directamente</span><p>Las extensiones, el tema y las skills siguen ahí, pero no hay contexto de gomemory al inicio ni comprobación de versiones, y el banner aparece sin números de versión. Para el trabajo diario, usa el launcher.</p></div>
@@ -1150,7 +1150,7 @@ pi-gomemory-setup install                     <span class="c"># reinstalación l
       <li><a href="usage.md">usage.md</a> · comandos y paneles</li>
       <li><a href="SPLASH.md">SPLASH.md</a> · <a href="PORTAPAPELES.md">PORTAPAPELES.md</a></li>
     </ul>
-    <div class="colophon-meta"><span><b>Edición</b> 1</span><span><b>pi-gomemory</b> 1.13.6</span><span><b>Pi</b> 1.5.2</span><span><b>gomemory</b> 2.54.1</span><span><b>Basada en</b> Guía SDD_HCD gomemory v2.54</span></div>
+    <div class="colophon-meta"><span><b>Edición</b> 1</span><span><b>pi-gomemory</b> 1.13.7</span><span><b>Pi</b> 1.5.2</span><span><b>gomemory</b> 2.54.1</span><span><b>Basada en</b> Guía SDD_HCD gomemory v2.54</span></div>
   </div>
   <div class="footer"><span>Guía pi-gomemory · Edición 1</span><span>Capítulo 16</span></div>
 </div>
