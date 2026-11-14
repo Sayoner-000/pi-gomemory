@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.13.5](releases/v1.13.5.md)
+Cierre de H-01, H-03, H-04 y H-05 de la auditoría ACR/ADM del 2026-11-14: `uninstall` conserva el manifiesto si algo falla, cancelar `/tdd` no deja procesos vivos y `update` reinstala en el `BIN_DIR` de la instalación y consulta siempre. H-02 sigue abierto.
+
 [Notas de v1.13.4](releases/v1.13.4.md)
 Cierre de H-01, H-02 y H-03 de la auditoría defensiva del 2026-11-13: `uninstall` revalida cada retirada antes de escribir y falla si no pudo leer algo; `update` rechaza un ejecutable vacío, truncado o mayor de 200 MiB.
 

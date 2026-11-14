@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.5] - 2026-11-14
+
+### Fixed
+- **`uninstall` conserva el manifiesto si algo falla (HCD-035, H-01):** la retirada de `~/.pi-gomemory/manifest.json` pasa a ser la última del plan y solo se aplica si ninguna otra acción falló. Si se conserva, la salida lo indica siempre (`[conservar] … — conservado por fallos previos`) y el comando termina con error, así que un reintento todavía encuentra el `BIN_DIR` y las huellas de la instalación. Un archivo que cambió después del plan no cuenta como fallo, y un manifiesto ilegible se retira igualmente. `--dry-run` lo muestra como «se retira si no hay fallos».
+- **Cancelar `/tdd` no deja procesos de prueba vivos (HCD-035, H-03):** si la suite se cancela o agota su tiempo, el SIGKILL al grupo de procesos se mantiene aunque el proceso principal ya haya terminado. Antes, un descendiente que ignoraba SIGTERM sobrevivía.
+- **`update` reinstala en el `BIN_DIR` de la instalación (HCD-035, H-04):** el `install` que relanza `update` recibe el `bin_dir` del manifiesto, salvo que `PI_GOMEMORY_BIN_DIR` esté definida y no vacía. Antes, desde una shell sin esa variable, se creaba un segundo launcher en `~/.local/bin` y el manifiesto pasaba a apuntar allí. Si el manifiesto existe pero no se puede leer, `update` falla antes de descargar nada.
+- **`update` consulta siempre (HCD-035, H-05):** `PI_GOMEMORY_NO_UPDATE_CHECK` ya no hace que `update` diga «ya está al día» sin haber consultado. La variable sigue desactivando las comprobaciones automáticas del launcher, del pie de Pi y de `check-update`.
+
+### Documentation
+- Auditoría ACR/ADM del 2026-11-14 con sus reproducciones (`docs/audits/2026-11-14-*`) y problemas conocidos: H-01, H-03, H-04 y H-05 corregidos; H-02 (configuración gestionada con enlaces simbólicos) sigue abierto.
+- Badge, referencias de descarga, guía HTML e instaladores sincronizados con `v1.13.5`.
+
 ## [v1.13.4] - 2026-11-13
 
 ### Fixed

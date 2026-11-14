@@ -40,22 +40,22 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.13.4_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.13.4_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.13.4_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.13.4_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.13.5_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.13.5_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.13.5_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.13.5_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.13.4_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.13.5_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar v1.13.4, comprueba que `pi-gomemory-setup version` devuelve `v1.13.4` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
+Después de instalar v1.13.5, comprueba que `pi-gomemory-setup version` devuelve `v1.13.5` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
 
 **Si vienes de v1.12.0 o anterior:** esas versiones podían ampliar los permisos de los JSON de configuración y borrar archivos añadidos a skills legacy. v1.12.1 lo corrige; aun así, revisa [problemas conocidos](known-issues.md) y comprueba los permisos de `~/.pi/agent` después de actualizar. `install` conserva los permisos que ya tenga `~/.pi/agent/AGENTS.md`; si no existe, lo crea con `0644`.
 
@@ -76,7 +76,9 @@ pi-gomemory-setup deps-update   # actualiza cada componente con su comando ofici
 pi-gomemory-setup update        # solo pi-gomemory: descarga la release, verifica SHA256SUMS y reinstala
 ```
 
-Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar la comprobación, exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`.
+Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar las comprobaciones automáticas (launcher, pie de Pi y `check-update`), exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Desde v1.13.5, `update` consulta siempre, aunque esa variable esté puesta, porque lo pides tú.
+
+Desde v1.13.5, `update` reinstala en el `BIN_DIR` registrado en `~/.pi-gomemory/manifest.json`, aunque la shell no tenga `PI_GOMEMORY_BIN_DIR`. Si la variable tiene valor, manda ella. Si el manifiesto existe pero no se puede leer, `update` falla antes de descargar nada y el binario no cambia.
 
 ## Desinstalar o reinstalar limpio
 
@@ -94,6 +96,8 @@ Qué retira: extensiones `gomemory-*`, tema, launcher, skills embebidas intactas
 Solo borra lo que puede demostrar que instaló: compara la huella SHA256 de cada archivo con `~/.pi-gomemory/manifest.json`. Lo que editaste, tus skills, otros servidores MCP y cualquier clave ajena se conservan y aparecen como omitidos.
 
 Desde v1.13.4, cada retirada se vuelve a comprobar justo antes de escribir. Si editaste algo mientras `uninstall` esperaba confirmación, se conserva y aparece como `[omitir] … — cambió después del plan`; si ya no existe, como `[omitir] … — ya no existe`. Si un archivo gestionado existe pero no se puede leer, aparece como `[fallido]` y el comando termina con error en lugar de decir que no queda nada.
+
+Desde v1.13.5, el manifiesto es lo último que se retira y solo si nada falló. Si algo falla, se conserva y la salida lo indica con `[conservar] … — conservado por fallos previos`, para que el reintento todavía encuentre tu `BIN_DIR`. `--dry-run` lo muestra como «se retira si no hay fallos».
 
 El launcher se busca en el `BIN_DIR` del manifiesto, en `PI_GOMEMORY_BIN_DIR`, en `~/.local/bin` y junto a `pi-gomemory-setup`. Desde v1.13.0, si esa última carpeta queda fuera de `HOME` y nada la respalda (por ejemplo, al ejecutar `HOME=/tmp/prueba pi-gomemory-setup uninstall` con el binario instalado), el launcher no se borra: aparece como `[omitir]` con el motivo «fuera de HOME y sin manifiesto». Retíralo a mano o repite con `PI_GOMEMORY_BIN_DIR`.
 
