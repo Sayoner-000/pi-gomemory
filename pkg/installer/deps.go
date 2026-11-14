@@ -256,11 +256,16 @@ func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState 
 		if data, err := os.ReadFile(cachePath); err == nil {
 			var c depsCache
 			if json.Unmarshal(data, &c) == nil && !c.CheckedAt.IsZero() {
-				if now.Sub(c.CheckedAt) < depsCacheTTL {
+				// Con la comprobación desactivada se devuelve la caché tal cual,
+				// sin red y sin reescribirla (HCD-037, Q2).
+				if now.Sub(c.CheckedAt) < depsCacheTTL || UpdateCheckDisabled() {
 					return c.Deps
 				}
 			}
 		}
+	}
+	if UpdateCheckDisabled() {
+		return nil
 	}
 
 	states := make([]DepState, len(probes))

@@ -42,7 +42,17 @@ fi
 if command -v mem &>/dev/null; then
   export GOMEMORY_INSTALLED_VERSION="$(mem --version 2>/dev/null || true)"
 fi
-if [ -z "${PI_GOMEMORY_NO_UPDATE_CHECK:-}" ] && command -v pi-gomemory-setup &>/dev/null; then
+#     PI_GOMEMORY_NO_UPDATE_CHECK sigue la regla de pi-gomemory-setup: vacía, 0 o
+#     false (sin distinguir mayúsculas ni espacios) dejan la comprobación activa;
+#     cualquier otro valor la desactiva (HCD-037). Compatible con bash 3.2.
+update_check_disabled() {
+  local v="${PI_GOMEMORY_NO_UPDATE_CHECK:-}"
+  v="${v#"${v%%[![:space:]]*}"}"
+  v="${v%"${v##*[![:space:]]}"}"
+  v="$(printf '%s' "$v" | tr '[:upper:]' '[:lower:]')"
+  [ -n "$v" ] && [ "$v" != "0" ] && [ "$v" != "false" ]
+}
+if ! update_check_disabled && command -v pi-gomemory-setup &>/dev/null; then
   if pi-gomemory-setup deps-status; then :; elif [ $? -eq 10 ] && [ -t 0 ]; then
     printf "¿Actualizar ahora? [s/N] (10 s) "
     REPLY=""

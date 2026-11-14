@@ -15,6 +15,16 @@ const UPDATES_STATUS_KEY = "gomemory-updates";
 /** `pi-gomemory-setup deps-status` sale con 10 cuando hay algo desactualizado. */
 const DEPS_OUTDATED_EXIT = 10;
 
+/**
+ * Misma regla que `pi-gomemory-setup` y el launcher (HCD-037): vacía, "0" o
+ * "false" (sin distinguir mayúsculas ni espacios) dejan la comprobación activa;
+ * cualquier otro valor la desactiva.
+ */
+export function updateCheckDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
+	const v = (env.PI_GOMEMORY_NO_UPDATE_CHECK ?? "").trim().toLowerCase();
+	return v !== "" && v !== "0" && v !== "false";
+}
+
 export default function (pi: ExtensionAPI) {
 	let customFooterEnabled = true;
 	let updatesAvailable = false;
@@ -33,7 +43,7 @@ export default function (pi: ExtensionAPI) {
 	 * release nueva aparece en la misma apertura sin retrasar el arranque.
 	 */
 	async function checkUpdates(ctx: any) {
-		if (process.env.PI_GOMEMORY_NO_UPDATE_CHECK) return;
+		if (updateCheckDisabled()) return;
 		const outdated = async () => {
 			try {
 				const r = await pi.exec("pi-gomemory-setup", ["deps-status"], { timeout: 10_000 });
