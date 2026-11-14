@@ -1,0 +1,79 @@
+package installer
+
+import (
+ "bytes"
+ "os"
+ "path/filepath"
+ "testing"
+)
+
+// Negative contracts: each failure demonstrates the corresponding audit defect.
+func TestADMManifestSurvivesFailure(t *testing.T) {
+ home := t.TempDir()
+ custom := filepath.Join(t.TempDir(), "custom-bin")
+ if err := os.MkdirAll(custom, 0755); err != nil { t.Fatal(err) }
+ opts := &Options{HomeDir: home, PiAgentDir: filepath.Join(home,".pi","agent"), LocalBinDir: filepath.Join(home,".local","bin")}
+ t.Setenv("PI_GOMEMORY_BIN_DIR", "")
+ launcher := filepath.Join(custom,"pi-gomemory")
+ writeFile(t, launcher, GenerateHarnessScript())
+ if err := os.MkdirAll(filepath.Dir(ManifestPath(home)),0755); err != nil { t.Fatal(err) }
+ if err := writeJSONObject(ManifestPath(home), Manifest{Version:"synthetic",BinDir:custom,Files:map[string]string{launcher:contentHash([]byte(GenerateHarnessScript()))}}); err != nil { t.Fatal(err) }
+ if err := os.Chmod(custom,0555); err != nil { t.Fatal(err) }
+ defer os.Chmod(custom,0755)
+ var out bytes.Buffer
+ err := Uninstall(repoAssets(t),opts,UninstallFlags{Yes:true},&out)
+ if err == nil { t.Fatalf("fixture did not cause a removal failure: %s",out.String()) }
+ if _,err := os.Stat(launcher); err != nil { t.Fatalf("fixture launcher not retained: %v",err) }
+ if _,err := os.Stat(ManifestPath(home)); err != nil { t.Fatalf("H-01: failed uninstall removed recovery manifest: %v\n%s",err,out.String()) }
+}
+
+func TestADMSymlinkRemainsManaged(t *testing.T) {
+ root := t.TempDir()
+ target := filepath.Join(root,"dotfiles-mcp.json")
+ writeFile(t,target,`{"mcpServers":{"synthetic":{"command":"synthetic"}}}`)
+ pi := filepath.Join(root,"pi")
+ if err := os.MkdirAll(pi,0755); err != nil { t.Fatal(err) }
+ link := filepath.Join(pi,"mcp.json")
+ if err := os.Symlink(target,link); err != nil { t.Fatal(err) }
+ if err := InstallMCPServers(pi); err != nil { t.Fatal(err) }
+ info,err := os.Lstat(link)
+ if err != nil { t.Fatal(err) }
+ if info.Mode()&os.ModeSymlink == 0 { t.Fatalf("H-02: install replaced user's config symlink; original target=%s",readFile(t,target)) }
+}
+
+func TestADMCustomBinDirRetainedByChildInstall(t *testing.T) {
+ home := t.TempDir()
+ custom := filepath.Join(t.TempDir(),"custom-bin")
+ t.Setenv("HOME",home)
+ t.Setenv("PI_GOMEMORY_BIN_DIR","")
+ if err := os.MkdirAll(filepath.Dir(ManifestPath(home)),0755); err != nil { t.Fatal(err) }
+ if err := writeJSONObject(ManifestPath(home),Manifest{BinDir:custom,Files:map[string]string{}}); err != nil { t.Fatal(err) }
+ // runUpdate launches exec.Command(exe,"install") with inherited env.
+ // This is the same DefaultOptions used by that child, without network/update writes.
+ opts,err := DefaultOptions()
+ if err != nil { t.Fatal(err) }
+ if opts.LocalBinDir != custom { t.Fatalf("H-04: update child chooses %s instead of recorded %s",opts.LocalBinDir,custom) }
+}
+
+func TestADMResistantDetachedStdioDescendant(t *testing.T) {
+ out := runNodeExt(t,[]string{"extensions/gomemory-tdd.ts"},`
+import assert from "node:assert/strict";
+import { streamLines } from "./gomemory-tdd.ts";
+const ac = new AbortController();
+let pid;
+const grandchild = "process.on('SIGTERM',()=>{}); process.send('ready'); setInterval(()=>{},1000)";
+const parent = "const {spawn}=require('node:child_process'); const c=spawn(process.execPath,['-e',"+JSON.stringify(grandchild)+"],{stdio:['ignore','ignore','ignore','ipc']}); c.on('message',()=>console.log('READY:'+c.pid)); setInterval(()=>{},1000)";
+try {
+ const res = await streamLines(process.execPath,["-e",parent],{signal:ac.signal,timeoutMs:5000},line=>{
+  const m=line.match(/^READY:(\d+)/); if(m){pid=Number(m[1]);ac.abort();}
+ });
+ assert.ok(pid,"fixture must be ready");
+ assert.equal(res.aborted,true);
+ await new Promise(r=>setTimeout(r,1500));
+ let alive=false;
+ try {process.kill(pid,0);alive=true;} catch(e){if(e.code!=="ESRCH")throw e;}
+ assert.equal(alive,false,"H-03: resistant descendant remains alive after parent closed and 800ms escalation elapsed");
+} finally { if(pid){try{process.kill(pid,"SIGKILL");}catch{}} }
+`)
+ t.Log(out)
+}

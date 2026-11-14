@@ -1,0 +1,38 @@
+=== RUN   TestADMManifestSurvivesFailure
+    adm_review_test.go:27: H-01: failed uninstall removed recovery manifest: stat /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestADMManifestSurvivesFailure1003820659/001/.pi-gomemory/manifest.json: no such file or directory
+        Plan de desinstalación:
+          [retirar] /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestADMManifestSurvivesFailure1003820659/002/custom-bin/pi-gomemory — instalado por pi-gomemory
+          [retirar] /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestADMManifestSurvivesFailure1003820659/001/.pi-gomemory/manifest.json — manifiesto de instalación
+          [fallido] /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestADMManifestSurvivesFailure1003820659/002/custom-bin/pi-gomemory — remove /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestADMManifestSurvivesFailure1003820659/002/custom-bin/pi-gomemory: permission denied
+        Resumen: 1 retirados, 0 conservados, 0 omitidos, 1 fallidos.
+--- FAIL: TestADMManifestSurvivesFailure (0.01s)
+=== RUN   TestADMSymlinkRemainsManaged
+    adm_review_test.go:41: H-02: install replaced user's config symlink; original target={"mcpServers":{"synthetic":{"command":"synthetic"}}}
+--- FAIL: TestADMSymlinkRemainsManaged (0.01s)
+=== RUN   TestADMCustomBinDirRetainedByChildInstall
+    adm_review_test.go:55: H-04: update child chooses /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestADMCustomBinDirRetainedByChildInstall3193887039/001/.local/bin instead of recorded /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestADMCustomBinDirRetainedByChildInstall3193887039/002/custom-bin
+--- FAIL: TestADMCustomBinDirRetainedByChildInstall (0.01s)
+=== RUN   TestADMResistantDetachedStdioDescendant
+    adm_review_test.go:59: node falló: exit status 1
+        node:internal/modules/run_main:111
+            triggerUncaughtException(
+            ^
+        
+        AssertionError [ERR_ASSERTION]: H-03: resistant descendant remains alive after parent closed and 800ms escalation elapsed
+        
+        true !== false
+        
+            at file:///private/var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestADMResistantDetachedStdioDescendant4134683428/001/test.mjs:17:9 {
+          generatedMessage: false,
+          code: 'ERR_ASSERTION',
+          actual: true,
+          expected: false,
+          operator: 'strictEqual',
+          diff: 'simple'
+        }
+        
+        Node.js v26.13.0
+--- FAIL: TestADMResistantDetachedStdioDescendant (1.85s)
+FAIL
+FAIL	pi-gomemory/pkg/installer	2.153s
+FAIL
