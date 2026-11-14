@@ -45,7 +45,10 @@ func npmPackageName(raw json.RawMessage) string {
 // EnsurePinnedPackages deja en settings.json una sola entrada por paquete
 // soportado, con su versión fijada; el resto de entradas se conserva.
 func EnsurePinnedPackages(piAgentDir string) error {
-	settingsPath := filepath.Join(piAgentDir, "settings.json")
+	settingsPath, err := configTarget(filepath.Join(piAgentDir, "settings.json"))
+	if err != nil {
+		return err
+	}
 	settings, err := readJSONObject(settingsPath)
 	if err != nil {
 		return err
@@ -149,6 +152,11 @@ func PatchAntigravityPackageJSON(piAgentDir string) error {
 
 // InstallAntigravityPlugin instala pi-antigravity en su versión fijada y corrige sus peerDependencies.
 func InstallAntigravityPlugin(piAgentDir string) error {
+	// Un settings.json enlazado que no lleva a un archivo se rechaza antes de
+	// que pi install pueda escribir en él (HCD-036, C-15).
+	if _, err := configTarget(filepath.Join(piAgentDir, "settings.json")); err != nil {
+		return err
+	}
 	if piBin, err := exec.LookPath("pi"); err == nil {
 		if out, err := exec.Command(piBin, "install", AntigravityPackageSource).CombinedOutput(); err != nil {
 			fmt.Printf("%s    ⚠ pi install %s falló; se registra en settings.json: %s%s\n", ColorWarning, AntigravityPackageSource, strings.TrimSpace(firstLine(string(out))), ColorReset)
@@ -176,9 +184,16 @@ func InstallCCExtensions(assets fs.FS, piAgentDir string) error {
 		return fmt.Errorf("config embebida de pi-cc-extensions inválida: %w", err)
 	}
 
-	cfgPath := filepath.Join(piAgentDir, "pi-cc-extensions.json")
+	cfgPath, err := configTarget(filepath.Join(piAgentDir, "pi-cc-extensions.json"))
+	if err != nil {
+		return err
+	}
 	config, err := readJSONObject(cfgPath)
 	if err != nil {
+		return err
+	}
+	// settings.json se valida antes de que pi install pueda escribir en él (C-15).
+	if _, err := configTarget(filepath.Join(piAgentDir, "settings.json")); err != nil {
 		return err
 	}
 

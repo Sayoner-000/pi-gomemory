@@ -59,7 +59,10 @@ func InstallInstructions(piAgentDir string) error {
 	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
 		return fmt.Errorf("crear %s: %w", piAgentDir, err)
 	}
-	agentsPath := filepath.Join(piAgentDir, "AGENTS.md")
+	agentsPath, err := configTarget(filepath.Join(piAgentDir, "AGENTS.md"))
+	if err != nil {
+		return err
+	}
 
 	existing, err := os.ReadFile(agentsPath)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {

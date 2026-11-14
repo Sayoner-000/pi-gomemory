@@ -178,7 +178,10 @@ func SyncSkillRepo(assets fs.FS, home string) (SkillRepoResult, error) {
 // de ~/.pi/agent/skills las copias embebidas intactas y los enlaces a carpetas
 // del anfitrión. Las skills propias de la persona se conservan.
 func RegisterSkillRepo(piAgentDir, home string) error {
-	path := filepath.Join(piAgentDir, "settings.json")
+	path, err := configTarget(filepath.Join(piAgentDir, "settings.json"))
+	if err != nil {
+		return err
+	}
 	obj, err := readJSONObject(path)
 	if err != nil {
 		return err

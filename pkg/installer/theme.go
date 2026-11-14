@@ -23,7 +23,10 @@ func InstallTheme(assets fs.FS, piAgentDir string) error {
 		return fmt.Errorf("escribir tema: %w", err)
 	}
 
-	settingsPath := filepath.Join(piAgentDir, "settings.json")
+	settingsPath, err := configTarget(filepath.Join(piAgentDir, "settings.json"))
+	if err != nil {
+		return err
+	}
 	settings, err := readJSONObject(settingsPath)
 	if err != nil {
 		return err

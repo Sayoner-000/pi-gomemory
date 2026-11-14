@@ -370,30 +370,54 @@ func sameJSON(a, b []byte) bool {
 	return reflect.DeepEqual(x, y)
 }
 
-// editJSON relee path, aplica fn y lo escribe de forma atómica.
+// editJSON relee path, aplica fn y lo escribe de forma atómica. Si path es un
+// enlace, edita su destino sin sustituir el enlace (HCD-036).
 func editJSON(path string, fn func(map[string]json.RawMessage) error) error {
-	obj, err := readJSONObject(path)
+	target, err := configTarget(path)
+	if err != nil {
+		return err
+	}
+	obj, err := readJSONObject(target)
 	if err != nil {
 		return err
 	}
 	if err := fn(obj); err != nil {
 		return err
 	}
-	return writeJSONObject(path, obj)
+	return writeJSONObject(target, obj)
 }
 
 // editPlannedJSON es editJSON para una retirada planificada: si el archivo ya
 // no existe devuelve errGoneAfterPlan en lugar de crearlo vacío. fn revalida
-// y devuelve errChangedAfterPlan o errGoneAfterPlan sin escribir nada.
+// y devuelve errChangedAfterPlan o errGoneAfterPlan sin escribir nada. Un
+// enlace que ya no lleva a un archivo es un fallo, no una ausencia (C-16).
 func editPlannedJSON(path string, fn func(map[string]json.RawMessage) error) error {
-	if _, err := os.Stat(path); err != nil {
+	target, err := configTarget(path)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(target); err != nil {
 		return goneOr(err)
 	}
-	return editJSON(path, fn)
+	return editJSON(target, fn)
+}
+
+// planConfig comprueba una configuración de Pi antes de inspeccionarla: un
+// enlace que no lleva a un archivo es un fallo del plan y no una ausencia
+// inocua (HCD-036, Q6). Devuelve false si no hay que seguir.
+func (p *UninstallPlan) planConfig(path string) bool {
+	if _, err := configTarget(path); err != nil {
+		p.add(ActionFail, path, err.Error(), nil)
+		return false
+	}
+	return true
 }
 
 func (p *UninstallPlan) planMCP(piAgentDir string) {
 	path := filepath.Join(piAgentDir, "mcp.json")
+	if !p.planConfig(path) {
+		return
+	}
 	if _, err := os.Stat(path); err != nil {
 		p.inspectFailed(path, err)
 		return
@@ -487,6 +511,9 @@ func instructionsBlock(content string) (string, bool) {
 
 func (p *UninstallPlan) planAgents(piAgentDir string) {
 	path := filepath.Join(piAgentDir, "AGENTS.md")
+	if !p.planConfig(path) {
+		return
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		p.inspectFailed(path, err)
@@ -497,7 +524,13 @@ func (p *UninstallPlan) planAgents(piAgentDir string) {
 		return
 	}
 	p.add(ActionRemove, path+" › bloque pi-gomemory", "protocolo escrito por pi-gomemory", func() error {
-		cur, err := os.ReadFile(path)
+		// Un AGENTS.md enlazado se edita en su destino; el enlace nunca se
+		// borra ni se sustituye (HCD-036, Q4).
+		target, err := configTarget(path)
+		if err != nil {
+			return err
+		}
+		cur, err := os.ReadFile(target)
 		if err != nil {
 			return goneOr(err)
 		}
@@ -510,18 +543,24 @@ func (p *UninstallPlan) planAgents(piAgentDir string) {
 		}
 		out, _ := stripInstructions(string(cur))
 		if strings.TrimSpace(out) == "" {
-			return os.Remove(path)
+			if target == path {
+				return os.Remove(path)
+			}
+			out = ""
 		}
-		mode, err := modeOrDefault(path, 0644)
+		mode, err := modeOrDefault(target, 0644)
 		if err != nil {
 			return err
 		}
-		return writeFileAtomic(path, []byte(out), mode)
+		return writeFileAtomic(target, []byte(out), mode)
 	})
 }
 
 func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
 	path := filepath.Join(piAgentDir, "settings.json")
+	if !p.planConfig(path) {
+		return
+	}
 	if _, err := os.Stat(path); err != nil {
 		p.inspectFailed(path, err)
 		return
@@ -686,7 +725,14 @@ func (p *UninstallPlan) planManifest(path string) {
 // planPackages retira solo las entradas con la fuente fijada exacta y
 // pi-cc-extensions.json si coincide con los valores por defecto embebidos.
 func (p *UninstallPlan) planPackages(assets fs.FS, piAgentDir string) {
-	settings := filepath.Join(piAgentDir, "settings.json")
+	if settings := filepath.Join(piAgentDir, "settings.json"); p.planConfig(settings) {
+		p.planPinnedPackages(settings)
+	}
+	p.planCCExtensions(assets, piAgentDir)
+}
+
+// planPinnedPackages planifica la retirada de las entradas packages fijadas.
+func (p *UninstallPlan) planPinnedPackages(settings string) {
 	if obj, err := readJSONObject(settings); err != nil {
 		p.add(ActionFail, settings, err.Error(), nil)
 	} else {
@@ -727,8 +773,19 @@ func (p *UninstallPlan) planPackages(assets fs.FS, piAgentDir string) {
 			}
 		}
 	}
+}
 
+// planCCExtensions planifica pi-cc-extensions.json; solo se llama con --packages.
+func (p *UninstallPlan) planCCExtensions(assets fs.FS, piAgentDir string) {
 	cfg := filepath.Join(piAgentDir, "pi-cc-extensions.json")
+	if !p.planConfig(cfg) {
+		return
+	}
+	if target, _ := configTarget(cfg); target != cfg {
+		// Enlazado: es configuración de la persona y nunca se borra (HCD-036, Q4).
+		p.addNotice(cfg, "enlace a una configuración propia: se conserva")
+		return
+	}
 	cur, err := os.ReadFile(cfg)
 	if err != nil {
 		p.inspectFailed(cfg, err)
@@ -754,6 +811,10 @@ func (p *UninstallPlan) planPackages(assets fs.FS, piAgentDir string) {
 // pinnedEntryUnchanged comprueba que settings.json sigue teniendo la entrada
 // packages con la fuente fijada src; otra versión del mismo paquete es un cambio.
 func pinnedEntryUnchanged(settings, name, src string) error {
+	settings, err := configTarget(settings)
+	if err != nil {
+		return err
+	}
 	if _, err := os.Stat(settings); err != nil {
 		return goneOr(err)
 	}

@@ -46,7 +46,10 @@ func InstallMCPServers(piAgentDir string) error {
 	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
 		return fmt.Errorf("crear %s: %w", piAgentDir, err)
 	}
-	mcpPath := filepath.Join(piAgentDir, "mcp.json")
+	mcpPath, err := configTarget(filepath.Join(piAgentDir, "mcp.json"))
+	if err != nil {
+		return err
+	}
 
 	config, err := readJSONObject(mcpPath)
 	if err != nil {
