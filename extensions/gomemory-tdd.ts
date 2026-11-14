@@ -599,7 +599,9 @@ export function streamLines(
 
 		child.on("close", (code, signal) => {
 			if (timeoutTimer) clearTimeout(timeoutTimer);
-			if (killTimer) clearTimeout(killTimer);
+			// Si ya se pidió terminar, el SIGKILL al grupo sigue programado: el cierre
+			// del hijo directo no implica que sus descendientes hayan muerto (HCD-035, H-03).
+			if (killTimer && !terminated) clearTimeout(killTimer);
 			if (opts.signal) {
 				opts.signal.removeEventListener("abort", onAbort);
 			}

@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"pi-gomemory/pkg/installer"
@@ -202,33 +205,88 @@ func printHelp() {
 	fmt.Println("                                Retira lo instalado por pi-gomemory; conserva la memoria de gomemory")
 }
 
+// updateDeps son las dependencias externas de runUpdate. En producción son
+// siempre las reales (defaultUpdateDeps); solo las pruebas de Go las sustituyen,
+// sin variables de entorno ni opciones en el binario (HCD-035, Q8).
+type updateDeps struct {
+	executable func() (string, error)
+	apiURL     string
+	baseURL    string
+	run        func(exe string, env []string) error
+	out        io.Writer
+}
+
+func defaultUpdateDeps() updateDeps {
+	return updateDeps{
+		executable: os.Executable,
+		apiURL:     installer.DefaultReleasesAPI,
+		baseURL:    installer.DefaultReleasesBaseURL,
+		run: func(exe string, env []string) error {
+			cmd := exec.Command(exe, "install")
+			cmd.Env = env
+			cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+			return cmd.Run()
+		},
+		out: os.Stdout,
+	}
+}
+
 // runUpdate reemplaza el binario por la última release verificada y relanza la instalación con él.
 func runUpdate(opts *installer.Options) error {
-	res := installer.CheckUpdate(version, installer.UpdateCheckConfig{Timeout: 10 * time.Second})
+	return runUpdateWith(opts, defaultUpdateDeps())
+}
+
+func runUpdateWith(opts *installer.Options, d updateDeps) error {
+	res := installer.CheckUpdate(version, installer.UpdateCheckConfig{APIURL: d.apiURL, Timeout: 10 * time.Second, Force: true})
 	if res.Err != nil {
 		return fmt.Errorf("consultar la última release: %w", res.Err)
 	}
 	if !res.Newer {
-		fmt.Printf("✓ pi-gomemory-setup ya está al día (%s).\n", version)
+		fmt.Fprintf(d.out, "✓ pi-gomemory-setup ya está al día (%s).\n", version)
 		return nil
 	}
-	exe, err := os.Executable()
+	env, err := childInstallEnv(opts.HomeDir)
+	if err != nil {
+		return err
+	}
+	exe, err := d.executable()
 	if err != nil {
 		return err
 	}
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
-	fmt.Printf("==> Actualizando %s → %s...\n", version, res.Latest)
-	if err := installer.DownloadAndReplace(installer.UpdateConfig{Tag: res.Latest, Target: exe}); err != nil {
+	fmt.Fprintf(d.out, "==> Actualizando %s → %s...\n", version, res.Latest)
+	if err := installer.DownloadAndReplace(installer.UpdateConfig{BaseURL: d.baseURL, Tag: res.Latest, Target: exe}); err != nil {
 		return err
 	}
 	_ = os.Remove(installer.DefaultUpdateCachePath(opts.PiAgentDir))
-	cmd := exec.Command(exe, "install")
-	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
-	if err := cmd.Run(); err != nil {
+	if err := d.run(exe, env); err != nil {
 		return fmt.Errorf("reinstalar con %s: %w", res.Latest, err)
 	}
-	fmt.Printf("✓ pi-gomemory actualizado a %s.\n", res.Latest)
+	fmt.Fprintf(d.out, "✓ pi-gomemory actualizado a %s.\n", res.Latest)
 	return nil
+}
+
+// childInstallEnv devuelve el entorno del install relanzado por update. Una
+// PI_GOMEMORY_BIN_DIR no vacía gana y el manifiesto no se lee; si no, se pasa
+// el bin_dir registrado. Sin manifiesto (o ENOTDIR) o con bin_dir vacío se
+// usa el directorio por defecto; cualquier otro error de lectura impide
+// actualizar antes de descargar nada (HCD-035, H-04, Q1, Q14).
+func childInstallEnv(home string) ([]string, error) {
+	env := os.Environ()
+	if os.Getenv("PI_GOMEMORY_BIN_DIR") != "" {
+		return env, nil
+	}
+	m, err := installer.ReadManifest(home)
+	if errors.Is(err, syscall.ENOTDIR) {
+		return env, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("leer el manifiesto de la instalación antes de actualizar: %w", err)
+	}
+	if m == nil || m.BinDir == "" {
+		return env, nil
+	}
+	return append(env, "PI_GOMEMORY_BIN_DIR="+m.BinDir), nil
 }

@@ -80,6 +80,9 @@ type UpdateCheckConfig struct {
 	CachePath string
 	Timeout   time.Duration
 	Now       func() time.Time
+	// Force consulta aunque PI_GOMEMORY_NO_UPDATE_CHECK esté puesta: la usa el
+	// update pedido explícitamente; las comprobaciones pasivas no (HCD-035, Q10).
+	Force bool
 }
 
 // UpdateCheckResult es el resultado de comprobar si hay una release nueva.
@@ -119,7 +122,7 @@ func DefaultUpdateCachePath(piAgentDir string) string {
 // Nunca falla de forma ruidosa: los errores quedan en Result.Err.
 func CheckUpdate(current string, cfg UpdateCheckConfig) UpdateCheckResult {
 	res := UpdateCheckResult{Current: current}
-	if UpdateCheckDisabled() {
+	if !cfg.Force && UpdateCheckDisabled() {
 		return res
 	}
 	if cfg.APIURL == "" {

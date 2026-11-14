@@ -75,7 +75,16 @@ type UninstallAction struct {
 	Reason string
 	apply  func() error
 	notice bool
+	// ifClean marca la retirada del manifiesto: se aplica la última y solo si
+	// no falló ninguna acción ajena a él (HCD-035, Q12, Q17).
+	ifClean bool
 }
+
+// Motivos de la retirada condicional del manifiesto (HCD-035).
+const (
+	reasonManifest     = "manifiesto de instalación (se retira si no hay fallos)"
+	reasonManifestKept = "conservado por fallos previos"
+)
 
 // UninstallPlan es la lista ordenada de acciones; construirlo no escribe nada.
 type UninstallPlan struct {
@@ -653,14 +662,25 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 
 	plan.planPlainFile(DefaultDepsCachePath(opts.PiAgentDir), "caché de dependencias")
 	plan.planPlainFile(DefaultUpdateCachePath(opts.PiAgentDir), "caché de actualizaciones")
-	plan.planPlainFile(ManifestPath(opts.HomeDir), "manifiesto de instalación")
 	if flags.Packages {
 		plan.planPackages(assets, opts.PiAgentDir)
 	}
 	if flags.Self {
 		plan.planSelf(m, opts)
 	}
+	plan.planManifest(ManifestPath(opts.HomeDir))
 	return plan, nil
+}
+
+// planManifest añade, como última acción, la retirada del manifiesto. Guarda
+// el BIN_DIR y las huellas que necesita un reintento, por eso Uninstall solo
+// la aplica si nada ajeno a él falló (HCD-035, H-01).
+func (p *UninstallPlan) planManifest(path string) {
+	if _, err := os.Lstat(path); err != nil {
+		p.inspectFailed(path, err)
+		return
+	}
+	p.Actions = append(p.Actions, UninstallAction{Kind: ActionRemove, Target: path, Reason: reasonManifest, ifClean: true, apply: func() error { return os.Remove(path) }})
 }
 
 // planPackages retira solo las entradas con la fuente fijada exacta y
@@ -859,10 +879,15 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) e
 
 	counts := map[string]int{}
 	changed := 0
+	blocking := 0 // fallos ajenos al manifiesto (Q12)
+	manifest := ManifestPath(opts.HomeDir)
 	for _, a := range plan.Actions {
 		kind, reason := a.Kind, a.Reason
 		revalidated := false
-		if a.apply != nil {
+		kept := a.ifClean && blocking > 0
+		if kept {
+			kind, reason = ActionKeep, reasonManifestKept
+		} else if a.apply != nil {
 			if err := a.apply(); err != nil {
 				switch {
 				case errors.Is(err, errChangedAfterPlan):
@@ -875,9 +900,12 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) e
 				}
 			}
 		}
+		if kind == ActionFail && a.Target != manifest {
+			blocking++
+		}
 		counts[kind]++
 		record(kind, a.Target, reason)
-		if !flags.Verbose && (kind == ActionFail || revalidated) {
+		if !flags.Verbose && (kind == ActionFail || revalidated || kept) {
 			fmt.Fprintf(w, "  [%s] %s — %s\n", kind, a.Target, reason)
 		}
 	}
