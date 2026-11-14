@@ -40,24 +40,26 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.13.5_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.13.5_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.13.5_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.13.5_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.13.6_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.13.6_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.13.6_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.13.6_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.13.5_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.13.6_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar v1.13.5, comprueba que `pi-gomemory-setup version` devuelve `v1.13.5` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
+Después de instalar v1.13.6, comprueba que `pi-gomemory-setup version` devuelve `v1.13.6` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
 
 **Si vienes de v1.12.0 o anterior:** esas versiones podían ampliar los permisos de los JSON de configuración y borrar archivos añadidos a skills legacy. v1.12.1 lo corrige; aun así, revisa [problemas conocidos](known-issues.md) y comprueba los permisos de `~/.pi/agent` después de actualizar. `install` conserva los permisos que ya tenga `~/.pi/agent/AGENTS.md`; si no existe, lo crea con `0644`.
+
+**Configuración enlazada (dotfiles):** desde v1.13.6, si `~/.pi/agent/mcp.json`, `settings.json`, `AGENTS.md` o `pi-cc-extensions.json` son enlaces simbólicos, `install`, `update`, `uninstall` y los subcomandos escriben en el archivo de destino y conservan el enlace y sus permisos. Un enlace roto, un bucle o un enlace a un directorio hacen fallar el paso con «el enlace no apunta a un archivo», sin tocar nada. Si una versión anterior ya sustituyó alguno de tus enlaces, vuelve a crearlo a mano.
 
 ## Repositorio de skills
 

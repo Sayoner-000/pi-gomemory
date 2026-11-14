@@ -4,6 +4,17 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.6] - 2026-11-14
+
+### Fixed
+- **Las configuraciones de Pi enlazadas con symlinks siguen enlazadas (HCD-036, H-02):** `install`, `update`, `uninstall` y los subcomandos `mcp`, `theme`, `plugin` y `skills-sync` escriben en el archivo de destino de `mcp.json`, `settings.json`, `AGENTS.md` y `pi-cc-extensions.json` cuando son enlaces simbólicos, también relativos o en cadena, y conservan sus bits de permiso. Antes sustituían el enlace por un archivo normal, y el repositorio de dotfiles dejaba de recibir los cambios, incluso al abrir Pi por el `skills-sync` del launcher.
+- **Un enlace que no apunta a un archivo se rechaza (HCD-036):** si uno de esos cuatro archivos es un enlace roto, un bucle o un enlace a un directorio, `install` y `plugin` fallan con «el enlace no apunta a un archivo» sin tocar nada. `plugin` lo comprueba antes de ejecutar `pi install`. Antes, un enlace roto se sustituía en silencio por un archivo nuevo casi vacío.
+- **`uninstall` nunca borra un enlace de configuración (HCD-036):** retira lo de pi-gomemory en el archivo de destino. Un `AGENTS.md` enlazado que queda vacío se vacía en el destino, y un `pi-cc-extensions.json` enlazado se omite con aviso. Un enlace roto aparece como `[fallido]` en el plan o al aplicar, y conserva el manifiesto. `pi-cc-extensions.json` solo se comprueba con `--packages`.
+
+### Documentation
+- Problemas conocidos: H-02 de la auditoría ACR/ADM del 2026-11-14 pasa a corregido. Los cinco hallazgos quedan cerrados.
+- Badge, referencias de descarga, guía HTML e instaladores sincronizados con `v1.13.6`.
+
 ## [v1.13.5] - 2026-11-14
 
 ### Fixed

@@ -1,16 +1,18 @@
-# Problemas conocidos — v1.13.5
+# Problemas conocidos — v1.13.6
 
 ## ACR/ADM del 2026-11-14 sobre v1.13.4
 
-La [auditoría ACR/ADM](audits/2026-11-14-acr-adm.md) encontró cuatro hallazgos de severidad media y uno bajo, reproducidos sobre v1.13.4 (`8fdfa19`) con [`2026-11-14-adm-repro_test.go.txt`](audits/2026-11-14-adm-repro_test.go.txt). [HCD-035](../hcd/HCD-035-cerrar-h-01-a-h-05-de-la-auditoria-acr-a.md) corrige H-01, H-03, H-04 y H-05 en v1.13.5. H-02 sigue abierto.
+La [auditoría ACR/ADM](audits/2026-11-14-acr-adm.md) encontró cuatro hallazgos de severidad media y uno bajo, reproducidos sobre v1.13.4 (`8fdfa19`) con [`2026-11-14-adm-repro_test.go.txt`](audits/2026-11-14-adm-repro_test.go.txt). [HCD-035](../hcd/HCD-035-cerrar-h-01-a-h-05-de-la-auditoria-acr-a.md) corrige H-01, H-03, H-04 y H-05 en v1.13.5, y [HCD-036](../hcd/HCD-036-las-configuraciones-de-pi-enlazadas-con.md) corrige H-02 en v1.13.6. Los cinco están cerrados.
 
-| Hallazgo | Riesgo en v1.13.4 y anteriores | Estado | Mitigación si sigues en v1.13.4 o anterior |
+| Hallazgo | Riesgo en versiones anteriores a la corrección | Estado | Mitigación si sigues en una versión anterior |
 |---|---|---|---|
 | H-01 | Un `uninstall` que falla a medias borra `~/.pi-gomemory/manifest.json`, así que el reintento pierde el `BIN_DIR` personalizado y las huellas de la instalación | **Corregido** en v1.13.5 (`TestHCD035C01`, `C02`, `C03`, `C16`, `C22`): el manifiesto se retira el último y solo si nada falló | Antes de desinstalar, copia `~/.pi-gomemory/manifest.json`; si el uninstall falla, restáurala antes de reintentar |
-| H-02 | `install` y `uninstall` sustituyen por un archivo normal el enlace simbólico de `mcp.json`, `settings.json`, `AGENTS.md` o `pi-cc-extensions.json`, y el archivo enlazado deja de recibir los cambios | **Abierto**. Se tratará en una unidad aparte, que empezará por inventariar todo lo que escribe esos archivos | Tras `install` o `uninstall`, comprueba con `ls -l ~/.pi/agent` que tus enlaces siguen siéndolo y vuelve a crearlos si hace falta |
+| H-02 | `install` y `uninstall` sustituyen por un archivo normal el enlace simbólico de `mcp.json`, `settings.json`, `AGENTS.md` o `pi-cc-extensions.json`, y el archivo enlazado deja de recibir los cambios | **Corregido** en v1.13.6 (`TestHCD036C01` a `TestHCD036C16`): se escribe en el archivo de destino sin sustituir el enlace, uninstall nunca lo borra y un enlace que no apunta a un archivo se rechaza sin tocar nada | En v1.13.5 o anterior, tras `install`, `update` o `uninstall`, comprueba con `ls -l ~/.pi/agent` que tus enlaces siguen siéndolo y vuelve a crearlos si hace falta |
 | H-03 | Cancelar `/tdd`, o que agote su tiempo, deja vivo un proceso de prueba descendiente que ignora SIGTERM | **Corregido** en v1.13.5 (`TestHCD035C07`, `C08`): el SIGKILL al grupo se mantiene tras el cierre del proceso principal | Tras cancelar, busca procesos huérfanos de la suite (por ejemplo, `pgrep -fl node`) y termínalos |
 | H-04 | `update` desde un `BIN_DIR` personalizado, en una shell sin `PI_GOMEMORY_BIN_DIR`, reinstala el launcher en `~/.local/bin` y el manifiesto pasa a apuntar allí | **Corregido** en v1.13.5 (`TestHCD035C10`, `C11`, `C12`, `C24`): el `install` relanzado recibe el `bin_dir` del manifiesto | Exporta `PI_GOMEMORY_BIN_DIR` con tu carpeta antes de ejecutar `update` |
 | H-05 | Con `PI_GOMEMORY_NO_UPDATE_CHECK=1`, `update` dice «ya está al día» sin haber consultado | **Corregido** en v1.13.5 (`TestHCD035C13`, `C14`): un `update` pedido explícitamente consulta siempre | Ejecuta `update` sin esa variable |
+
+Desde v1.13.6, si uno de esos cuatro archivos es un enlace roto (por ejemplo, con el repositorio de dotfiles sin montar), `install` falla con «el enlace no apunta a un archivo» en lugar de sustituirlo. El launcher ignora a propósito los errores de `skills-sync` para no impedir que Pi arranque, así que en ese caso el error solo aparece al ejecutar `pi-gomemory-setup skills-sync` o `install` a mano.
 
 Sigue pendiente unificar qué valores de `PI_GOMEMORY_NO_UPDATE_CHECK` desactivan la comprobación. En Go, «0» y «false» cuentan como comprobación activada; el launcher y el pie la desactivan con cualquier valor; y `deps-refresh` no la consulta.
 
