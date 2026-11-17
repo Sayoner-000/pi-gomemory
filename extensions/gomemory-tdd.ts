@@ -494,6 +494,12 @@ function killProcessGroup(child: ChildProcess, signal: NodeJS.Signals = "SIGTERM
 	}
 }
 
+/** Línea más larga que admite streamLines; por encima la ejecución falla (HCD-038, Q2). */
+export const MAX_LINE_CHARS = 64 * 1024;
+const MAX_TAIL_LINES = 40;
+const MAX_TAIL_LINE_CHARS = 1024;
+const MAX_TAIL_BYTES = 64 * 1024;
+
 /**
  * Ejecuta un comando sin shell y entrega cada línea (stdout y stderr) en cuanto llega.
  * pi.exec no sirve aquí: solo devuelve la salida cuando el proceso termina.
@@ -505,10 +511,17 @@ export function streamLines(
 	onLine: (line: string) => void,
 ): Promise<StreamResult> {
 	return new Promise((resolve) => {
+		// tail es solo diagnóstico: extractos acotados en número, longitud y bytes
+		// UTF-8. El parser recibe la línea completa por onLine (HCD-038, Q2).
 		const tail: string[] = [];
+		let tailBytes = 0;
 		const push = (line: string) => {
-			tail.push(line);
-			if (tail.length > 40) tail.shift();
+			const excerpt = line.length > MAX_TAIL_LINE_CHARS ? line.slice(-MAX_TAIL_LINE_CHARS) : line;
+			tail.push(excerpt);
+			tailBytes += Buffer.byteLength(excerpt);
+			while (tail.length > MAX_TAIL_LINES || (tailBytes > MAX_TAIL_BYTES && tail.length > 1)) {
+				tailBytes -= Buffer.byteLength(tail.shift()!);
+			}
 			try {
 				onLine(line);
 			} catch {
@@ -576,19 +589,41 @@ export function streamLines(
 			opts.signal.addEventListener("abort", onAbort, { once: true });
 		}
 
+		// Una línea más larga que MAX_LINE_CHARS no se trunca para seguir: se corta
+		// el proceso y la ejecución falla, para que ningún resultado salga de una
+		// salida que no se pudo leer entera (HCD-038, Q1).
+		let outputLimited = false;
+		const rejectLongLine = () => {
+			if (outputLimited) return;
+			outputLimited = true;
+			push(`Salida rechazada: una línea excede el límite de ${MAX_LINE_CHARS / 1024} Ki caracteres`);
+			terminate("SIGTERM");
+		};
+
 		for (const stream of [child.stdout, child.stderr]) {
 			let buf = "";
 			stream?.setEncoding("utf8");
 			stream?.on("data", (chunk: string) => {
+				if (outputLimited) return;
 				buf += chunk;
 				let nl: number;
 				while ((nl = buf.indexOf("\n")) >= 0) {
-					push(buf.slice(0, nl).replace(/\r$/, ""));
+					const line = buf.slice(0, nl).replace(/\r$/, "");
+					if (line.length > MAX_LINE_CHARS) {
+						buf = "";
+						rejectLongLine();
+						return;
+					}
+					push(line);
 					buf = buf.slice(nl + 1);
+				}
+				if (buf.length > MAX_LINE_CHARS) {
+					buf = "";
+					rejectLongLine();
 				}
 			});
 			stream?.on("end", () => {
-				if (buf) push(buf);
+				if (buf && !outputLimited) push(buf);
 				buf = "";
 			});
 		}
@@ -614,6 +649,7 @@ export function streamLines(
 			} else if (aborted) {
 				exitCode = exitCode !== 0 ? exitCode : 1;
 			}
+			if (outputLimited && exitCode === 0) exitCode = 1;
 
 			resolve({
 				code: exitCode,
@@ -1388,12 +1424,15 @@ export default function (pi: ExtensionAPI) {
 			});
 
 		if (check.parser === "hcd") {
-			const res = await run(null);
+			// tail solo guarda extractos de 1 Ki; el JSON de una línea de mem hcd show
+			// se lee de las líneas completas, acotadas por MAX_LINE_CHARS (HCD-038).
+			const output: string[] = [];
+			const res = await run(null, (l) => output.push(l));
 			if (res.missing) return { skip: `${check.cmd} no está instalado` };
 			if (res.code === 3) return { skip: "sin unidad HCD activa" };
 			let unit = "";
 			try {
-				unit = JSON.parse(res.tail.join("\n"))?.unit_id ?? "";
+				unit = JSON.parse(output.join("\n"))?.unit_id ?? "";
 			} catch {
 				// salida no JSON: se informa el código de salida
 			}

@@ -90,15 +90,15 @@ func FetchQuotaSummary(piAgentDir string) (*QuotaCleanData, error) {
 			lastErr = err
 			continue
 		}
-		var quota QuotaSummaryResponse
-		if err := json.Unmarshal(body, &quota); err != nil {
-			lastErr = fmt.Errorf("respuesta de cuota ilegible en %s: %w", ep, err)
+		quota, err := parseQuotaResponse(body)
+		if err != nil {
+			lastErr = fmt.Errorf("%s: %w", ep, err)
 			continue
 		}
 
 		plan := quota.PlanLabel
 		if plan == "" {
-			plan = "Google AI Pro (g1-pro-tier)"
+			plan = planLabelUnknown
 		}
 
 		clean := &QuotaCleanData{
@@ -158,15 +158,42 @@ func FetchAndFormatUsage(piAgentDir string) (string, error) {
 			lastErr = err
 			continue
 		}
-		var quota QuotaSummaryResponse
-		if err := json.Unmarshal(body, &quota); err != nil {
-			lastErr = fmt.Errorf("respuesta de cuota ilegible en %s: %w", ep, err)
+		quota, err := parseQuotaResponse(body)
+		if err != nil {
+			lastErr = fmt.Errorf("%s: %w", ep, err)
 			continue
 		}
-		return renderQuotaView(&quota, account.Email), nil
+		return renderQuotaView(quota, account.Email), nil
 	}
 
 	return "", fmt.Errorf("no se pudo obtener la cuota (¿token caducado? abre pi para renovarlo): %w", lastErr)
+}
+
+// planLabelUnknown se muestra cuando upstream no envía planLabel: no se
+// atribuye a la persona un plan que la respuesta no dice (HCD-038, Q3).
+const planLabelUnknown = "Plan no informado"
+
+// parseQuotaResponse valida una respuesta 200 de retrieveUserQuotaSummary.
+// Unmarshal acepta null y {} sin error; una respuesta sin ningún bucket no
+// demuestra el uso real y se rechaza para probar el endpoint siguiente (HCD-038).
+func parseQuotaResponse(body []byte) (*QuotaSummaryResponse, error) {
+	var quota QuotaSummaryResponse
+	if err := json.Unmarshal(body, &quota); err != nil {
+		return nil, fmt.Errorf("respuesta de cuota ilegible: %w", err)
+	}
+	buckets := 0
+	for _, g := range quota.Groups {
+		for _, b := range g.Buckets {
+			if b.RemainingFraction < 0 || b.RemainingFraction > 1 {
+				return nil, fmt.Errorf("respuesta de cuota con fracción fuera de rango: %v", b.RemainingFraction)
+			}
+			buckets++
+		}
+	}
+	if buckets == 0 {
+		return nil, fmt.Errorf("respuesta de cuota sin límites; no se puede confirmar el uso")
+	}
+	return &quota, nil
 }
 
 // maxQuotaBody acota la respuesta de cuota (C-005), como update.go y deps.go.
@@ -210,7 +237,7 @@ func renderQuotaView(q *QuotaSummaryResponse, email string) string {
 
 	plan := q.PlanLabel
 	if plan == "" {
-		plan = "Google AI Pro (g1-pro-tier)"
+		plan = planLabelUnknown
 	}
 
 	buf.WriteString(fmt.Sprintf("%s%s%s\n", ColorBrillo, plan, ColorReset))
