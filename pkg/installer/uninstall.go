@@ -87,8 +87,28 @@ const (
 )
 
 // UninstallPlan es la lista ordenada de acciones; construirlo no escribe nada.
+// Retiene archivos originales hasta aplicar o descartar el plan. Quien lo
+// construye directamente debe llamar Close, también en simulaciones (HCD-042).
+// El plan y sus acciones son de un solo uso y no admiten ejecución concurrente.
 type UninstallPlan struct {
-	Actions []UninstallAction
+	Actions  []UninstallAction
+	releases []func() error
+	closed   bool
+}
+
+// Close descarta el plan y libera las referencias pendientes, incluidas las de
+// acciones omitidas por ifClean. Es idempotente; nunca ejecuta una retirada.
+func (p *UninstallPlan) Close() error {
+	if p.closed {
+		return nil
+	}
+	p.closed = true
+	var err error
+	for i := len(p.releases) - 1; i >= 0; i-- {
+		err = errors.Join(err, p.releases[i]())
+	}
+	p.releases = nil
+	return err
 }
 
 func (p *UninstallPlan) add(kind, target, reason string, apply func() error) {
@@ -640,11 +660,70 @@ func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
 }
 
 func (p *UninstallPlan) planPlainFile(path, reason string) {
-	if _, err := os.Lstat(path); err != nil {
+	p.planRegularRemoval(path, reason, false)
+}
+
+// planRegularRemoval preserva entradas no regulares incluso preexistentes y
+// revalida la identidad del archivo antes de retirarlo (HCD-042, Q1).
+func (p *UninstallPlan) planRegularRemoval(path, reason string, ifClean bool) {
+	planned, err := os.Lstat(path)
+	if err != nil {
 		p.inspectFailed(path, err)
 		return
 	}
-	p.add(ActionRemove, path, reason, func() error { return os.Remove(path) })
+	if !planned.Mode().IsRegular() {
+		p.addNotice(path, "entrada no regular: se conserva")
+		return
+	}
+	if p.closed {
+		p.add(ActionFail, path, "el plan ya está cerrado", nil)
+		return
+	}
+	// No seguir enlaces ni bloquear ante un FIFO sobrevenido al abrir. Si no
+	// podemos retener el original con seguridad, no programamos su retirada.
+	original, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		p.inspectFailed(path, err)
+		return
+	}
+	release := func() error {
+		if original == nil {
+			return nil
+		}
+		f := original
+		original = nil
+		return f.Close()
+	}
+	held, err := original.Stat()
+	if err != nil || !held.Mode().IsRegular() || !os.SameFile(planned, held) {
+		closeErr := release()
+		switch {
+		case err != nil || closeErr != nil:
+			p.inspectFailed(path, errors.Join(err, closeErr))
+		default:
+			p.addNotice(path, reasonChanged)
+		}
+		return
+	}
+	p.releases = append(p.releases, release)
+	p.Actions = append(p.Actions, UninstallAction{
+		Kind: ActionRemove, Target: path, Reason: reason, ifClean: ifClean,
+		apply: func() (err error) {
+			if p.closed || original == nil {
+				return fmt.Errorf("%s: el plan o la acción ya están cerrados", path)
+			}
+			defer func() { err = errors.Join(err, release()) }()
+			now, err := os.Lstat(path)
+			if err != nil {
+				return goneOr(err)
+			}
+			if !now.Mode().IsRegular() || !os.SameFile(planned, now) {
+				return errChangedAfterPlan
+			}
+			// No promete atomicidad frente a sustituciones durante esta acción.
+			return os.Remove(path)
+		},
+	})
 }
 
 // backedLauncherDirs son las carpetas de launcher que respaldan el manifiesto
@@ -664,6 +743,7 @@ func backedLauncherDirs(m *Manifest, opts *Options) map[string]bool {
 }
 
 // BuildUninstallPlan decide, sin escribir nada, qué se retira, conserva u omite.
+// El llamador es dueño del plan y debe cerrarlo incluso si no aplica acciones.
 func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*UninstallPlan, error) {
 	plan := &UninstallPlan{}
 	m, err := ReadManifest(opts.HomeDir)
@@ -715,11 +795,7 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 // el BIN_DIR y las huellas que necesita un reintento, por eso Uninstall solo
 // la aplica si nada ajeno a él falló (HCD-035, H-01).
 func (p *UninstallPlan) planManifest(path string) {
-	if _, err := os.Lstat(path); err != nil {
-		p.inspectFailed(path, err)
-		return
-	}
-	p.Actions = append(p.Actions, UninstallAction{Kind: ActionRemove, Target: path, Reason: reasonManifest, ifClean: true, apply: func() error { return os.Remove(path) }})
+	p.planRegularRemoval(path, reasonManifest, true)
 }
 
 // planPackages retira solo las entradas con la fuente fijada exacta y
@@ -740,11 +816,16 @@ func (p *UninstallPlan) planPinnedPackages(settings string) {
 		_ = json.Unmarshal(obj["packages"], &pkgs)
 		for _, pp := range pinnedPackages {
 			for _, s := range pkgs {
+				reason := "paquete fijado por pi-gomemory"
 				if s != pp.source {
-					continue
+					if !isHistoricPin(pp.name, s) {
+						continue
+					}
+					// Pin escrito por una versión anterior de pi-gomemory (HCD-040, Q1).
+					reason = "pin anterior de pi-gomemory"
 				}
-				src, name := pp.source, pp.name
-				p.add(ActionRemove, settings+" › packages."+pp.name, "paquete fijado por pi-gomemory", func() error {
+				src, name := s, pp.name
+				p.add(ActionRemove, settings+" › packages."+pp.name, reason, func() error {
 					// Se revalida antes de pi remove, que desinstalaría el paquete.
 					if err := pinnedEntryUnchanged(settings, name, src); err != nil {
 						return err
@@ -794,6 +875,17 @@ func (p *UninstallPlan) planCCExtensions(assets fs.FS, piAgentDir string) {
 	defaults, _ := fs.ReadFile(assets, "config/pi-cc-extensions.json")
 	if sameJSON(cur, defaults) {
 		p.add(ActionRemove, cfg, "configuración por defecto de pi-cc-extensions", func() error {
+			// Un enlace, directorio u otro tipo aparecido después del plan es
+			// configuración de la persona: ReadFile lo seguiría y Remove lo borraría
+			// (HCD-041, H-02). Cubre el cambio previo a la acción, no una
+			// sustitución concurrente durante ella.
+			st, err := os.Lstat(cfg)
+			if err != nil {
+				return goneOr(err)
+			}
+			if !st.Mode().IsRegular() {
+				return errChangedAfterPlan
+			}
 			now, err := os.ReadFile(cfg)
 			if err != nil {
 				return goneOr(err)
@@ -870,7 +962,7 @@ func (p *UninstallPlan) planSelf(m *Manifest, opts *Options) {
 		p.add(ActionSkip, exe, "fuera del BIN_DIR de pi-gomemory ("+binDir+")", nil)
 		return
 	}
-	p.add(ActionRemove, exe, "binario pi-gomemory-setup (--self)", func() error { return os.Remove(exe) })
+	p.planRegularRemoval(exe, "binario pi-gomemory-setup (--self)", false)
 }
 
 // PrintPlan escribe una línea por acción.
@@ -883,11 +975,13 @@ func PrintPlan(w io.Writer, plan *UninstallPlan) {
 // Uninstall construye el plan y lo muestra; con DryRun no escribe nada.
 // Sin DryRun pide confirmación (o --yes), ejecuta cada acción sin detenerse
 // ante fallos y devuelve error si alguna falló.
-func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) error {
+func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (retErr error) {
 	plan, err := BuildUninstallPlan(assets, opts, flags)
 	if err != nil {
 		return err
 	}
+	// Cubre ejecución, simulación, cancelación y cualquier retorno temprano.
+	defer func() { retErr = errors.Join(retErr, plan.Close()) }()
 	if flags.DryRun {
 		fmt.Fprintln(w, "Plan de desinstalación (dry-run: no se modifica nada):")
 		PrintPlan(w, plan)
@@ -968,6 +1062,15 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) e
 		record(kind, a.Target, reason)
 		if !flags.Verbose && (kind == ActionFail || revalidated || kept) {
 			fmt.Fprintf(w, "  [%s] %s — %s\n", kind, a.Target, reason)
+		}
+	}
+	// Cerrar antes de anunciar éxito; puede quedar el manifiesto condicionado
+	// por un fallo previo. El defer también cubre las rutas de salida temprana.
+	if err := plan.Close(); err != nil {
+		counts[ActionFail]++
+		record(ActionFail, "recursos del plan", err.Error())
+		if !flags.Verbose {
+			fmt.Fprintf(w, "  [%s] recursos del plan — %v\n", ActionFail, err)
 		}
 	}
 	removeIfEmpty(SkillRepoDir(opts.HomeDir))

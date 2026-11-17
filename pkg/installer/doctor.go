@@ -88,6 +88,7 @@ func RunDoctor(opts *Options) []CheckItem {
 	ctxMCP, cancelMCP := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelMCP()
 	mcpListCmd := exec.CommandContext(ctxMCP, "pi", "mcp", "list", "--json")
+	mcpListCmd.WaitDelay = time.Second
 	out, err := mcpListCmd.Output()
 	var listResp struct {
 		Servers []struct {
@@ -256,6 +257,10 @@ func RunDoctor(opts *Options) []CheckItem {
 			Details: "mem setup-mcp --scope global --agents " + a.setupName,
 		})
 	}
+
+	// 9. Paquetes fijados frente a npm, desde la caché y sin red (HCD-039). Van
+	// al final para no mover las comprobaciones anteriores.
+	items = append(items, pinsDoctorItems(DefaultDepsCachePath(piAgentDir))...)
 
 	return items
 }

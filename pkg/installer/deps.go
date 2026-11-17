@@ -38,6 +38,10 @@ type DepProbe struct {
 	// Manual, si no está vacío, es la instrucción para actualizar a mano: el
 	// componente no tiene comando automático seguro.
 	Manual string
+	// Published, opcional, devuelve lo que publica npm para un paquete fijado.
+	// Solo informa (doctor): Latest sigue siendo el pin y deps-update nunca
+	// instala otra versión (HCD-039).
+	Published func(ctx context.Context) (string, error)
 }
 
 // DepState es el resultado guardado en caché para un componente.
@@ -48,6 +52,11 @@ type DepState struct {
 	Update  []string `json:"update,omitempty"`
 	Manual  string   `json:"manual,omitempty"`
 	Error   string   `json:"error,omitempty"`
+	// Published y PublishedError vienen de DepProbe.Published. El error de npm
+	// no va en Error: Outdated() devuelve falso con Error y un corte de red
+	// dejaría de ofrecer el pin (HCD-039, Splash 1).
+	Published      string `json:"published,omitempty"`
+	PublishedError string `json:"published_error,omitempty"`
 }
 
 // Outdated indica si hay una versión estable más nueva que la instalada.
@@ -65,7 +74,7 @@ func DefaultDepsCachePath(piAgentDir string) string {
 	return filepath.Join(piAgentDir, depsCacheFile)
 }
 
-var semverRe = regexp.MustCompile(`v?(\d+\.\d+\.\d+)`)
+var semverRe = regexp.MustCompile(`v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)`)
 
 // firstSemver extrae la primera versión X.Y.Z de un texto, o "" si no hay.
 func firstSemver(s string) string {
@@ -96,9 +105,14 @@ func runOutput(ctx context.Context, name string, args ...string) (string, error)
 	}
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdin = nil
+	// Tras cancelar, no se espera a que un descendiente cierre la salida: sin
+	// WaitDelay, `sh -c 'echo; sleep'` retenía la respuesta hasta el sleep.
+	cmd.WaitDelay = time.Second
 	out, err := cmd.CombinedOutput()
-	if err != nil && len(out) == 0 {
-		return "", err
+	if err != nil {
+		// Un comando fallido o cancelado nunca da versión, aunque haya impreso una
+		// (HCD-041, H-03, Q1). La salida no se incluye en el error.
+		return "", fmt.Errorf("%s: %w", name, err)
 	}
 	return string(out), nil
 }
@@ -218,13 +232,13 @@ func DefaultDepProbes(version, piAgentDir string) []DepProbe {
 		{
 			Name:    "mem",
 			Current: versionFromCmd("mem", "version"),
-			Latest:  latestFromCmd(regexp.MustCompile(`Disponible:\s*v?(\d+\.\d+\.\d+)`), "mem", "update", "-check"),
+			Latest:  latestFromCmd(regexp.MustCompile(`Disponible:\s*v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)`), "mem", "update", "-check"),
 			Update:  []string{"mem", "update", "-y"},
 		},
 		{
 			Name:    "codegraph",
 			Current: versionFromCmd("codegraph", "--version"),
-			Latest:  latestFromCmd(regexp.MustCompile(`latest\s+v?(\d+\.\d+\.\d+)`), "codegraph", "upgrade", "--check"),
+			Latest:  latestFromCmd(regexp.MustCompile(`latest\s+v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)`), "codegraph", "upgrade", "--check"),
 			Update:  []string{"codegraph", "upgrade"},
 		},
 		{
@@ -234,16 +248,18 @@ func DefaultDepProbes(version, piAgentDir string) []DepProbe {
 			Manual:  "https://github.com/DeusData/codebase-memory-mcp/releases/latest",
 		},
 		{
-			Name:    "pi-antigravity",
-			Current: npmPackageVersion(piAgentDir, "pi-antigravity"),
-			Latest:  fixedVersion(AntigravityVersion),
-			Update:  []string{"pi", "install", AntigravityPackageSource},
+			Name:      "pi-antigravity",
+			Current:   npmPackageVersion(piAgentDir, "pi-antigravity"),
+			Latest:    fixedVersion(AntigravityVersion),
+			Update:    []string{"pi", "install", AntigravityPackageSource},
+			Published: npmPublished("pi-antigravity", AntigravityVersion),
 		},
 		{
-			Name:    "pi-cc-extensions",
-			Current: npmPackageVersion(piAgentDir, "pi-cc-extensions"),
-			Latest:  fixedVersion(CCExtensionsVersion),
-			Update:  []string{"pi", "install", CCExtensionsSource},
+			Name:      "pi-cc-extensions",
+			Current:   npmPackageVersion(piAgentDir, "pi-cc-extensions"),
+			Latest:    fixedVersion(CCExtensionsVersion),
+			Update:    []string{"pi", "install", CCExtensionsSource},
+			Published: npmPublished("pi-cc-extensions", CCExtensionsVersion),
 		},
 	}
 }
@@ -258,7 +274,8 @@ func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState 
 			if json.Unmarshal(data, &c) == nil && !c.CheckedAt.IsZero() {
 				// Con la comprobación desactivada se devuelve la caché tal cual,
 				// sin red y sin reescribirla (HCD-037, Q2).
-				if now.Sub(c.CheckedAt) < depsCacheTTL || UpdateCheckDisabled() {
+				fresh := now.Sub(c.CheckedAt) < depsCacheTTL && !missingPublished(probes, c.Deps)
+				if fresh || UpdateCheckDisabled() {
 					return c.Deps
 				}
 			}
@@ -277,6 +294,15 @@ func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState 
 			ctx, cancel := context.WithTimeout(context.Background(), depsProbeTimeout)
 			defer cancel()
 			st := DepState{Name: p.Name, Update: p.Update, Manual: p.Manual}
+			// Se consulta aunque Current falle, para saber qué publica npm
+			// también sin el paquete instalado (HCD-039, C-25).
+			if p.Published != nil {
+				if pub, err := p.Published(ctx); err != nil {
+					st.PublishedError = err.Error()
+				} else {
+					st.Published = pub
+				}
+			}
 			cur, err := p.Current(ctx)
 			if err != nil {
 				st.Error = err.Error()
@@ -302,8 +328,30 @@ func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState 
 	return states
 }
 
-// DepsStatus lee la caché y devuelve los componentes desactualizados.
-func DepsStatus(cachePath string) []DepState {
+// missingPublished indica que algún probe con Published no tiene en la caché ni
+// published ni published_error, como la que escribe un binario anterior a
+// HCD-039: se refresca sin esperar a depsCacheTTL (C-24).
+func missingPublished(probes []DepProbe, states []DepState) bool {
+	for _, p := range probes {
+		if p.Published == nil {
+			continue
+		}
+		found := false
+		for _, s := range states {
+			if s.Name == p.Name {
+				found = s.Published != "" || s.PublishedError != ""
+				break
+			}
+		}
+		if !found {
+			return true
+		}
+	}
+	return false
+}
+
+// cachedDeps lee todas las entradas de la caché; nil si falta o es ilegible.
+func cachedDeps(cachePath string) []DepState {
 	data, err := os.ReadFile(cachePath)
 	if err != nil {
 		return nil
@@ -312,14 +360,24 @@ func DepsStatus(cachePath string) []DepState {
 	if err := json.Unmarshal(data, &c); err != nil {
 		return nil
 	}
+	return c.Deps
+}
+
+// pinnedFirst deja pi-gomemory delante del resto.
+func pinnedFirst(out []DepState) []DepState {
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Name == "pi-gomemory" && out[j].Name != "pi-gomemory" })
+	return out
+}
+
+// DepsStatus lee la caché y devuelve los componentes desactualizados.
+func DepsStatus(cachePath string) []DepState {
 	var out []DepState
-	for _, d := range c.Deps {
+	for _, d := range cachedDeps(cachePath) {
 		if d.Outdated() {
 			out = append(out, d)
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Name == "pi-gomemory" && out[j].Name != "pi-gomemory" })
-	return out
+	return pinnedFirst(out)
 }
 
 // DepsStatusFor devuelve lo desactualizado según la caché, pero con el comando
@@ -328,27 +386,44 @@ func DepsStatus(cachePath string) []DepState {
 // La versión instalada se relee del probe (local y rápido): tras actualizar por
 // otra vía la caché aún guarda la anterior y anunciaría algo ya instalado. Si no
 // se puede leer, se conserva la de la caché.
+//
+// Para los paquetes fijados, el objetivo es el pin compilado en este binario y
+// no la latest guardada: una caché escrita antes de subir un pin lo ocultaría
+// (HCD-040, H-01 de la ACR/ADM 2026-11-17). Por eso se recorre la caché entera
+// y se decide con Outdated() después de sustituir objetivo y versión instalada.
 func DepsStatusFor(cachePath string, probes []DepProbe) []DepState {
 	byName := make(map[string]DepProbe, len(probes))
 	for _, p := range probes {
 		byName[p.Name] = p
 	}
 	var out []DepState
-	for _, d := range DepsStatus(cachePath) {
+	for _, d := range cachedDeps(cachePath) {
 		p, ok := byName[d.Name]
 		if !ok {
 			continue
 		}
-		d.Update, d.Manual = p.Update, p.Manual
-		if cur := liveVersion(p); cur != "" {
-			d.Current = cur
-			if !d.Outdated() {
-				continue
-			}
+		d = effectiveDepState(d, p)
+		if d.Outdated() {
+			out = append(out, d)
 		}
-		out = append(out, d)
 	}
-	return out
+	return pinnedFirst(out)
+}
+
+// effectiveDepState aplica los comandos de confianza, el pin compilado y la
+// versión local antes de comparar o diagnosticar el estado (HCD-042, F-01).
+func effectiveDepState(d DepState, p DepProbe) DepState {
+	d.Update, d.Manual = p.Update, p.Manual
+	for _, pin := range PinnedPackages() {
+		if d.Name == pin.Name {
+			d.Latest = pin.Version
+			break
+		}
+	}
+	if cur := liveVersion(p); cur != "" {
+		d.Current = cur
+	}
+	return d
 }
 
 // liveVersion lee la versión instalada con el probe; "" si no hay lector o falla.
@@ -368,7 +443,54 @@ func liveVersion(p DepProbe) string {
 // RunDepsUpdate actualiza lo desactualizado con los comandos de los probes y
 // devuelve el código de salida. Los componentes manuales solo se anuncian.
 func RunDepsUpdate(cachePath string, probes []DepProbe, stdout, stderr io.Writer) int {
-	outdated := DepsStatusFor(cachePath, probes)
+	// No confundir una caché ausente o ilegible con una consulta sin novedades.
+	data, err := os.ReadFile(cachePath)
+	var cache depsCache
+	if err != nil || json.Unmarshal(data, &cache) != nil || cache.CheckedAt.IsZero() {
+		fmt.Fprintln(stderr, "✗ Estado desconocido; ejecuta pi-gomemory-setup deps-refresh.")
+		if UpdateCheckDisabled() {
+			fmt.Fprintln(stderr, "La comprobación está desactivada por PI_GOMEMORY_NO_UPDATE_CHECK.")
+		}
+		return 1
+	}
+	states := make(map[string]DepState, len(cache.Deps))
+	for _, d := range cache.Deps {
+		states[d.Name] = d
+	}
+	unknown := false
+	var outdated []DepState
+	for _, p := range probes {
+		d, ok := states[p.Name]
+		if ok {
+			d = effectiveDepState(d, p)
+		}
+		reason := d.Error
+		if !ok {
+			reason = "sin datos en la caché"
+		} else if reason == "" {
+			_, currentOK := parseSemver(d.Current)
+			_, latestOK := parseSemver(d.Latest)
+			switch {
+			case d.Current == "" || d.Latest == "":
+				reason = "datos incompletos en la caché"
+			case !currentOK || !latestOK:
+				reason = "versiones no comparables"
+			}
+		}
+		if reason != "" {
+			fmt.Fprintf(stderr, "✗ %s: estado desconocido (%s)\n", p.Name, reason)
+			unknown = true
+		} else if d.Outdated() {
+			outdated = append(outdated, d)
+		}
+	}
+	// La misma instantánea sirve para diagnóstico y actualización: no se relee
+	// la caché ni el probe después de validar las versiones efectivas.
+	outdated = pinnedFirst(outdated)
+	if len(outdated) == 0 && unknown {
+		fmt.Fprintln(stderr, "Ejecuta pi-gomemory-setup deps-refresh para renovar el estado.")
+		return 1
+	}
 	if len(outdated) == 0 {
 		fmt.Fprintln(stdout, "✓ El meta-harness y sus dependencias están al día.")
 		return 0
@@ -384,6 +506,10 @@ func RunDepsUpdate(cachePath string, probes []DepProbe, stdout, stderr io.Writer
 	_ = os.Remove(cachePath)
 	if len(failed) > 0 {
 		fmt.Fprintf(stderr, "✗ No se pudieron actualizar: %v\n", failed)
+		return 1
+	}
+	if unknown {
+		fmt.Fprintln(stderr, "Ejecuta pi-gomemory-setup deps-refresh para renovar el estado desconocido.")
 		return 1
 	}
 	if len(manual) > 0 {

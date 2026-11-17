@@ -35,7 +35,7 @@ func writeDepsCache(t *testing.T, body string) string {
 // C-09: el comando sale del probe actual, nunca de la caché.
 func TestHCD012DepsCacheIgnored(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "pwned")
-	cache := writeDepsCache(t, `{"deps":[
+	cache := writeDepsCache(t, `{"checked_at":"2026-11-17T09:30:00Z","deps":[
  {"name":"x","current":"1.0.0","latest":"2.0.0","update":["sh","-c","touch `+marker+`"]},
  {"name":"ghost","current":"1.0.0","latest":"2.0.0","update":["sh","-c","touch `+marker+`"]}]}`)
 	probes := []DepProbe{{Name: "x", Update: []string{"true"}}}
@@ -51,19 +51,20 @@ func TestHCD012DepsCacheIgnored(t *testing.T) {
 		t.Fatal("se ejecutó el comando de la caché")
 	}
 
-	only := writeDepsCache(t, `{"deps":[{"name":"ghost","current":"1.0.0","latest":"2.0.0","update":["false"]}]}`)
+	only := writeDepsCache(t, `{"checked_at":"2026-11-17T09:30:00Z","deps":[{"name":"ghost","current":"1.0.0","latest":"2.0.0","update":["false"]}]}`)
 	if s := DepsStatusFor(only, probes); len(s) != 0 {
 		t.Fatalf("ghost no debe listarse: %+v", s)
 	}
 	out.Reset()
-	if code := RunDepsUpdate(only, probes, &out, &errb); code != 0 || !strings.Contains(out.String(), "están al día") {
-		t.Fatalf("code=%d out=%s", code, out.String())
+	// HCD-041: ignorar un componente ajeno no da por conocido el probe x.
+	if code := RunDepsUpdate(only, probes, &out, &errb); code != 1 || strings.Contains(out.String(), "están al día") || !strings.Contains(errb.String(), "x: estado desconocido") {
+		t.Fatalf("code=%d out=%s stderr=%s", code, out.String(), errb.String())
 	}
 }
 
 // C-01: un componente manual no se ejecuta ni se declara actualizado.
 func TestHCD012DepsManual(t *testing.T) {
-	cache := writeDepsCache(t, `{"deps":[{"name":"m","current":"1.0.0","latest":"2.0.0","update":["false"]}]}`)
+	cache := writeDepsCache(t, `{"checked_at":"2026-11-17T09:30:00Z","deps":[{"name":"m","current":"1.0.0","latest":"2.0.0","update":["false"]}]}`)
 	probes := []DepProbe{{Name: "m", Manual: "https://example.com/releases/latest"}}
 	if n := FormatDepsNotice(DepsStatusFor(cache, probes)); !strings.Contains(n, "releases/latest") {
 		t.Fatalf("aviso sin URL: %s", n)

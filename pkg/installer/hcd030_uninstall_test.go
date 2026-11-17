@@ -33,6 +33,7 @@ func TestHCD030LauncherOutsideHome(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		hcd042RequireCloser(t, plan)
 		return plan
 	}
 

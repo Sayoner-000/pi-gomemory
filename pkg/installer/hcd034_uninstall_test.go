@@ -55,6 +55,11 @@ func planHas(t *testing.T, opts *Options, flags UninstallFlags, target string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		if err := plan.Close(); err != nil {
+			t.Errorf("cerrar plan: %v", err)
+		}
+	}()
 	for _, a := range plan.Actions {
 		if a.Target == target && a.Kind == ActionRemove {
 			return

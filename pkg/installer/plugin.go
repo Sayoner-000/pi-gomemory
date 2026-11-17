@@ -13,11 +13,40 @@ import (
 // Paquetes soportados, fijados a la versión publicada en el catálogo oficial de
 // Pi (pi.dev/packages). Pi no reinstala un paquete fijado a una versión exacta.
 const (
-	AntigravityVersion       = "0.12.0"
-	CCExtensionsVersion      = "1.0.16"
+	AntigravityVersion       = "0.14.0"
+	CCExtensionsVersion      = "1.0.21"
 	AntigravityPackageSource = "npm:pi-antigravity@" + AntigravityVersion
 	CCExtensionsSource       = "npm:pi-cc-extensions@" + CCExtensionsVersion
 )
+
+// historicPins son los pins que pi-gomemory escribió en versiones anteriores.
+// Al subir un pin, el anterior se añade aquí: uninstall --packages retira esas
+// entradas como el pin actual, porque solo pi-gomemory escribió esa fuente
+// exacta (HCD-040, Q1).
+var historicPins = []struct{ name, source string }{
+	{"pi-antigravity", "npm:pi-antigravity@0.12.0"},
+	{"pi-cc-extensions", "npm:pi-cc-extensions@1.0.16"},
+	{"pi-cc-extensions", "npm:pi-cc-extensions@1.0.20"},
+}
+
+// isHistoricPin indica si source es un pin anterior de pi-gomemory para name.
+func isHistoricPin(name, source string) bool {
+	for _, h := range historicPins {
+		if h.name == name && h.source == source {
+			return true
+		}
+	}
+	return false
+}
+
+// historicPinnedSources devuelve las fuentes de historicPins.
+func historicPinnedSources() []string {
+	out := make([]string, 0, len(historicPins))
+	for _, h := range historicPins {
+		out = append(out, h.source)
+	}
+	return out
+}
 
 // managedCCKeys son las claves de pi-cc-extensions.json que pi-gomemory
 // impone en cada instalación, no solo cuando faltan.

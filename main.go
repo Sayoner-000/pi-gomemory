@@ -93,6 +93,11 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("✓ Servidores MCP gomemory, codegraph y codebase-memory registrados en Pi.")
+	case "codemode":
+		if err := runCodemode(opts.PiAgentDir, os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "Error en codemode: %v\n", err)
+			os.Exit(1)
+		}
 	case "plugin":
 		if err := installer.InstallAntigravityPlugin(opts.PiAgentDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error configurando plugin: %v\n", err)
@@ -190,6 +195,7 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup codex-usage      Límites del plan de OpenAI Codex (5 horas y semana) en JSON")
 	fmt.Println("  pi-gomemory-setup doctor      Diagnóstico de Pi, MCP, plugins, launcher y otros agentes")
 	fmt.Println("  pi-gomemory-setup mcp         Registra los servidores MCP (gomemory, codegraph, codebase-memory)")
+	fmt.Println("  pi-gomemory-setup codemode <on|off|status>  Activa/desactiva el modo codemode híbrido en Pi y MCP")
 	fmt.Println("  pi-gomemory-setup theme       Instala y activa el tema gomemory en Pi")
 	fmt.Println("  pi-gomemory-setup plugin      Configura pi-antigravity y pi-cc-extensions")
 	fmt.Println("  pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills")
@@ -203,6 +209,50 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup deps-update   Actualiza los componentes desactualizados")
 	fmt.Println("  pi-gomemory-setup uninstall [--dry-run] [--yes] [--verbose] [--packages] [--self]")
 	fmt.Println("                                Retira lo instalado por pi-gomemory; conserva la memoria de gomemory")
+}
+
+func runCodemode(piAgentDir string, args []string, out io.Writer) error {
+	sub := "status"
+	if len(args) > 0 {
+		sub = args[0]
+	}
+	const note = "Nota: en modo codemode híbrido, Pi habilita +codemode (sandbox QuickJS para paralelizar llamadas y filtrar salidas >20 KB antes de entrar al contexto) y pasa gomemory y codebase-memory a exposure \"codemode\", manteniendo direct las herramientas de protocolo y consulta diaria (get_context, search_memories, get_memory, save_memory, search_graph, trace_path, get_code_snippet, check_index_coverage)."
+
+	switch sub {
+	case "on":
+		if err := installer.SetCodemode(piAgentDir, true); err != nil {
+			return err
+		}
+		fmt.Fprintln(out, "✓ Modo codemode híbrido activado (settings.json + mcp.json).")
+		fmt.Fprintln(out, note)
+		return nil
+	case "off":
+		if err := installer.SetCodemode(piAgentDir, false); err != nil {
+			return err
+		}
+		fmt.Fprintln(out, "✓ Modo codemode desactivado (+codemode retirado y MCP restaurado a exposure \"direct\").")
+		return nil
+	case "status":
+		st, err := installer.GetCodemodeStatus(piAgentDir)
+		if err != nil {
+			return err
+		}
+		state := "off"
+		if st.Enabled {
+			state = "on"
+		} else if st.Partial {
+			state = "parcial"
+		}
+		fmt.Fprintf(out, "codemode: %s (settings=%v, mcp=%v)\n", state, st.SettingsEnabled, st.MCPEnabled)
+		fmt.Fprintln(out, note)
+		return nil
+	case "help", "-h", "--help":
+		fmt.Fprintln(out, "Uso: pi-gomemory-setup codemode <on|off|status>")
+		fmt.Fprintln(out, note)
+		return nil
+	default:
+		return fmt.Errorf("subcomando desconocido para codemode: %q (usa: on | off | status)", sub)
+	}
 }
 
 // updateDeps son las dependencias externas de runUpdate. En producción son

@@ -72,6 +72,7 @@ func TestHCD011Plan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	hcd042RequireCloser(t, plan)
 	expect := map[string]string{
 		filepath.Join(ext, "gomemory-status.ts"):                     ActionRemove,
 		filepath.Join(ext, "gomemory-tasks.ts"):                      ActionSkip,
@@ -101,6 +102,7 @@ func TestHCD011Plan(t *testing.T) {
 	settings := filepath.Join(opts.PiAgentDir, "settings.json")
 	writeFile(t, settings, strings.Replace(readFile(t, settings), `"theme": "gomemory"`, `"theme": "otro"`, 1))
 	plan, _ = BuildUninstallPlan(repoAssets(t), opts, UninstallFlags{})
+	hcd042RequireCloser(t, plan)
 	if a := actionFor(plan, settings+" › theme"); a != nil && a.Kind == ActionRemove {
 		t.Error("se retiraría un tema que no es gomemory")
 	}
@@ -108,6 +110,7 @@ func TestHCD011Plan(t *testing.T) {
 	writeFile(t, settings, strings.Replace(readFile(t, settings), `"theme": "otro"`, `"theme": "gomemory"`, 1))
 	writeFile(t, filepath.Join(opts.PiAgentDir, "themes", "gomemory.json"), "{}\n")
 	plan, _ = BuildUninstallPlan(repoAssets(t), opts, UninstallFlags{})
+	hcd042RequireCloser(t, plan)
 	if a := actionFor(plan, settings+" › theme"); a == nil || a.Kind != ActionKeep {
 		t.Errorf("con el tema editado la clave debe conservarse: %+v", a)
 	}

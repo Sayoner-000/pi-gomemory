@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"syscall"
 )
 
 // Manifest registra lo que escribió install para que uninstall pueda
@@ -64,16 +66,32 @@ func WriteManifest(opts *Options, version string) error {
 
 // ReadManifest lee el manifiesto; devuelve nil sin error si no existe.
 func ReadManifest(home string) (*Manifest, error) {
-	data, err := os.ReadFile(ManifestPath(home))
+	path := ManifestPath(home)
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
+	st, err := f.Stat()
+	if err != nil {
+		return nil, errors.Join(err, f.Close())
+	}
+	if !st.Mode().IsRegular() {
+		return nil, errors.Join(fmt.Errorf("%s no es un archivo regular", path), f.Close())
+	}
+	data, err := io.ReadAll(f)
+	closeErr := f.Close()
+	if err != nil {
+		return nil, errors.Join(err, closeErr)
+	}
+	if closeErr != nil {
+		return nil, closeErr
+	}
 	var m Manifest
 	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("%s no es JSON válido: %w", ManifestPath(home), err)
+		return nil, fmt.Errorf("%s no es JSON válido: %w", path, err)
 	}
 	return &m, nil
 }

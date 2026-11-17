@@ -67,6 +67,7 @@ func TestHCD011Options(t *testing.T) {
 	cc = filepath.Join(opts.PiAgentDir, "pi-cc-extensions.json")
 	writeFile(t, cc, `{"mia": true}`)
 	plan, _ := BuildUninstallPlan(repoAssets(t), opts, UninstallFlags{Packages: true})
+	hcd042RequireCloser(t, plan)
 	if a := actionFor(plan, cc); a == nil || a.Kind != ActionSkip {
 		t.Errorf("pi-cc-extensions.json editado: quiero omitir, obtengo %+v", a)
 	}
