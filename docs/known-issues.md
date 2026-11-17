@@ -1,4 +1,22 @@
-# Problemas conocidos — v1.14.0
+# Problemas conocidos — v1.15.0
+
+## Estado de la revisión más reciente
+
+La suite completa con detector de carreras y `go vet` pasa sobre la implementación final de HCD-044/045/046. Esto no equivale a una revisión independiente completa. El [ACR de HCD-045](audits/2026-11-17-acr-adm-hcd045.md) terminó `INCOMPLETE` sobre una copia anterior mientras la implementación seguía en curso; sus dos fallos de tests heredados ya no aparecen en la validación de esta entrega.
+
+| Caso | Estado en v1.15.0 | Medida recomendada |
+|---|---|---|
+| Codemode modifica settings antes de validar o escribir MCP | Abierto: no hay transacción entre ambos JSON ni con el archivo de preferencia | Respalda los archivos y comprueba `codemode status` si la orden falla; corrige el JSON o los permisos y repite la orden |
+| deps-update reutiliza la versión de caché si falla el sondeo local | Abierto: puede anunciar «al día» sin confirmar la versión actual | Ejecuta `deps-refresh` y verifica por separado el binario instalado si hubo errores de lectura |
+| /plan activa el bloqueo después de cargar el método | Preexistente y abierto; la carga puede dejar una ventana sin bloqueo | Activa `/plan` cuando el agente esté inactivo; no lo trates como un aislamiento de seguridad |
+| /plan conserva su estado al cambiar de sesión | Política pendiente de aclarar | Comprueba el indicador PLAN y desactívalo explícitamente con `/plan run` cuando corresponda |
+| Selección explícita defaultTools vacía, absoluta o con modificadores | No se garantiza preservar toda la semántica de selecciones personalizadas al conmutar codemode | Revisa defaultTools antes y después si lo personalizaste; status comprueba marcadores, no todas las reglas efectivas de Pi |
+| El aviso de recorte se suma al límite de contexto | Comportamiento documentado: 24 576 bytes del texto original más aviso y bloque Pi | No usar ese valor como límite del tamaño total de la sección |
+| MCP híbridos propios conservados tras uninstall | Corregido por HCD-046 para definiciones directas e híbridas exactas | Usa uninstall --dry-run; las definiciones personalizadas se conservan |
+| Protocolo publicado sin marcadores no reconocido por la migración | Corregido por HCD-045 con fixtures históricos y pruebas de regresión | Ejecuta install, abre una sesión nueva y comprueba doctor |
+
+Los [hallazgos sobre v1.14.0](audits/2026-11-17-acr-adm-v1.14.md) y las observaciones del snapshot HCD-045 conservan su evidencia original. No se han modificado esos informes para aparentar una aprobación posterior.
+
 
 ## ACR/ADM del 2026-11-17 y seguimiento sobre v1.13.8
 
@@ -6,7 +24,7 @@ La [auditoría ACR/ADM](audits/2026-11-17-acr-adm.md) y su [seguimiento](audits/
 
 | Hallazgo | Riesgo en versiones anteriores | Estado |
 |---|---|---|
-| H-01 | Los pins de `pi-antigravity` y `pi-cc-extensions` quedaban atrás frente a npm | **Corregido** en v1.14.0 (HCD-039 + HCD-040): `pins-check`, `pins-validate` y subida a `0.14.0` / `1.0.20` |
+| H-01 | Los pins de `pi-antigravity` y `pi-cc-extensions` quedaban atrás frente a npm | **Corregido** en v1.14.0 (HCD-039 + HCD-040): `pins-check`, `pins-validate` y subida a `0.14.0` / `1.0.21` |
 | H-02 | `uninstall` eliminaba un enlace simbólico en `pi-cc-extensions.json` sobrevenido tras el plan | **Corregido** en v1.14.0 (HCD-041): revalida `Lstat` antes de borrar |
 | H-03 | `runOutput` aceptaba la salida de un comando fallido como versión válida | **Corregido** en v1.14.0 (HCD-041): devuelve error si el proceso falla |
 | H-04 | `RunDepsUpdate` declaraba al día un estado desconocido con caché ausente | **Corregido** en v1.14.0 (HCD-041): no oculta caché ausente como saludable |

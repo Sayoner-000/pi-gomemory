@@ -44,7 +44,7 @@ var EmbeddedAssets embed.FS
 
 Esto evita depender de carpetas clonadas o rutas relativas en disco. El ejecutable se puede mover a cualquier equipo y conserva intactas las 21 skills, el tema (`themes/gomemory.json`), la configuración por defecto de `pi-cc-extensions` (`config/pi-cc-extensions.json`) y la extensión de estado. El embebido es la única fuente de lo que se instala: el instalador no lee carpetas locales y no escribe nada en el directorio desde el que se ejecuta. Con las skills de otros agentes no copia ni modifica nada. Reúne todo en el repositorio central `~/.pi-gomemory/skills`: las skills embebidas como copias (con una marca `.pi-gomemory` que guarda el SHA256 del `SKILL.md`, para no pisar nunca una copia editada) y las del anfitrión como enlaces simbólicos, con prioridad `~/.agents/skills` → `~/.config/opencode/skills` → `~/.claude/skills` → `~/.codex/skills` → `~/.gemini/skills`. Pi registra solo ese repositorio en `settings.json`, así que nunca ve dos veces la misma skill. `doctor` muestra el total y las colisiones resueltas.
 
-Los archivos de la persona se fusionan, nunca se reemplazan: en `mcp.json` solo se tocan las tres entradas propias, en `pi-cc-extensions.json` solo se añaden las claves que falten, y en `AGENTS.md` el protocolo vive entre `<!-- pi-gomemory:start -->` y `<!-- pi-gomemory:end -->`. Si un JSON existente es inválido, el instalador se detiene sin tocarlo.
+En `mcp.json` solo se actualizan las tres entradas propias. En `pi-cc-extensions.json` se conservan las claves del usuario, salvo `showStartupHeader`, que se desactiva para no sustituir el banner. `AGENTS.md` deja de recibir instrucciones nuevas: la instalación retira únicamente el protocolo heredado. Un JSON ilegible detiene su paso; las escrituras de varios archivos no forman una transacción conjunta.
 
 ## Configuración de servidores MCP
 
@@ -60,6 +60,16 @@ Proporciona un grafo de código en SQLite generado a partir de AST para más de 
 Ofrece consultas de grafo estructural profundo y trazado de llamadas para bases de código grandes.
 
 La función `InstallMCPServers` lee el archivo `mcp.json` existente y solo agrega o actualiza estas tres entradas. No borra ni altera otros servidores que el usuario ya tenga configurados.
+
+## Contexto por sesión y codemode
+
+`gomemory-context.ts` inicia `mem context` en `session_start`, con el directorio de la sesión y un timeout de 3000 ms. `before_agent_start` espera esa carga y añade la sección `gomemory` a `systemPromptOptions.sections`. La salida se reutiliza dentro de la sesión y conserva hasta 24 576 bytes de texto UTF-8; el aviso de recorte y el bloque Pi se añaden después. Si la consulta falla o llega vacía, la sesión conserva solo el bloque Pi y muestra una advertencia.
+
+`gomemory-plan.ts` usa la sección `gomemory-plan`, por lo que no reemplaza el prompt completo. El bloque Pi no enumera servidores según `selectedTools`: en Pi 1.5.2 los MCP pueden seguir conectándose cuando ocurre ese evento. Las declaraciones del prompt determinan qué herramientas se ofrecen directamente.
+
+`InstallAll` aplica codemode híbrido por defecto. `SetCodemodePreference` guarda las órdenes explícitas on/off y la propiedad de `+codemode` en `~/.pi-gomemory/codemode.json`. La desinstalación reconoce las definiciones MCP directas e híbridas exactas y conserva las personalizadas.
+
+`RetireLegacyInstructions` reconoce marcadores y variantes históricas publicadas, almacenadas en `pkg/installer/legacy/`. La migración conserva texto ajeno, permisos y enlaces. Si solo queda el bloque propio, borra el archivo normal o vacía el destino enlazado. `doctor` avisa si el protocolo sigue presente.
 
 ## Google AI Pro y monitor de consumo
 
@@ -102,7 +112,7 @@ Extensión en TypeScript del TDD Live Inspector (`/tdd`, tool `run_test_suite`).
 
 ## Riesgos y límites
 
-Desde v1.12.1 la escritura JSON conserva el modo existente (y crea `0600` los archivos nuevos), la limpieza legacy respeta los archivos añadidos y el ejecutor TDD cierra interrupciones y timeouts como fallos. Desde v1.13.0, `uninstall` solo retira el launcher de carpetas que pertenecen a la instalación de su `HOME`: `launcherDirs` devuelve aparte la carpeta del ejecutable cuando queda fuera de `HOME` y nada la respalda, y el plan la marca como omitida. `install` y `uninstall` reescriben `AGENTS.md` conservando su modo (`modeOrDefault`, `0644` si es nuevo); si no pueden leer el modo, no lo escriben. Los límites que siguen vigentes están en [problemas conocidos](known-issues.md).
+Las escrituras JSON conservan permisos y crean los archivos nuevos con modo `0600`. La retirada de archivos revalida su identidad antes de ejecutar la acción; no promete atomicidad frente a sustituciones durante esa acción. La migración de `AGENTS.md` conserva su modo y no crea uno nuevo si no existe. Los fallos y límites que siguen vigentes están en [problemas conocidos](known-issues.md).
 
 ## Sanitización de skills
 

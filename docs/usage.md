@@ -70,6 +70,22 @@ Comandos:
   help          Muestra este mensaje de ayuda
 ```
 
+## Codemode y contexto vivo
+
+`install` y `update` usan codemode híbrido por defecto. Estas órdenes guardan una elección explícita para las siguientes instalaciones:
+
+```bash
+pi-gomemory-setup codemode off
+pi-gomemory-setup codemode on
+pi-gomemory-setup codemode status
+```
+
+La preferencia y la propiedad de `+codemode` se guardan en `~/.pi-gomemory/codemode.json`. Las herramientas MCP declaradas se llaman directamente; el resto se consulta desde `codemode` con `tools.<nombre>(args)`. `mcp` regenera los servidores y conserva un perfil híbrido ya activo.
+
+Al abrir o cambiar una sesión, `gomemory-context.ts` carga `mem context` una vez con el directorio del proyecto y un timeout de 3000 ms. Inyecta hasta 24 576 bytes de texto UTF-8 más el aviso de recorte, si hace falta, y el bloque de protocolo de Pi. Si falla o no devuelve contexto, muestra una advertencia por sesión y mantiene solo ese bloque. `/plan` añade su método en otra sección del prompt.
+
+`AGENTS.md` queda para tus instrucciones. `install` retira el protocolo antiguo de pi-gomemory, conservando el texto propio. Abre una sesión nueva o ejecuta `/reload` después de actualizar las extensiones. Consulta las [limitaciones](known-issues.md) de cambios parciales de configuración y del bloqueo de `/plan`.
+
 ## Otros agentes (Claude Code, Codex, agy, OpenCode)
 
 pi-gomemory configura solo Pi. La integración de los demás agentes la hace gomemory:

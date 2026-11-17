@@ -4,6 +4,26 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.15.0] - 2026-11-17
+
+### Added
+- `gomemory-context.ts` carga `mem context` al iniciar cada sesión de Pi y lo incorpora al prompt. La consulta tiene un timeout de tres segundos y conserva hasta 24 576 bytes de texto UTF-8; si falla, muestra una advertencia y mantiene el bloque de protocolo de Pi.
+
+### Changed
+- `install` y `update` activan codemode híbrido por defecto. La elección `codemode off` persiste en `~/.pi-gomemory/codemode.json` y se respeta al reinstalar.
+- El perfil híbrido mantiene directas las herramientas de memoria y consulta frecuente, incluidas `search_code`, `get_symbol`, `start_session`, `octopus_route_task` y `judge_memories`. Las demás siguen disponibles desde codemode.
+- `/plan` añade su método en una sección del prompt sin sustituir la sección de gomemory.
+- `AGENTS.md` deja de recibir el protocolo de pi-gomemory. La instalación retira las variantes históricas publicadas y conserva las instrucciones del usuario, permisos y enlaces.
+
+### Fixed
+- `uninstall` reconoce tanto el perfil MCP directo como el híbrido intactos. Retira `+codemode` solo cuando consta que lo añadió pi-gomemory.
+- La migración reconoce el protocolo antiguo sin marcadores mediante fixtures históricos, en lugar de compararlo con una versión modificada del texto.
+- `doctor` advierte si `AGENTS.md` todavía conserva el protocolo heredado.
+
+### Documentation
+- README, referencias de instalación, uso y arquitectura, guía HTML v1.15, problemas conocidos e índices de auditorías y releases actualizados.
+- Se conservan los informes ACR/ADM anteriores con sus límites originales. Las incidencias todavía abiertas se detallan en `docs/known-issues.md`; esta entrega no declara una aprobación ACR global.
+
 ## [v1.14.0] - 2026-11-17
 
 ### Added
