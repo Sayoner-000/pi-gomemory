@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.13.8] - 2026-11-17
+
+### Fixed
+- **`/tdd` acota la salida que guarda (HCD-038, H-01):** una línea de más de 64 Ki caracteres termina el proceso y la ejecución falla con «Salida rechazada: una línea excede el límite de 64 Ki caracteres». Antes, una línea de 8 MiB sin salto se acumulaba entera en memoria y se conservaba en el diagnóstico. El diagnóstico guarda ahora las últimas 40 líneas, recortadas a 1 Ki caracteres y 64 KiB en total. El check de la unidad HCD activa sigue leyendo el JSON completo de `mem hcd show --json`.
+- **La cuota de Antigravity no da por buena una respuesta vacía (HCD-038, H-02):** `usage` y `usage --json` rechazan una respuesta 200 sin límites (`null`, `{}`, grupos vacíos) o con porcentajes fuera de rango, y prueban el endpoint de respaldo, que antes nunca se consultaba. Si ninguno responde con cuotas, terminan con código 1 y el panel lateral muestra el error en vez de quedarse en «Cargando cuota...».
+- **«Plan no informado» cuando Google no envía el plan (HCD-038):** antes la etiqueta de respaldo era «Google AI Pro (g1-pro-tier)», aunque la respuesta no dijera nada del plan.
+
+### Documentation
+- Auditoría defensiva del 2026-11-17 y su reproductor en `docs/audits/`; problemas conocidos con sus dos hallazgos cerrados.
+- Uso, arquitectura y guía HTML describen el límite por línea de `/tdd` y la validación de la cuota.
+- Badge, referencias de descarga, guía HTML e instaladores sincronizados con `v1.13.8`.
+
 ## [v1.13.7] - 2026-11-14
 
 ### Fixed

@@ -1,4 +1,13 @@
-# Problemas conocidos — v1.13.7
+# Problemas conocidos — v1.13.8
+
+## ADM del 2026-11-17 sobre v1.13.7
+
+La [auditoría defensiva](audits/2026-11-17-defensive-qa.md) encontró dos hallazgos de severidad media, reproducidos sobre v1.13.7 (`b22a5c4`) con [`2026-11-17-adm-repro_test.go.txt`](audits/2026-11-17-adm-repro_test.go.txt). Los cierra [HCD-038](../hcd/HCD-038-cerrar-h-01-y-h-02-de-la-adm-2026-11-17.md), publicada en v1.13.8.
+
+| Hallazgo | Riesgo en v1.13.7 y anteriores | Estado | Mitigación si sigues en v1.13.7 o anterior |
+|---|---|---|---|
+| H-01 | Una suite que escribe una línea enorme sin salto (un JSON o un bundle minificado) hace crecer sin límite la memoria de Pi mientras dura la ejecución, y la línea entera queda en el diagnóstico | **Corregido** en v1.13.8 (`TestADM20261117StreamOutputBound`, `TestHCD038LongLineFails`, `TestHCD038TailBudget`, `TestHCD038HcdCheckLongJSON`): una línea de más de 64 Ki caracteres termina el proceso y la ejecución falla; el diagnóstico queda acotado a 64 KiB | Evita ejecutar con `/tdd` suites que vuelcan salida sin saltos de línea; redirígela a un archivo |
+| H-02 | Una respuesta 200 de Antigravity con `null` o `{}` se muestra como éxito sin cuotas, con la etiqueta «Google AI Pro (g1-pro-tier)», y el endpoint de respaldo no se prueba | **Corregido** en v1.13.8 (`TestADM20261117QuotaRejectsMissingData`, `TestHCD038QuotaParse`, `TestHCD038QuotaFallback`, `TestHCD038PlanLabelMissing`): la respuesta sin límites cuenta como fallo, se prueba el siguiente endpoint y, sin plan informado, se muestra «Plan no informado» | Si `usage` no muestra ninguna barra, trátalo como un error y vuelve a consultar más tarde |
 
 ## ACR/ADM del 2026-11-14 sobre v1.13.4
 

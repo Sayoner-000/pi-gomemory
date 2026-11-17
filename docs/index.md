@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.13.8](releases/v1.13.8.md)
+Cierre de los dos hallazgos de la auditoría defensiva del 2026-11-17: `/tdd` falla en lugar de acumular sin límite una línea de salida enorme, y la cuota de Antigravity rechaza una respuesta vacía, prueba el endpoint de respaldo y no inventa el plan.
+
 [Notas de v1.13.7](releases/v1.13.7.md)
 `PI_GOMEMORY_NO_UPDATE_CHECK` se interpreta igual en el binario, el launcher y el pie de Pi: vacía, `0` o `false` dejan la comprobación activa. `deps-refresh` la respeta.
 

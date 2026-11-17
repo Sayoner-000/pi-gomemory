@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.13.7"><img src="https://img.shields.io/badge/version-1.13.7-blue" alt="Version 1.13.7"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.13.8"><img src="https://img.shields.io/badge/version-1.13.8-blue" alt="Version 1.13.8"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -199,6 +199,7 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 ## Documentación
 
 - [Guía HTML v1.13](docs/Guia-PI-GOMEMORY-v1.13.html): recorrido completo del harness
+- [Notas de v1.13.8](docs/releases/v1.13.8.md): `/tdd` falla en lugar de acumular sin límite una línea de salida enorme, y la cuota de Antigravity ya no da por buena una respuesta vacía ni le atribuye un plan
 - [Notas de v1.13.7](docs/releases/v1.13.7.md): `PI_GOMEMORY_NO_UPDATE_CHECK` se interpreta igual en el binario, el launcher y el pie de Pi, y `deps-refresh` la respeta
 - [Notas de v1.13.6](docs/releases/v1.13.6.md): la configuración de Pi enlazada con symlinks (por ejemplo, desde dotfiles) sigue enlazada tras `install`, `update` y `uninstall`; los enlaces rotos se rechazan sin tocar nada
 - [Notas de v1.13.5](docs/releases/v1.13.5.md): `uninstall` conserva el manifiesto si algo falla; cancelar `/tdd` no deja procesos vivos; `update` reinstala en el `BIN_DIR` de la instalación y consulta siempre

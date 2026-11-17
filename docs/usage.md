@@ -39,6 +39,8 @@ Cuenta: tu-cuenta@ejemplo.com
 
 Si la API no responde o el token caducó, el comando termina con código 1 y un mensaje de error. Nunca muestra cifras aproximadas. Abre `pi` una vez para renovar el token y vuelve a intentarlo.
 
+Desde v1.13.8, una respuesta 200 sin ningún límite (`null`, `{}` o grupos vacíos) o con un porcentaje fuera de rango cuenta como fallo de ese endpoint: el comando prueba el siguiente y, si ninguno trae cuotas, termina con código 1, y el panel lateral muestra el error en vez de «Cargando cuota...». Si Google envía cuotas pero no el nombre del plan, la primera línea dice «Plan no informado» en lugar de suponer «Google AI Pro (g1-pro-tier)».
+
 ## Referencia de comandos CLI
 
 El binario `pi-gomemory-setup` acepta los siguientes argumentos:
@@ -140,6 +142,8 @@ Abre el overlay **TDD Live Inspector**. Se coloca debajo del panel lateral, en l
 - los aprobados, resumidos en un conteo (`✓ 108 aprobados`).
 
 Las suites omitidas aparecen agrupadas al final, bajo «Omitidas (n)».
+
+**Límite por línea.** Cada línea de salida admite hasta 64 Ki caracteres. Una más larga (un JSON o un bundle minificado sin saltos de línea) termina el proceso y la ejecución falla con «Salida rechazada: una línea excede el límite de 64 Ki caracteres». Para el diagnóstico, el panel guarda las últimas 40 líneas, cada una recortada a 1 Ki caracteres y 64 KiB en total; el parser de cada suite sigue recibiendo las líneas completas.
 
 **Subcomandos:**
 - `/tdd`: muestra u oculta el panel y lanza todas las suites.
