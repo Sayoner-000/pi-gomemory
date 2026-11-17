@@ -4,6 +4,23 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.14.0] - 2026-11-17
+
+### Added
+- **Subcomando `pi-gomemory-setup codemode <on|off|status>` (HCD-043):** activa o desactiva el modo `codemode` híbrido de Pi desde una sola orden. `on` añade `+codemode` a `defaultTools` en `settings.json` (sandbox QuickJS para paralelizar llamadas y filtrar salidas `>20 KB` antes de entrar al contexto) y configura `gomemory` y `codebase-memory` en `exposure: "codemode"` manteniendo `direct` las herramientas de protocolo y consulta diaria (`get_context`, `get_plan_context`, `search_memories`, `get_memory`, `save_memory`, `save_session_summary`, `end_session`, `search_graph`, `trace_path`, `get_code_snippet`, `check_index_coverage`). `off` retira `+codemode` y restaura `exposure: "direct"`. `install` y `mcp` preservan este estado al regenerar `mcp.json`.
+- **Control y validación de paquetes de Pi fijados frente a npm (HCD-039):** añadidos `pins-check`, `pins-validate` (contratos A1, A3 y C1 sobre el tarball de cada candidato) y aviso en `doctor` cuando un pin queda por detrás de npm, integrado como puerta en `scripts/build-release.sh`.
+
+### Changed
+- **Actualización de paquetes fijados de Pi (HCD-040):** `pi-antigravity` pasa a `0.14.0` y `pi-cc-extensions` a `1.0.21`, validados con `pins-validate` y probados en Pi real (cuota, sidebar y banner).
+
+### Fixed
+- **Cierre de H-02 a H-05 de la ACR/ADM 2026-11-17 (HCD-041):** `uninstall` conserva un enlace simbólico en `pi-cc-extensions.json` sobrevenido tras el plan; `runOutput` en `deps.go` no acepta la salida de un comando fallido como versión; `RunDepsUpdate` no declara al día un estado desconocido con caché ausente; la extracción de candidatos acota el número de entradas y bytes descomprimidos.
+- **Cierre de F-01 y F-02 del seguimiento ACR/ADM 2026-11-17 (HCD-042):** `RunDepsUpdate` ya no declara al día versiones no comparables y `uninstall` preserva entradas no regulares o sustituidas tras el plan al retirar cachés y manifiesto.
+
+### Documentation
+- Auditorías ACR/ADM del 2026-11-17 y seguimiento en `docs/audits/`; `docs/known-issues.md` actualizado con los hallazgos cerrados.
+- `README.md`, `docs/index.md`, `docs/installation.md`, `docs/usage.md`, `docs/releases/v1.14.0.md`, `docs/Guia-PI-GOMEMORY-v1.14.html` e `install.sh` sincronizados con `v1.14.0`.
+
 ## [v1.13.8] - 2026-11-17
 
 ### Fixed

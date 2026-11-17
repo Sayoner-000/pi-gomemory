@@ -4,7 +4,7 @@ Esta carpeta contiene la documentación técnica de pi-gomemory, el instalador y
 
 ## Contenido
 
-[Guía del harness pi-gomemory (HTML)](Guia-PI-GOMEMORY-v1.13.html)
+[Guía del harness pi-gomemory (HTML)](Guia-PI-GOMEMORY-v1.14.html)
 Guía larga de uso, con el formato de la Guía SDD_HCD de gomemory: instalación, qué cambia en tu máquina, launcher, memoria y grafos, skills, comandos dentro de Pi, `/sidebar`, `/tdd`, HCD, revisión con Splash/ACR/ADM, una sesión de punta a punta y mantenimiento. Se puede imprimir o guardar como PDF.
 
 [Arquitectura del sistema](architecture.md)
@@ -15,6 +15,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
+
+[Notas de v1.14.0](releases/v1.14.0.md)
+Modo `codemode` híbrido (`pi-gomemory-setup codemode on|off|status`), validación y subida de pins de Pi (`pi-antigravity@0.14.0`, `pi-cc-extensions@1.0.21`), y cierre de los hallazgos ACR/ADM H-02..H-05 y F-01..F-02.
 
 [Notas de v1.13.8](releases/v1.13.8.md)
 Cierre de los dos hallazgos de la auditoría defensiva del 2026-11-17: `/tdd` falla en lugar de acumular sin límite una línea de salida enorme, y la cuota de Antigravity rechaza una respuesta vacía, prueba el endpoint de respaldo y no inventa el plan.

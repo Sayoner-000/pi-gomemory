@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.13.8"><img src="https://img.shields.io/badge/version-1.13.8-blue" alt="Version 1.13.8"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.14.0"><img src="https://img.shields.io/badge/version-1.14.0-blue" alt="Version 1.14.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -125,6 +125,7 @@ pi-gomemory-setup [install]   Instalación completa
 pi-gomemory-setup doctor      Diagnóstico de Pi, MCP, plugins, launcher y otros agentes
 pi-gomemory-setup usage       Cuota real de Google AI Pro / Antigravity
 pi-gomemory-setup mcp         Solo los servidores MCP
+pi-gomemory-setup codemode <on|off|status>  Activa o desactiva el modo codemode híbrido en Pi y MCP
 pi-gomemory-setup theme       Solo el tema
 pi-gomemory-setup plugin      Solo pi-antigravity y pi-cc-extensions
 pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills
@@ -144,6 +145,8 @@ pi-gomemory-setup uninstall [--dry-run] [--yes] [--verbose] [--packages] [--self
 ```
 
 Con `usage`, si la API no responde o el token caducó, el comando termina con un error. Nunca muestra cifras aproximadas. Las respuestas de más de 1 MiB se rechazan.
+
+> **Nota sobre `codemode` (`on` / `off` / `status`):** con `codemode on`, Pi habilita `+codemode` en `defaultTools` (`settings.json`) para ejecutar scripts en sandbox QuickJS (llamadas en paralelo y filtrado de salidas `>20 KB` antes de entrar al contexto) y configura `gomemory` y `codebase-memory` en `exposure: "codemode"` manteniendo `direct` únicamente las herramientas de protocolo y consulta diaria (`get_context`, `get_plan_context`, `search_memories`, `get_memory`, `save_memory`, `save_session_summary`, `end_session`, `search_graph`, `trace_path`, `get_code_snippet`, `check_index_coverage`). `codemode off` retira `+codemode` y restaura `exposure: "direct"` en todos los servidores MCP. Cuando está activo, `install` y `mcp` preservan esta configuración al regenerar `mcp.json`.
 
 ### Comandos dentro de Pi
 
@@ -176,7 +179,7 @@ Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`
 
 Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano si la última consulta en red tiene más de una hora y vuelve a consultar, de modo que una release se anuncia como mucho una hora después de publicarse. El aviso solo informa: para instalar, responde a la pregunta del launcher o ejecuta `pi-gomemory-setup deps-update`. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Vacía, `0` o `false` la dejan activa.
 
-`pi-antigravity` y `pi-cc-extensions` se instalan fijados a la versión del catálogo oficial de Pi (`npm:pi-antigravity@0.12.0`, `npm:pi-cc-extensions@1.0.16`); cambian solo con una release nueva de pi-gomemory.
+`pi-antigravity` y `pi-cc-extensions` se instalan fijados a una versión exacta (`npm:pi-antigravity@0.14.0`, `npm:pi-cc-extensions@1.0.21`); cambian solo con una release nueva de pi-gomemory, que antes valida cada versión candidata contra lo que pi-gomemory necesita de ella. Si npm publica una versión más nueva que todavía no se ha validado, `pi-gomemory-setup doctor` lo avisa con `⚠`, pero `deps-update` sigue instalando solo la versión fijada.
 
 ### Cuota de OpenAI Codex
 
@@ -198,7 +201,8 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 
 ## Documentación
 
-- [Guía HTML v1.13](docs/Guia-PI-GOMEMORY-v1.13.html): recorrido completo del harness
+- [Guía HTML v1.14](docs/Guia-PI-GOMEMORY-v1.14.html): recorrido completo del harness
+- [Notas de v1.14.0](docs/releases/v1.14.0.md): modo `codemode` híbrido (`on`/`off`/`status`), validación y subida de pins de Pi (`pi-antigravity@0.14.0`, `pi-cc-extensions@1.0.21`), y cierre de los hallazgos ACR/ADM H-02..H-05 y F-01..F-02
 - [Notas de v1.13.8](docs/releases/v1.13.8.md): `/tdd` falla en lugar de acumular sin límite una línea de salida enorme, y la cuota de Antigravity ya no da por buena una respuesta vacía ni le atribuye un plan
 - [Notas de v1.13.7](docs/releases/v1.13.7.md): `PI_GOMEMORY_NO_UPDATE_CHECK` se interpreta igual en el binario, el launcher y el pie de Pi, y `deps-refresh` la respeta
 - [Notas de v1.13.6](docs/releases/v1.13.6.md): la configuración de Pi enlazada con symlinks (por ejemplo, desde dotfiles) sigue enlazada tras `install`, `update` y `uninstall`; los enlaces rotos se rechazan sin tocar nada

@@ -56,6 +56,7 @@ Comandos:
   codex-usage   Devuelve los límites del plan de OpenAI Codex en JSON
   doctor        Verifica binarios, tema, MCP, plugins, launcher y otros agentes detectados
   mcp           Registra gomemory, codegraph y codebase-memory en mcp.json
+  codemode      Activa, desactiva o consulta el modo codemode híbrido (on | off | status)
   theme         Instala la paleta gomemory en ~/.pi/agent/themes/
   plugin        Configura pi-antigravity y pi-cc-extensions en settings.json
   skills        Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills/

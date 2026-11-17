@@ -1,4 +1,18 @@
-# Problemas conocidos — v1.13.8
+# Problemas conocidos — v1.14.0
+
+## ACR/ADM del 2026-11-17 y seguimiento sobre v1.13.8
+
+La [auditoría ACR/ADM](audits/2026-11-17-acr-adm.md) y su [seguimiento](audits/2026-11-17-acr-adm-followup.md) encontraron hallazgos de severidad media/baja reproducidos en `docs/audits/2026-11-17-acr-adm-*.txt`. Quedan cerrados en v1.14.0 mediante [HCD-040](../hcd/HCD-040-subir-los-pins-a-pi-antigravity-0-14-0-y.md) (H-01), [HCD-041](../hcd/HCD-041-cerrar-h-02-a-h-05-de-la-acr-adm-2026-11.md) (H-02..H-05) y [HCD-042](../hcd/HCD-042-cerrar-f-01-y-f-02-del-seguimiento-acr-y.md) (F-01, F-02):
+
+| Hallazgo | Riesgo en versiones anteriores | Estado |
+|---|---|---|
+| H-01 | Los pins de `pi-antigravity` y `pi-cc-extensions` quedaban atrás frente a npm | **Corregido** en v1.14.0 (HCD-039 + HCD-040): `pins-check`, `pins-validate` y subida a `0.14.0` / `1.0.20` |
+| H-02 | `uninstall` eliminaba un enlace simbólico en `pi-cc-extensions.json` sobrevenido tras el plan | **Corregido** en v1.14.0 (HCD-041): revalida `Lstat` antes de borrar |
+| H-03 | `runOutput` aceptaba la salida de un comando fallido como versión válida | **Corregido** en v1.14.0 (HCD-041): devuelve error si el proceso falla |
+| H-04 | `RunDepsUpdate` declaraba al día un estado desconocido con caché ausente | **Corregido** en v1.14.0 (HCD-041): no oculta caché ausente como saludable |
+| H-05 | La extracción de tarballs candidatos no acotaba entradas ni bytes descomprimidos | **Corregido** en v1.14.0 (HCD-041): límite de 10.000 entradas y 256 MiB |
+| F-01 | `RunDepsUpdate` declaraba al día versiones no comparables (`desconocida`, `dev`) | **Corregido** en v1.14.0 (HCD-042): trata versiones no comparables como fallo/desconocido |
+| F-02 | `uninstall` borraba entradas no regulares o sustituidas tras el plan en cachés y manifiesto | **Corregido** en v1.14.0 (HCD-042): revalidación previa antes de retirar |
 
 ## ADM del 2026-11-17 sobre v1.13.7
 
