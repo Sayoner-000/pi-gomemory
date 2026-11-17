@@ -40,30 +40,30 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.15.0_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.15.0_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.15.0_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.15.0_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.15.1_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.15.1_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.15.1_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.15.1_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.15.0_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.15.1_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar v1.15.0, comprueba que `pi-gomemory-setup version` devuelve `v1.15.0` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
+Después de instalar v1.15.1, comprueba que `pi-gomemory-setup version` devuelve `v1.15.1` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
 
-Si vienes de v1.12.0 o anterior, revisa los permisos de `~/.pi/agent` y los [problemas conocidos](known-issues.md). Desde v1.15.0, `install` no crea un protocolo en `AGENTS.md`: retira el bloque heredado sin modificar el texto propio. Conserva los permisos y los enlaces; si solo había protocolo, borra el archivo normal o vacía el destino enlazado.
+Si vienes de v1.12.0 o anterior, revisa los permisos de `~/.pi/agent` y los [problemas conocidos](known-issues.md). Desde v1.15.0, `install` no crea un protocolo en `AGENTS.md`: retira el bloque heredado sin modificar el texto propio. Conserva los permisos y los enlaces; si solo había protocolo, borra el archivo normal o vacía el destino enlazado. Desde v1.15.1, lo retira solo después de instalar `gomemory-context.ts`, quita a la vez el bloque marcado y las copias históricas sin marcas, y si los marcadores de pi-gomemory son ambiguos (huérfanos, repetidos o invertidos) conserva el archivo completo y avisa.
 
 **Configuración enlazada (dotfiles):** desde v1.13.6, si `~/.pi/agent/mcp.json`, `settings.json`, `AGENTS.md` o `pi-cc-extensions.json` son enlaces simbólicos, `install`, `update`, `uninstall` y los subcomandos escriben en el archivo de destino y conservan el enlace y sus permisos. Un enlace roto, un bucle o un enlace a un directorio hacen fallar el paso con «el enlace no apunta a un archivo», sin tocar nada. Si una versión anterior ya sustituyó alguno de tus enlaces, vuelve a crearlo a mano.
 
 ## Codemode y contexto
 
-La instalación y `update` activan codemode híbrido salvo que hayas elegido `pi-gomemory-setup codemode off`. Esa preferencia persiste en `~/.pi-gomemory/codemode.json`. Consulta el estado con `pi-gomemory-setup codemode status` y vuelve a activarlo con `codemode on`.
+La instalación y `update` activan codemode híbrido salvo que hayas elegido `pi-gomemory-setup codemode off`. Esa preferencia persiste en `~/.pi-gomemory/codemode.json`. Consulta el estado con `pi-gomemory-setup codemode status` y vuelve a activarlo con `codemode on`. Desde v1.15.1, con `off` la instalación solo deja directos los tres servidores MCP propios y no toca `defaultTools`, aunque hayas activado `+codemode` para otros usos. Si `codemode on`, `install` o `update` fallan a medias, `settings.json` y `mcp.json` vuelven a su contenido anterior.
 
 Después de instalar, usa `/reload` o abre una sesión nueva. `gomemory-context.ts` consulta `mem context` con el directorio del proyecto, espera hasta tres segundos y añade el contexto al prompt. No necesitas iniciar Pi desde el launcher para que se ejecute esta extensión. Si falla, se muestra una advertencia; usa `get_context()` o `mem context` para recuperar la memoria.
 
@@ -99,7 +99,7 @@ pi-gomemory-setup uninstall --yes --verbose   # sin preguntar; detalla cada paso
 pi-gomemory-setup install                 # reinstalación limpia
 ```
 
-Qué retira: extensiones `gomemory-*`, tema, launcher, skills embebidas intactas y enlaces de `~/.pi-gomemory/skills`, las entradas MCP `gomemory`, `codegraph` y `codebase-memory`, el bloque de pi-gomemory en `~/.pi/agent/AGENTS.md`, el registro de skills y el tema en `settings.json`, las cachés y el manifiesto. Desde v1.15.0 reconoce también el perfil híbrido intacto y retira `+codemode` si el registro de propiedad indica que lo añadió pi-gomemory; conserva una activación previa del usuario.
+Qué retira: extensiones `gomemory-*`, tema, launcher, skills embebidas intactas y enlaces de `~/.pi-gomemory/skills`, las entradas MCP `gomemory`, `codegraph` y `codebase-memory`, el bloque de pi-gomemory en `~/.pi/agent/AGENTS.md`, el registro de skills y el tema en `settings.json`, las cachés y el manifiesto. Desde v1.15.0 reconoce también el perfil híbrido intacto y retira `+codemode` si el registro de propiedad indica que lo añadió pi-gomemory; conserva una activación previa del usuario. Desde v1.15.1 reconoce además el perfil híbrido publicado en v1.14.0, y el registro de propiedad guarda el archivo real de `settings.json`: si el enlace apunta ahora a otro destino, o el registro de v1.15.0 no lo identifica, `+codemode` se conserva con aviso. Un `codemode.json` ilegible o inválido aparece como `[fallido]` y se conserva junto con `+codemode`.
 
 Solo borra lo que puede demostrar que instaló: compara la huella SHA256 de cada archivo con `~/.pi-gomemory/manifest.json`. Lo que editaste, tus skills, otros servidores MCP y cualquier clave ajena se conservan y aparecen como omitidos.
 

@@ -1,12 +1,12 @@
-# Problemas conocidos — v1.15.0
+# Problemas conocidos — v1.15.1
 
 ## Estado de la revisión más reciente
 
-La suite completa con detector de carreras y `go vet` pasa sobre la implementación final de HCD-044/045/046. Esto no equivale a una revisión independiente completa. El [ACR de HCD-045](audits/2026-11-17-acr-adm-hcd045.md) terminó `INCOMPLETE` sobre una copia anterior mientras la implementación seguía en curso; sus dos fallos de tests heredados ya no aparecen en la validación de esta entrega.
+El [ACR de v1.15.0](audits/2026-11-17-acr-v1.15.0.md) encontró ocho hallazgos medios, corregidos en v1.15.1 (ver abajo). La suite completa con detector de carreras y `go vet` pasa sobre v1.15.1; no hubo una nueva revisión independiente de esta versión. El [ACR de HCD-045](audits/2026-11-17-acr-adm-hcd045.md) terminó `INCOMPLETE` sobre una copia anterior mientras la implementación seguía en curso; sus dos fallos de tests heredados ya no aparecen en la validación.
 
-| Caso | Estado en v1.15.0 | Medida recomendada |
+| Caso | Estado en v1.15.1 | Medida recomendada |
 |---|---|---|
-| Codemode modifica settings antes de validar o escribir MCP | Abierto: no hay transacción entre ambos JSON ni con el archivo de preferencia | Respalda los archivos y comprueba `codemode status` si la orden falla; corrige el JSON o los permisos y repite la orden |
+| Codemode modifica settings antes de validar o escribir MCP | **Corregido** en v1.15.1 (C-001): se restauran `settings.json` y `mcp.json` si la conmutación falla | En v1.15.0, respalda los archivos y comprueba `codemode status` si la orden falla; corrige el JSON o los permisos y repite la orden |
 | deps-update reutiliza la versión de caché si falla el sondeo local | Abierto: puede anunciar «al día» sin confirmar la versión actual | Ejecuta `deps-refresh` y verifica por separado el binario instalado si hubo errores de lectura |
 | /plan activa el bloqueo después de cargar el método | Preexistente y abierto; la carga puede dejar una ventana sin bloqueo | Activa `/plan` cuando el agente esté inactivo; no lo trates como un aislamiento de seguridad |
 | /plan conserva su estado al cambiar de sesión | Política pendiente de aclarar | Comprueba el indicador PLAN y desactívalo explícitamente con `/plan run` cuando corresponda |
@@ -16,6 +16,21 @@ La suite completa con detector de carreras y `go vet` pasa sobre la implementaci
 | Protocolo publicado sin marcadores no reconocido por la migración | Corregido por HCD-045 con fixtures históricos y pruebas de regresión | Ejecuta install, abre una sesión nueva y comprueba doctor |
 
 Los [hallazgos sobre v1.14.0](audits/2026-11-17-acr-adm-v1.14.md) y las observaciones del snapshot HCD-045 conservan su evidencia original. No se han modificado esos informes para aparentar una aprobación posterior.
+
+### ACR de v1.15.0: corregido en v1.15.1 (HCD-047)
+
+El [ACR de v1.15.0](audits/2026-11-17-acr-v1.15.0.md) reprodujo ocho hallazgos medios; el informe se conserva tal cual. [HCD-047](../hcd/HCD-047-corregir-los-ocho-hallazgos-del-acr-de-v.md) los corrige en v1.15.1, con `TestHCD047Regression` (rojo observado antes del cambio) y `TestHCD047Binary` (binario compilado en HOME temporales). Siguen presentes en v1.15.0: actualiza con `pi-gomemory-setup update`.
+
+| Hallazgo | Comportamiento corregido |
+|---|---|
+| C-001 | Si falla MCP o el registro de codemode, `settings.json` y `mcp.json` vuelven a sus bytes anteriores (o se informa del error de restauración); el reintento registra la propiedad de `+codemode` |
+| C-002 | Con `codemode off`, `install` y `update` solo escriben el perfil MCP directo y no tocan `defaultTools` |
+| C-003 | El protocolo heredado se retira de `AGENTS.md` después de instalar `gomemory-context.ts`; si esa instalación falla, `AGENTS.md` no cambia |
+| C-004 | Con marcadores de pi-gomemory ambiguos (huérfanos, repetidos o invertidos), `install`, `uninstall` y `doctor` conservan `AGENTS.md` completo y avisan |
+| C-005 | Se retiran juntos el bloque marcado y todas las copias exactas del protocolo histórico sin marcas |
+| C-006 | `uninstall` reconoce el perfil híbrido exacto de v1.14.0; las definiciones editadas se conservan |
+| C-007 | Un `codemode.json` ilegible o inválido hace fallar `uninstall`, que lo conserva junto con `+codemode` |
+| C-008 | La propiedad de `+codemode` queda ligada al destino real de `settings.json`; si el destino cambia, o el registro de v1.15.0 no lo identifica, `+codemode` se conserva con aviso |
 
 
 ## ACR/ADM del 2026-11-17 y seguimiento sobre v1.13.8

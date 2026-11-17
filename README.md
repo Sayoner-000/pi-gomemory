@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.15.0"><img src="https://img.shields.io/badge/version-1.15.0-blue" alt="Version 1.15.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.15.1"><img src="https://img.shields.io/badge/version-1.15.1-blue" alt="Version 1.15.1"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -96,7 +96,7 @@ El instalador fusiona tu configuración en lugar de reemplazarla:
 
 - En `mcp.json` solo cambia sus tres entradas. Tus otros servidores se conservan tal cual, con todos sus campos.
 - En `pi-cc-extensions.json` conserva tus claves; `showStartupHeader` se desactiva para evitar que tape el banner de gomemory.
-- En `AGENTS.md` retira el bloque heredado de pi-gomemory y conserva tu texto, permisos y enlaces. Si solo había protocolo, elimina el archivo normal o vacía el destino del enlace.
+- En `AGENTS.md` retira el bloque heredado de pi-gomemory, después de instalar la extensión que lo sustituye, y conserva tu texto, permisos y enlaces. Si solo había protocolo, elimina el archivo normal o vacía el destino del enlace. Si los marcadores de pi-gomemory son ambiguos, conserva el archivo completo y avisa.
 - Si un JSON existente es inválido, la instalación se detiene sin modificarlo.
 - No escribe nada en el directorio desde el que lo ejecutas ni en la configuración de otros agentes.
 
@@ -215,6 +215,7 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 ## Documentación
 
 - [Guía HTML v1.15](docs/Guia-PI-GOMEMORY-v1.15.html): instalación, contexto por sesión y referencia de comandos
+- [Notas de v1.15.1](docs/releases/v1.15.1.md): corrección de los ocho hallazgos del ACR de v1.15.0
 - [Notas de v1.15.0](docs/releases/v1.15.0.md): contexto vivo, codemode por defecto y migración del protocolo
 - [Notas de v1.14.0](docs/releases/v1.14.0.md): modo `codemode` híbrido (`on`/`off`/`status`), validación y subida de pins de Pi (`pi-antigravity@0.14.0`, `pi-cc-extensions@1.0.21`), y cierre de los hallazgos ACR/ADM H-02..H-05 y F-01..F-02
 - [Notas de v1.13.8](docs/releases/v1.13.8.md): `/tdd` falla en lugar de acumular sin límite una línea de salida enorme, y la cuota de Antigravity ya no da por buena una respuesta vacía ni le atribuye un plan

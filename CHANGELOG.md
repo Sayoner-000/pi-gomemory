@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.15.1] - 2026-11-17
+
+### Fixed
+- `codemode on`, `install` y `update` restauran `settings.json` y `mcp.json` si fallan a medias; el reintento registra la propiedad de `+codemode`.
+- Con `codemode off`, `install` y `update` dejan directos los servidores MCP propios sin tocar `defaultTools`.
+- La propiedad de `+codemode` queda ligada al archivo real de `settings.json`; si el destino cambia, o el registro de v1.15.0 no lo identifica, `uninstall` lo conserva con aviso.
+- El protocolo heredado se retira de `AGENTS.md` solo después de instalar `gomemory-context.ts`, junto con todas las copias históricas sin marcas. Con marcadores ambiguos, el archivo se conserva completo y se avisa.
+- `uninstall` reconoce el perfil híbrido de v1.14.0 y falla, conservándolo, ante un `codemode.json` ilegible o inválido.
+
+### Documentation
+- Notas de v1.15.1, referencias de instalación y problemas conocidos actualizadas. El [ACR de v1.15.0](docs/audits/2026-11-17-acr-v1.15.0.md) se publica con sus adjuntos y sin cambios (HCD-047).
+
 ## [v1.15.0] - 2026-11-17
 
 ### Added
