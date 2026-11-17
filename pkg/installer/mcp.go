@@ -1,11 +1,37 @@
 package installer
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 )
+
+// legacyHybridV1140 es el perfil híbrido exacto que escribía v1.14.0 (extraído
+// del tag). uninstall lo reconoce como propio sin relajar la comparación de
+// perfiles personalizados (HCD-047, C-06).
+//
+//go:embed legacy/mcp-hybrid-v1.14.0.json
+var legacyHybridV1140 []byte
+
+// managedMCPProfiles devuelve, por servidor, las definiciones exactas que
+// pi-gomemory ha escrito: directa, híbrida vigente e híbridas publicadas.
+func managedMCPProfiles() map[string][]json.RawMessage {
+	profiles := map[string][]json.RawMessage{}
+	for _, set := range []map[string]MCPServerDef{DefaultMCPServers(), CodemodeMCPServers()} {
+		for name, def := range set {
+			raw, _ := json.Marshal(def)
+			profiles[name] = append(profiles[name], raw)
+		}
+	}
+	var legacy map[string]json.RawMessage
+	_ = json.Unmarshal(legacyHybridV1140, &legacy)
+	for name, raw := range legacy {
+		profiles[name] = append(profiles[name], raw)
+	}
+	return profiles
+}
 
 // MCPServerDef define la especificación de un servidor MCP en Pi.
 type MCPServerDef struct {

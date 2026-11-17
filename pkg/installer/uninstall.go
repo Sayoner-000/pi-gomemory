@@ -121,6 +121,11 @@ func (p *UninstallPlan) addNotice(target, reason string) {
 	p.Actions = append(p.Actions, UninstallAction{Kind: ActionSkip, Target: target, Reason: reason, notice: true})
 }
 
+// addKeep añade una conservación que se imprime siempre (HCD-047, Q1).
+func (p *UninstallPlan) addKeep(target, reason string) {
+	p.Actions = append(p.Actions, UninstallAction{Kind: ActionKeep, Target: target, Reason: reason, notice: true})
+}
+
 // inspectFailed registra un error de inspección: la ausencia es inocua y el
 // resto es fallido (Q2).
 func (p *UninstallPlan) inspectFailed(target string, err error) {
@@ -455,20 +460,24 @@ func (p *UninstallPlan) planMCP(piAgentDir string) {
 			return
 		}
 	}
-	defs, hybrid := DefaultMCPServers(), CodemodeMCPServers()
+	profiles := managedMCPProfiles()
 	for _, name := range []string{"gomemory", "codegraph", "codebase-memory"} {
 		cur, ok := servers[name]
 		if !ok {
 			continue
 		}
 		target := path + " › mcpServers." + name
-		// Es de pi-gomemory si coincide con el perfil directo o con el híbrido
-		// de codemode, que desde HCD-046 es el modo por defecto.
-		want, _ := json.Marshal(defs[name])
-		if hyb, _ := json.Marshal(hybrid[name]); sameJSON(cur, hyb) {
-			want = hyb
+		// Es de pi-gomemory si coincide exactamente con un perfil que escribió:
+		// directo, híbrido vigente (por defecto desde HCD-046) o híbrido
+		// publicado en una versión anterior (HCD-047, C-06).
+		var want json.RawMessage
+		for _, p := range profiles[name] {
+			if sameJSON(cur, p) {
+				want = p
+				break
+			}
 		}
-		if !sameJSON(cur, want) {
+		if want == nil {
 			p.add(ActionSkip, target, "no coincide con la definición de pi-gomemory", nil)
 			continue
 		}
@@ -497,44 +506,72 @@ func (p *UninstallPlan) planMCP(piAgentDir string) {
 	}
 }
 
-// stripInstructions quita el bloque de pi-gomemory (o el protocolo sin marcadores)
-// y el separador que añadió el instalador. ok indica si había algo que quitar.
-func stripInstructions(content string) (string, bool) {
-	start := strings.Index(content, instructionsStart)
-	end := strings.Index(content, instructionsEnd)
-	var before, after string
-	switch {
-	case start >= 0 && end > start:
-		before, after = content[:start], content[end+len(instructionsEnd):]
-	default:
+// ambiguousMarkers indica si content tiene marcadores de pi-gomemory que no
+// forman exactamente un bloque: apertura o cierre huérfano, repetidos o en
+// orden inverso. Entonces no se sabe qué texto es propio y no se toca nada
+// del archivo, aunque haya otros bloques reconocibles (HCD-047, C-04, Q2).
+func ambiguousMarkers(content string) bool {
+	starts := strings.Count(content, instructionsStart)
+	ends := strings.Count(content, instructionsEnd)
+	if starts == 0 && ends == 0 {
+		return false
+	}
+	return starts != 1 || ends != 1 || strings.Index(content, instructionsEnd) < strings.Index(content, instructionsStart)
+}
+
+// stripLegacyBlocks quita el bloque marcado y todas las copias exactas del
+// protocolo sin marcadores, cada uno con el separador que añadió el
+// instalador (HCD-047, C-05). Devuelve el resultado y los bloques quitados;
+// con marcadores ambiguos no quita nada.
+func stripLegacyBlocks(content string) (string, []string) {
+	if ambiguousMarkers(content) {
+		return content, nil
+	}
+	var blocks []string
+	if start := strings.Index(content, instructionsStart); start >= 0 {
+		end := strings.Index(content, instructionsEnd) + len(instructionsEnd)
+		blocks = append(blocks, content[start:end])
+		content = cutBlock(content, start, end)
+	}
+	for {
 		i, p, ok := findLegacyProtocol(content)
 		if !ok {
-			return content, false
+			return content, blocks
 		}
-		before, after = content[:i], content[i+len(p):]
+		blocks = append(blocks, p)
+		content = cutBlock(content, i, i+len(p))
 	}
-	after = strings.TrimPrefix(after, "\n")
+}
+
+// cutBlock quita content[from:to] y el salto que lo separaba del texto
+// siguiente; si no queda texto detrás, tampoco deja líneas vacías al final.
+func cutBlock(content string, from, to int) string {
+	before, after := content[:from], strings.TrimPrefix(content[to:], "\n")
 	if strings.TrimSpace(after) == "" {
 		before = strings.TrimRight(before, "\n")
 		if before != "" {
 			before += "\n"
 		}
 	}
-	return before + after, true
+	return before + after
 }
 
-// instructionsBlock devuelve el bloque de pi-gomemory que stripInstructions quitaría.
-func instructionsBlock(content string) (string, bool) {
-	start := strings.Index(content, instructionsStart)
-	end := strings.Index(content, instructionsEnd)
-	if start >= 0 && end > start {
-		return content[start : end+len(instructionsEnd)], true
-	}
-	if _, p, ok := findLegacyProtocol(content); ok {
-		return p, true
-	}
-	return "", false
+// stripInstructions quita los bloques de pi-gomemory (marcado o sin
+// marcadores) y sus separadores. ok indica si había algo que quitar.
+func stripInstructions(content string) (string, bool) {
+	out, blocks := stripLegacyBlocks(content)
+	return out, len(blocks) > 0
 }
+
+// instructionsBlock devuelve los bloques de pi-gomemory que stripInstructions
+// quitaría, unidos, para comparar el plan con el archivo al aplicar.
+func instructionsBlock(content string) (string, bool) {
+	_, blocks := stripLegacyBlocks(content)
+	return strings.Join(blocks, "\x00"), len(blocks) > 0
+}
+
+// reasonAmbiguousAgents es el aviso común de install, uninstall y doctor.
+const reasonAmbiguousAgents = "marcadores de pi-gomemory ambiguos: se conserva AGENTS.md completo; revísalo a mano"
 
 func (p *UninstallPlan) planAgents(piAgentDir string) {
 	path := filepath.Join(piAgentDir, "AGENTS.md")
@@ -544,6 +581,10 @@ func (p *UninstallPlan) planAgents(piAgentDir string) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		p.inspectFailed(path, err)
+		return
+	}
+	if ambiguousMarkers(string(data)) {
+		p.addNotice(path, reasonAmbiguousAgents)
 		return
 	}
 	planned, ok := instructionsBlock(string(data))
@@ -561,6 +602,9 @@ func (p *UninstallPlan) planAgents(piAgentDir string) {
 		if err != nil {
 			return goneOr(err)
 		}
+		if ambiguousMarkers(string(cur)) {
+			return errChangedAfterPlan
+		}
 		block, ok := instructionsBlock(string(cur))
 		if !ok {
 			return errGoneAfterPlan
@@ -573,7 +617,9 @@ func (p *UninstallPlan) planAgents(piAgentDir string) {
 	})
 }
 
-func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
+// planSettings planifica settings.json. state es el registro de codemode, o
+// nil si no se pudo leer o interpretar.
+func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string, state *codemodeState) {
 	path := filepath.Join(piAgentDir, "settings.json")
 	if !p.planConfig(path) {
 		return
@@ -655,11 +701,28 @@ func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
 		}
 	}
 
-	// `+codemode` solo se retira si consta que lo añadió pi-gomemory (HCD-046).
+	// `+codemode` solo se retira si consta que lo añadió pi-gomemory (HCD-046)
+	// en este mismo destino de settings.json (HCD-047, C-07, C-08).
 	var tools []string
 	if raw, ok := obj["defaultTools"]; ok && json.Unmarshal(raw, &tools) == nil && slices.Contains(tools, "+codemode") {
-		if st, err := readCodemodeState(home); err == nil && st.AddedPlusCodemode {
-			p.add(ActionRemove, path+" › defaultTools (+codemode)", "codemode activado por pi-gomemory", func() error {
+		target := path + " › defaultTools (+codemode)"
+		current, _ := configTarget(path)
+		switch {
+		case state == nil:
+			p.addKeep(target, "la propiedad no se puede comprobar porque codemode.json no es válido")
+		case !state.AddedPlusCodemode:
+		case state.SettingsTarget == "":
+			p.addKeep(target, "el registro de propiedad no identifica el destino de settings.json; no se pudo comprobar que lo añadiera pi-gomemory")
+		case state.SettingsTarget != current:
+			p.addKeep(target, "pi-gomemory lo añadió en otro destino ("+state.SettingsTarget+"); este pertenece a la persona")
+		default:
+			owned := state.SettingsTarget
+			p.add(ActionRemove, target, "codemode activado por pi-gomemory", func() error {
+				if now, err := configTarget(path); err != nil {
+					return err
+				} else if now != owned {
+					return errChangedAfterPlan
+				}
 				return editPlannedJSON(path, func(o map[string]json.RawMessage) error {
 					raw, ok := o["defaultTools"]
 					if !ok {
@@ -800,9 +863,19 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 
 	plan.planSkillDir(SkillRepoDir(opts.HomeDir), opts.HomeDir)
 	plan.planSkillDir(filepath.Join(opts.PiAgentDir, "skills"), opts.HomeDir)
+	// Un codemode.json ilegible o inválido es un fallo: se conserva para
+	// diagnóstico y reintento, igual que el +codemode cuya propiedad no se puede
+	// comprobar (HCD-047, C-07).
+	var state *codemodeState
+	if st, err := readCodemodeState(opts.HomeDir); err != nil {
+		plan.add(ActionFail, CodemodeStatePath(opts.HomeDir), "no se pudo interpretar la preferencia de codemode; se conserva: "+err.Error(), nil)
+	} else {
+		state = &st
+	}
+
 	plan.planMCP(opts.PiAgentDir)
 	plan.planAgents(opts.PiAgentDir)
-	plan.planSettings(opts.PiAgentDir, opts.HomeDir, themeFile)
+	plan.planSettings(opts.PiAgentDir, opts.HomeDir, themeFile, state)
 
 	plan.planPlainFile(DefaultDepsCachePath(opts.PiAgentDir), "caché de dependencias")
 	plan.planPlainFile(DefaultUpdateCachePath(opts.PiAgentDir), "caché de actualizaciones")
@@ -813,8 +886,10 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 		plan.planSelf(m, opts)
 	}
 	// Como el manifiesto, prueba la propiedad de +codemode para un reintento:
-	// solo se retira si nada falló (HCD-046).
-	plan.planRegularRemoval(CodemodeStatePath(opts.HomeDir), "preferencia de codemode de pi-gomemory", true)
+	// solo se retira si nada falló (HCD-046) y si se pudo interpretar.
+	if state != nil {
+		plan.planRegularRemoval(CodemodeStatePath(opts.HomeDir), "preferencia de codemode de pi-gomemory", true)
+	}
 	plan.planManifest(ManifestPath(opts.HomeDir))
 	return plan, nil
 }

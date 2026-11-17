@@ -1,0 +1,41 @@
+{
+  "mcpServers": {
+    "codebase-memory": {
+      "command": "codebase-memory-mcp",
+      "exposure": "codemode",
+      "toolExposure": {
+        "check_index_coverage": "direct",
+        "get_code_snippet": "direct",
+        "search_graph": "direct",
+        "trace_path": "direct"
+      },
+      "description": "Codebase memory knowledge graph for deep structural queries and call tracing"
+    },
+    "codegraph": {
+      "command": "codegraph",
+      "args": [
+        "serve",
+        "--mcp"
+      ],
+      "exposure": "direct",
+      "description": "CodeGraph SQLite AST code intelligence and structural exploration"
+    },
+    "gomemory": {
+      "command": "mem",
+      "args": [
+        "mcp"
+      ],
+      "exposure": "codemode",
+      "toolExposure": {
+        "end_session": "direct",
+        "get_context": "direct",
+        "get_memory": "direct",
+        "get_plan_context": "direct",
+        "save_memory": "direct",
+        "save_session_summary": "direct",
+        "search_memories": "direct"
+      },
+      "description": "Gomemory persistent project memory, semantic graphs, checkpoints, HCD and review protocol"
+    }
+  }
+}

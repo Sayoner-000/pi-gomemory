@@ -61,23 +61,24 @@ func InstallAll(assets fs.FS, opts *Options) error {
 		return fmt.Errorf("paso Plugin CC Extensions: %w", err)
 	}
 
-	// El protocolo ya no se escribe en AGENTS.md: llega en vivo con la extensión
-	// gomemory-context.ts (HCD-045). Este paso solo retira el bloque heredado.
-	fmt.Printf("%s==> [5/8] Retirando el protocolo heredado de AGENTS.md (el contexto llega en vivo desde gomemory)...%s\n", ColorCyan, ColorReset)
-	if err := retireLegacyStep(opts.PiAgentDir, os.Stdout); err != nil {
-		return fmt.Errorf("paso Instrucciones: %w", err)
-	}
-
-	fmt.Printf("%s==> [6/8] Reuniendo skills de gomemory y del anfitrión en %s...%s\n", ColorCyan, SkillRepoSetting, ColorReset)
+	fmt.Printf("%s==> [5/8] Reuniendo skills de gomemory y del anfitrión en %s...%s\n", ColorCyan, SkillRepoSetting, ColorReset)
 	res, err := InstallSkills(assets, opts)
 	if err != nil {
 		return fmt.Errorf("paso Skills: %w", err)
 	}
 	fmt.Printf("%s    ✓ %d skills embebidas y %d enlazadas del anfitrión (%d colisiones resueltas)%s\n", ColorMuted, res.Embedded, res.Linked, len(res.Collisions), ColorReset)
 
-	fmt.Printf("%s==> [7/8] Instalando extensión TUI Status Bar y Monitor de Tokens gomemory...%s\n", ColorCyan, ColorReset)
+	fmt.Printf("%s==> [6/8] Instalando extensión TUI Status Bar y Monitor de Tokens gomemory...%s\n", ColorCyan, ColorReset)
 	if err := InstallTUIExtension(assets, opts.PiAgentDir); err != nil {
 		return fmt.Errorf("paso TUI Extension: %w", err)
+	}
+
+	// El protocolo ya no se escribe en AGENTS.md: llega en vivo con la extensión
+	// gomemory-context.ts (HCD-045). Se retira el bloque heredado solo después
+	// de instalar ese reemplazo, para no perder ambos si falla (HCD-047, C-03).
+	fmt.Printf("%s==> [7/8] Retirando el protocolo heredado de AGENTS.md (el contexto llega en vivo desde gomemory)...%s\n", ColorCyan, ColorReset)
+	if err := retireLegacyStep(opts.PiAgentDir, os.Stdout); err != nil {
+		return fmt.Errorf("paso Instrucciones: %w", err)
 	}
 
 	fmt.Printf("%s==> [8/8] Generando harness launcher pi-gomemory para Herdr...%s\n", ColorCyan, ColorReset)

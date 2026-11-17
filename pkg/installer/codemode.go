@@ -22,25 +22,92 @@ type CodemodeStatus struct {
 // SetCodemode activa (enabled=true) o desactiva (enabled=false) el modo
 // codemode híbrido en ~/.pi/agent/settings.json y ~/.pi/agent/mcp.json.
 func SetCodemode(piAgentDir string, enabled bool) error {
-	_, err := setCodemode(piAgentDir, enabled)
-	return err
+	return withConfigRollback(piAgentDir, func() error {
+		_, _, err := setCodemode(piAgentDir, enabled)
+		return err
+	})
 }
 
-// setCodemode es SetCodemode e informa además si fue esta llamada la que
-// añadió `+codemode` a defaultTools (no estaba antes).
-func setCodemode(piAgentDir string, enabled bool) (bool, error) {
+// setCodemode es SetCodemode sin reversión: informa además si fue esta llamada
+// la que añadió `+codemode` a defaultTools y el destino real de settings.json.
+func setCodemode(piAgentDir string, enabled bool) (bool, string, error) {
 	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
-		return false, fmt.Errorf("crear %s: %w", piAgentDir, err)
+		return false, "", fmt.Errorf("crear %s: %w", piAgentDir, err)
 	}
-	added, err := setCodemodeSettings(piAgentDir, enabled)
+	added, target, err := setCodemodeSettings(piAgentDir, enabled)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	servers := DefaultMCPServers()
 	if enabled {
 		servers = CodemodeMCPServers()
 	}
-	return added, writeMCPServers(piAgentDir, servers)
+	return added, target, writeMCPServers(piAgentDir, servers)
+}
+
+// configSnapshot conserva los bytes de una configuración de Pi para
+// restaurarla si la conmutación de codemode falla a medias (HCD-047, C-01).
+type configSnapshot struct {
+	path   string
+	data   []byte
+	mode   os.FileMode
+	exists bool
+}
+
+func takeConfigSnapshot(path string) (configSnapshot, error) {
+	target, err := configTarget(path)
+	if err != nil {
+		return configSnapshot{}, err
+	}
+	s := configSnapshot{path: target}
+	info, err := os.Stat(target)
+	if errors.Is(err, fs.ErrNotExist) {
+		return s, nil
+	}
+	if err != nil {
+		return s, err
+	}
+	if s.data, err = os.ReadFile(target); err != nil {
+		return s, err
+	}
+	s.mode, s.exists = info.Mode().Perm(), true
+	return s, nil
+}
+
+func (s configSnapshot) restore() error {
+	if !s.exists {
+		if err := os.Remove(s.path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+	return writeFileAtomic(s.path, s.data, s.mode)
+}
+
+// withConfigRollback ejecuta fn y, si falla, devuelve settings.json y
+// mcp.json a sus bytes anteriores; un error al restaurar se informa junto al
+// original. Así un fallo no deja una activación sin registro de propiedad.
+func withConfigRollback(piAgentDir string, fn func() error) error {
+	var snaps []configSnapshot
+	for _, name := range []string{"settings.json", "mcp.json"} {
+		s, err := takeConfigSnapshot(filepath.Join(piAgentDir, name))
+		if err != nil {
+			return err
+		}
+		snaps = append(snaps, s)
+	}
+	err := fn()
+	if err == nil {
+		return nil
+	}
+	var restoreErr error
+	for _, s := range snaps {
+		restoreErr = errors.Join(restoreErr, s.restore())
+	}
+	if restoreErr != nil {
+		return fmt.Errorf("%w; no se pudo restaurar la configuración anterior de Pi: %v", err, restoreErr)
+	}
+	return err
 }
 
 // codemodeState es la preferencia de codemode que recuerda pi-gomemory
@@ -48,9 +115,12 @@ func setCodemode(piAgentDir string, enabled bool) (bool, error) {
 // `codemode on|off`; vacía, install aplica el valor por defecto (on).
 // AddedPlusCodemode prueba que `+codemode` lo añadió pi-gomemory, para que
 // uninstall lo retire sin tocar uno que ya tuviera la persona (como HCD-011).
+// SettingsTarget es el archivo donde lo añadió: la prueba solo vale para ese
+// destino (HCD-047, C-08). Un registro de v1.15.0 no lo incluye.
 type codemodeState struct {
 	Preference        string `json:"preference,omitempty"`
 	AddedPlusCodemode bool   `json:"added_plus_codemode,omitempty"`
+	SettingsTarget    string `json:"settings_target,omitempty"`
 }
 
 // CodemodeStatePath devuelve ~/.pi-gomemory/codemode.json.
@@ -82,39 +152,50 @@ func writeCodemodeState(home string, st codemodeState) error {
 }
 
 // enableCodemode activa el perfil híbrido y anota en st si pi-gomemory
-// añadió `+codemode`; nunca borra una propiedad ya probada.
+// añadió `+codemode` y en qué destino. Conserva una propiedad ya probada en el
+// mismo destino; si el destino cambió, esa prueba ya no vale (HCD-047, C-08).
 func enableCodemode(opts *Options, st *codemodeState) error {
-	added, err := setCodemode(opts.PiAgentDir, true)
+	added, target, err := setCodemode(opts.PiAgentDir, true)
 	if err != nil {
 		return err
 	}
-	st.AddedPlusCodemode = st.AddedPlusCodemode || added
+	switch {
+	case added:
+		st.AddedPlusCodemode, st.SettingsTarget = true, target
+	case st.AddedPlusCodemode && st.SettingsTarget != "" && st.SettingsTarget != target:
+		st.AddedPlusCodemode, st.SettingsTarget = false, ""
+	}
 	return nil
 }
 
 // SetCodemodePreference aplica `codemode on|off` y recuerda la elección para
-// que install y update la respeten (HCD-046).
+// que install y update la respeten (HCD-046). Si algo falla, settings.json y
+// mcp.json vuelven a su estado anterior (HCD-047, C-01).
 func SetCodemodePreference(opts *Options, enabled bool) error {
 	st, err := readCodemodeState(opts.HomeDir)
 	if err != nil {
 		return err
 	}
-	if enabled {
-		if err := enableCodemode(opts, &st); err != nil {
-			return err
+	return withConfigRollback(opts.PiAgentDir, func() error {
+		if enabled {
+			if err := enableCodemode(opts, &st); err != nil {
+				return err
+			}
+			st.Preference = "on"
+		} else {
+			if _, _, err := setCodemode(opts.PiAgentDir, false); err != nil {
+				return err
+			}
+			st = codemodeState{Preference: "off"}
 		}
-		st.Preference = "on"
-	} else {
-		if err := SetCodemode(opts.PiAgentDir, false); err != nil {
-			return err
-		}
-		st = codemodeState{Preference: "off"}
-	}
-	return writeCodemodeState(opts.HomeDir, st)
+		return writeCodemodeState(opts.HomeDir, st)
+	})
 }
 
 // applyCodemodeDefault es el paso MCP de install: codemode híbrido por
-// defecto, salvo que la persona lo desactivara con `codemode off`.
+// defecto, salvo que la persona lo desactivara con `codemode off`. Con off
+// solo escribe el perfil directo de los tres servidores propios y no toca
+// defaultTools, que puede llevar un `+codemode` de la persona (HCD-047, C-02).
 func applyCodemodeDefault(opts *Options, w io.Writer) error {
 	st, err := readCodemodeState(opts.HomeDir)
 	if err != nil {
@@ -122,12 +203,14 @@ func applyCodemodeDefault(opts *Options, w io.Writer) error {
 	}
 	if st.Preference == "off" {
 		fmt.Fprintf(w, "%s    · codemode desactivado por la persona (pi-gomemory-setup codemode off): se conserva el modo directo%s\n", ColorMuted, ColorReset)
-		return InstallMCPServers(opts.PiAgentDir)
+		return writeMCPServers(opts.PiAgentDir, DefaultMCPServers())
 	}
-	if err := enableCodemode(opts, &st); err != nil {
-		return err
-	}
-	return writeCodemodeState(opts.HomeDir, st)
+	return withConfigRollback(opts.PiAgentDir, func() error {
+		if err := enableCodemode(opts, &st); err != nil {
+			return err
+		}
+		return writeCodemodeState(opts.HomeDir, st)
+	})
 }
 
 // GetCodemodeStatus inspecciona settings.json y mcp.json para informar si el
@@ -149,11 +232,16 @@ func GetCodemodeStatus(piAgentDir string) (CodemodeStatus, error) {
 	}, nil
 }
 
-func setCodemodeSettings(piAgentDir string, enabled bool) (bool, error) {
+func setCodemodeSettings(piAgentDir string, enabled bool) (bool, string, error) {
 	settingsPath, err := configTarget(filepath.Join(piAgentDir, "settings.json"))
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
+	added, err := editCodemodeSettings(settingsPath, enabled)
+	return added, settingsPath, err
+}
+
+func editCodemodeSettings(settingsPath string, enabled bool) (bool, error) {
 	config, err := readJSONObject(settingsPath)
 	if err != nil {
 		return false, err

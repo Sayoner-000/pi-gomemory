@@ -45,9 +45,14 @@ const (
 	instructionsEnd   = "<!-- pi-gomemory:end -->"
 )
 
-// RetireLegacyInstructions quita de ~/.pi/agent/AGENTS.md el bloque que
+// errAmbiguousAgents indica que AGENTS.md tiene marcadores ambiguos y se
+// conserva entero (HCD-047, Q2).
+var errAmbiguousAgents = errors.New(reasonAmbiguousAgents)
+
+// RetireLegacyInstructions quita de ~/.pi/agent/AGENTS.md los bloques que
 // escribían las instalaciones anteriores a HCD-045 y nunca escribe uno nuevo.
-// Devuelve true si había bloque. Sin AGENTS.md o sin bloque no toca nada.
+// Devuelve true si había bloque. Sin AGENTS.md o sin bloque no toca nada; con
+// marcadores ambiguos tampoco, y devuelve errAmbiguousAgents.
 func RetireLegacyInstructions(piAgentDir string) (bool, error) {
 	path := filepath.Join(piAgentDir, "AGENTS.md")
 	target, err := configTarget(path)
@@ -60,6 +65,9 @@ func RetireLegacyInstructions(piAgentDir string) (bool, error) {
 	}
 	if err != nil {
 		return false, fmt.Errorf("leer %s: %w", target, err)
+	}
+	if ambiguousMarkers(string(data)) {
+		return false, errAmbiguousAgents
 	}
 	out, ok := stripInstructions(string(data))
 	if !ok {
@@ -99,6 +107,8 @@ func retireLegacyStep(piAgentDir string, w io.Writer) error {
 	switch {
 	case errors.As(err, &link):
 		return err
+	case errors.Is(err, errAmbiguousAgents):
+		fmt.Fprintf(w, "%s    ⚠ AGENTS.md: %s%s\n", ColorWarning, reasonAmbiguousAgents, ColorReset)
 	case err != nil:
 		fmt.Fprintf(w, "%s    ⚠ No se pudo retirar el protocolo heredado de AGENTS.md: %v. Corrige el permiso y ejecuta pi-gomemory-setup install.%s\n", ColorWarning, err, ColorReset)
 	case retired:
@@ -117,6 +127,9 @@ func legacyAgentsItem(piAgentDir string) *CheckItem {
 	data, err := os.ReadFile(target)
 	if err != nil {
 		return nil
+	}
+	if ambiguousMarkers(string(data)) {
+		return &CheckItem{Name: "AGENTS.md de Pi", Status: "WARN", Details: "AGENTS.md tiene " + reasonAmbiguousAgents}
 	}
 	if _, ok := instructionsBlock(string(data)); !ok {
 		return nil
