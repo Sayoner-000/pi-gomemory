@@ -1,0 +1,18 @@
+=== RUN   TestACRADM01NewPinOverridesOldCache
+    acradm_repro_test.go:24: old cache hides new approved pin 0.14.0: got []
+--- FAIL: TestACRADM01NewPinOverridesOldCache (0.00s)
+=== RUN   TestACRADM02PreserveSymlinkAfterPlan
+    acradm_repro_test.go:40: new personal symlink removed: apply=<nil> lstat=lstat /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestACRADM02PreserveSymlinkAfterPlan1395667930/001/pi-cc-extensions.json: no such file or directory
+--- FAIL: TestACRADM02PreserveSymlinkAfterPlan (0.00s)
+=== RUN   TestACRADM03FailedCommandIsNotVersion
+    acradm_repro_test.go:45: failed command accepted: version="9.0.0" error=nil
+--- FAIL: TestACRADM03FailedCommandIsNotVersion (0.00s)
+=== RUN   TestACRADM04MissingCacheIsNotHealthy
+    acradm_repro_test.go:51: unknown state reported healthy: rc=0 stdout="✓ El meta-harness y sus dependencias están al día.\n" stderr=""
+--- FAIL: TestACRADM04MissingCacheIsNotHealthy (0.00s)
+=== RUN   TestACRADM05EmptyEntriesAreBounded
+    acradm_repro_test.go:71: compressed=12116 bytes, payload=0, extracted files=2000, extraction error=<nil>
+--- PASS: TestACRADM05EmptyEntriesAreBounded (0.14s)
+FAIL
+FAIL	pi-gomemory/pkg/installer	0.354s
+FAIL

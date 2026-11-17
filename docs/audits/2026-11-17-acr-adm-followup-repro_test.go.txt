@@ -1,0 +1,43 @@
+package installer
+
+import (
+ "bytes"
+ "context"
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+)
+
+// Asserts safe behavior; failures demonstrate candidates in the frozen source.
+func TestFollowupInvalidVersionNotHealthy(t *testing.T) {
+ for _, versions := range [][2]string{{"1.0.0", "desconocida"}, {"dev", "1.0.0"}} {
+  cache := filepath.Join(t.TempDir(), "deps.json")
+  body := `{"checked_at":"2026-11-17T09:30:00Z","deps":[{"name":"x","current":"`+versions[0]+`","latest":"`+versions[1]+`"}]}`
+  if err := os.WriteFile(cache, []byte(body), 0600); err != nil { t.Fatal(err) }
+  probes := []DepProbe{{Name:"x", Current:func(context.Context)(string,error){return versions[0],nil}}}
+  var out, errs bytes.Buffer
+  rc := RunDepsUpdate(cache, probes, &out, &errs)
+  if rc == 0 || strings.Contains(out.String(), "están al día") { t.Errorf("uncomparable %v: rc=%d stdout=%q stderr=%q",versions,rc,out.String(),errs.String()) }
+ }
+}
+
+func TestFollowupLateEntryPreserved(t *testing.T) {
+ for _, kind := range []string{"cache", "manifest"} {
+  for _, replacement := range []string{"symlink", "directory"} {
+   t.Run(kind+"/"+replacement,func(t *testing.T){
+    dir := t.TempDir(); file := filepath.Join(dir,"owned.json"); target := filepath.Join(dir,"personal.json")
+    if err := os.WriteFile(file,[]byte("{}"),0600); err != nil {t.Fatal(err)}
+    if err := os.WriteFile(target,[]byte("SYNTH-PERSONAL"),0600); err != nil {t.Fatal(err)}
+    p := &UninstallPlan{}
+    if kind=="cache" {p.planPlainFile(file,"cache")} else {p.planManifest(file)}
+    if len(p.Actions)!=1 || p.Actions[0].apply==nil {t.Fatalf("unexpected plan: %+v",p.Actions)}
+    if err := os.Remove(file); err != nil {t.Fatal(err)}
+    if replacement=="symlink" {if err:=os.Symlink(target,file); err!=nil {t.Fatal(err)}} else {if err:=os.Mkdir(file,0700); err!=nil {t.Fatal(err)}}
+    err := p.Actions[0].apply()
+    if _, statErr := os.Lstat(file); statErr != nil {t.Errorf("replacement removed: apply=%v lstat=%v",err,statErr)}
+    if data,err:=os.ReadFile(target); err!=nil || string(data)!="SYNTH-PERSONAL" {t.Fatalf("target changed: %q %v",data,err)}
+   })
+  }
+ }
+}
