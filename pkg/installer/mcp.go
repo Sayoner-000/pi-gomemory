@@ -43,7 +43,9 @@ func DefaultMCPServers() map[string]MCPServerDef {
 // CodemodeMCPServers devuelve la configuración MCP en modo codemode híbrido:
 // gomemory y codebase-memory pasan a exposure "codemode" manteniendo como "direct"
 // únicamente las herramientas de protocolo y consulta diaria, mientras codegraph
-// permanece "direct" por tener una sola herramienta.
+// permanece "direct" por tener una sola herramienta. El bloque Pi de
+// gomemory-context.ts nombra las directas a partir de las tools efectivas
+// de cada ejecución, así que no hay lista que mantener sincronizada (HCD-045).
 func CodemodeMCPServers() map[string]MCPServerDef {
 	servers := DefaultMCPServers()
 
@@ -55,8 +57,13 @@ func CodemodeMCPServers() map[string]MCPServerDef {
 		"search_memories":      "direct",
 		"get_memory":           "direct",
 		"save_memory":          "direct",
+		"start_session":        "direct",
 		"save_session_summary": "direct",
 		"end_session":          "direct",
+		"search_code":          "direct",
+		"get_symbol":           "direct",
+		"octopus_route_task":   "direct",
+		"judge_memories":       "direct",
 	}
 	servers["gomemory"] = gm
 

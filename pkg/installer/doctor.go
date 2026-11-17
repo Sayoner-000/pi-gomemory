@@ -262,6 +262,11 @@ func RunDoctor(opts *Options) []CheckItem {
 	// al final para no mover las comprobaciones anteriores.
 	items = append(items, pinsDoctorItems(DefaultDepsCachePath(piAgentDir))...)
 
+	// 10. Protocolo heredado en AGENTS.md (HCD-045): solo avisa si sigue ahí.
+	if item := legacyAgentsItem(piAgentDir); item != nil {
+		items = append(items, *item)
+	}
+
 	return items
 }
 

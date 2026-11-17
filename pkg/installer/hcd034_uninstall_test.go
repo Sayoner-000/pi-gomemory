@@ -205,6 +205,11 @@ func TestHCD034C03(t *testing.T) {
 			},
 		},
 		"bloque de AGENTS.md": {
+			// Desde HCD-045 install no escribe el bloque: se siembra el de una
+			// instalación anterior, que uninstall sigue retirando.
+			setup: func(t *testing.T, o *Options) {
+				writeFile(t, filepath.Join(o.PiAgentDir, "AGENTS.md"), instructionsStart+"\n"+legacyPiInstructions+instructionsEnd+"\n")
+			},
 			target: func(o *Options) string { return filepath.Join(o.PiAgentDir, "AGENTS.md") + " › bloque pi-gomemory" },
 			mutate: func(t *testing.T, o *Options) {
 				p := filepath.Join(o.PiAgentDir, "AGENTS.md")

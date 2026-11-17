@@ -2,8 +2,8 @@
  * gomemory-plan.ts — Modo /plan de pi-gomemory.
  *
  * /plan alterna un modo que bloquea las modificaciones comunes (edit, write y
- * comandos bash de gomemory-plan-patterns.json) e inyecta en el system prompt el
- * método de descomposición atómica de `mem plan-context`. /plan <texto> activa el
+ * comandos bash de gomemory-plan-patterns.json) e inyecta como sección del system
+ * prompt (`gomemory-plan`) el método de descomposición atómica de `mem plan-context`. /plan <texto> activa el
  * modo y envía el texto como solicitud. /plan run solo desactiva.
  */
 
@@ -34,7 +34,9 @@ Descompón la solicitud en un árbol de tareas atómicas: cada hoja con un verbo
 resultado inspeccionable y la comprobación que la demuestra. Explora con herramientas de lectura,
 entrega el árbol y pregunta si se ejecuta. La persona sale del modo con /plan o /plan run.`;
 
-const REASON = "Modo plan activo: no se permiten modificaciones. Usa /plan o /plan run para salir.";
+export const PLAN_SECTION = "gomemory-plan";
+
+const REASON ="Modo plan activo: no se permiten modificaciones. Usa /plan o /plan run para salir.";
 
 export default function (pi: ExtensionAPI) {
 	let active = false;
@@ -106,8 +108,13 @@ export default function (pi: ExtensionAPI) {
 		}
 	});
 
+	// El método va como sección del prompt (HCD-045, Q5): reemplazar systemPrompt
+	// tapaba la sección de gomemory y rompía la caché del prompt en cada cambio.
 	pi.on("before_agent_start", async (event: any) => {
-		if (!active) return;
-		return { systemPrompt: `${event.systemPrompt}\n\n${method || FALLBACK}` };
+		const opts = event?.systemPromptOptions;
+		if (!opts) return;
+		opts.sections ??= {};
+		if (active) opts.sections[PLAN_SECTION] = method || FALLBACK;
+		else delete opts.sections[PLAN_SECTION];
 	});
 }

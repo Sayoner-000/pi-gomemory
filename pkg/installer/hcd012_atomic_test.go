@@ -66,11 +66,14 @@ func TestHCD012AtomicInstall(t *testing.T) {
 	if readFile(t, filepath.Join(opts.PiAgentDir, "extensions", "gomemory-splash.ts")) != readAsset(t, "extensions/gomemory-splash.ts") {
 		t.Error("extensión distinta")
 	}
-	if err := InstallInstructions(opts.PiAgentDir); err != nil {
+	// HCD-045: install ya no escribe el protocolo; solo retira el bloque heredado.
+	agents := filepath.Join(opts.PiAgentDir, "AGENTS.md")
+	writeFile(t, agents, "mías\n\n"+instructionsStart+"\nviejo\n"+instructionsEnd+"\n")
+	if _, err := RetireLegacyInstructions(opts.PiAgentDir); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(readFile(t, filepath.Join(opts.PiAgentDir, "AGENTS.md")), "gomemory") {
-		t.Error("AGENTS.md sin bloque")
+	if got := readFile(t, agents); strings.Contains(got, instructionsStart) || !strings.Contains(got, "mías") {
+		t.Errorf("AGENTS.md tras retirar el bloque: %q", got)
 	}
 	if _, err := InstallSkills(assets, opts); err != nil {
 		t.Fatal(err)

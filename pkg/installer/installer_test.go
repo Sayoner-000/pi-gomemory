@@ -102,26 +102,24 @@ func TestInstallMCPServersRejectsInvalidJSON(t *testing.T) {
 	}
 }
 
-// D3: AGENTS.md conserva lo ajeno, es idempotente y migra el formato sin marcadores.
+// D3 (HCD-045): install conserva lo ajeno de AGENTS.md, es idempotente, retira
+// el formato sin marcadores y nunca escribe el protocolo.
 func TestInstallInstructionsPreservesUserContent(t *testing.T) {
 	cases := map[string]string{
-		"vacío":            "",
 		"contenido propio": "# Mis reglas\n\nNo tocar.\n",
-		"legado v1.0.0":    "# Mis reglas\n\n" + GomemoryPiInstructions + "\nPie propio.\n",
+		"legado v1.0.0":    "# Mis reglas\n\n" + legacyPiInstructions + "\nPie propio.\n",
 	}
 	for name, initial := range cases {
 		t.Run(name, func(t *testing.T) {
 			opts := sandbox(t)
 			path := filepath.Join(opts.PiAgentDir, "AGENTS.md")
-			if initial != "" {
-				writeFile(t, path, initial)
-			}
+			writeFile(t, path, initial)
 
-			if err := InstallInstructions(opts.PiAgentDir); err != nil {
+			if _, err := RetireLegacyInstructions(opts.PiAgentDir); err != nil {
 				t.Fatal(err)
 			}
 			first := readFile(t, path)
-			if err := InstallInstructions(opts.PiAgentDir); err != nil {
+			if _, err := RetireLegacyInstructions(opts.PiAgentDir); err != nil {
 				t.Fatal(err)
 			}
 			second := readFile(t, path)
@@ -129,8 +127,8 @@ func TestInstallInstructionsPreservesUserContent(t *testing.T) {
 			if first != second {
 				t.Errorf("no es idempotente:\n1ª %q\n2ª %q", first, second)
 			}
-			if n := strings.Count(second, "Protocolo para Pi"); n != 1 {
-				t.Errorf("el protocolo aparece %d veces", n)
+			if strings.Contains(second, "Protocolo para Pi") {
+				t.Errorf("AGENTS.md conserva el protocolo: %q", second)
 			}
 			for _, keep := range []string{"# Mis reglas", "No tocar.", "Pie propio."} {
 				if strings.Contains(initial, keep) && !strings.Contains(second, keep) {

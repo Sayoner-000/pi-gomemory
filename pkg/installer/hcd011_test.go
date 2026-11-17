@@ -13,6 +13,10 @@ func installSandbox(t *testing.T) *Options {
 	if err := InstallAll(repoAssets(t), opts); err != nil {
 		t.Fatal(err)
 	}
+	// Desde HCD-045 install no escribe el protocolo en AGENTS.md. Se siembra el
+	// bloque que dejaba una instalación anterior, que uninstall debe seguir
+	// retirando en las máquinas que actualizan.
+	writeFile(t, filepath.Join(opts.PiAgentDir, "AGENTS.md"), instructionsStart+"\n"+legacyPiInstructions+instructionsEnd+"\n")
 	return opts
 }
 

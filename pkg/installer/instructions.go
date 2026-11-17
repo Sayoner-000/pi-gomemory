@@ -1,99 +1,129 @@
 package installer
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// GomemoryPiInstructions contiene el protocolo activo de gomemory optimizado para Pi Coding Agent.
-const GomemoryPiInstructions = `# Memoria Persistente y Grafo de Código (gomemory) — Protocolo para Pi
+// Versiones del protocolo que pi-gomemory llegó a publicar en
+// ~/.pi/agent/AGENTS.md, extraídas tal cual de git (HCD-045). Ya no se
+// instalan: el contexto llega en vivo con la extensión gomemory-context.ts.
+// Solo sirven para reconocer y retirar el formato antiguo sin marcadores, que
+// exige coincidencia exacta para no tocar nunca texto ajeno.
+var (
+	//go:embed legacy/protocol-1.txt
+	legacyProtocolV1 string // b47f46f/fb00282, 2026-11-09
+	//go:embed legacy/protocol-2.txt
+	legacyProtocolV2 string // f4a50ae…49cbbe9 (v1.14.0), con Splash
+)
 
-Tienes conectados como herramientas directas y CLI en el entorno:
-* **gomemory** (tools MCP directas: search_memories, get_context, save_memory, search_code, get_symbol; CLI: mem)
-* **codegraph** (tool MCP directa: codegraph_explore; CLI: codegraph)
-* **codebase-memory** (tools MCP directas: search_graph, trace_path, get_code_snippet, check_index_coverage)
+// legacyPiProtocols, de la más reciente a la más antigua.
+var legacyPiProtocols = []string{legacyProtocolV2, legacyProtocolV1}
 
-## Reglas Obligatorias de Búsqueda y Ejecución:
+// legacyPiInstructions es la última versión publicada.
+var legacyPiInstructions = legacyProtocolV2
 
-1. **Búsqueda Semántica y Memoria (No uses grep para decisiones pasadas):**
-   - Llama a la tool directa 'search_memories(query)' o en bash ejecuta 'mem search "tema"'.
-   - Para cargar contexto histórico: llama a 'get_context()' o en bash ejecuta 'mem context'.
-
-2. **Exploración de Código (Grafo primero antes que find/grep):**
-   - Para entender arquitectura, rutas o relaciones: llama a 'codegraph_explore' o 'search_graph' / 'trace_path'.
-   - Usa grep/find en bash SOLO para literales exactos, configs o archivos no indexados.
-
-3. **Guardado Proactivo Obligatorio:**
-   - Inmediatamente tras decidir arquitectura, corregir un bug (con causa raíz) o fijar una convención:
-     Llama a 'save_memory(title, type, content)' o en bash 'mem save -t "título" -y <decision|bugfix|pattern> "contenido"'.
-
-4. **Metodología HCD:**
-   - Comprueba la unidad activa con 'mem hcd show'.
-   - Las comprobaciones de tareas ('go test ...', etc.) se ejecutan en 'bash' para observar el estado verde o rojo.
-   - Registra la evidencia oficial ejecutando 'mem hcd verify'.
-
-5. **Modo Plan:**
-   - Antes de redactar un plan o estrategia: llama a 'get_plan_context()' o 'mem plan-context'.
-   - Entrega el árbol de tareas atómicas y detente sin ejecutar código.
-
-6. **Splash (revisor independiente):**
-   - Ejecuta la herramienta splash_review con la ruta del documento y una lente opcional.
-   - Splash es un rol agnóstico; no depende de ~/.claude/agents ni de otro harness.
-   - No envíes historial ni memoria al revisor. No sustituyas la revisión por una autoevaluación.
-   - Un fallo de ejecución no equivale a una revisión aprobada. Registra el resultado HCD solo después de leer la revisión real.
-`
+// findLegacyProtocol localiza en content una versión publicada del protocolo
+// sin marcadores y devuelve su posición y su texto.
+func findLegacyProtocol(content string) (int, string, bool) {
+	for _, p := range legacyPiProtocols {
+		if i := strings.Index(content, p); i >= 0 {
+			return i, p, true
+		}
+	}
+	return -1, "", false
+}
 
 const (
 	instructionsStart = "<!-- pi-gomemory:start -->"
 	instructionsEnd   = "<!-- pi-gomemory:end -->"
 )
 
-// InstallInstructions escribe el protocolo en ~/.pi/agent/AGENTS.md dentro de
-// un bloque delimitado. Si el bloque ya existe lo reemplaza; si no, lo añade
-// al final. El resto del archivo de la persona se conserva intacto.
-func InstallInstructions(piAgentDir string) error {
-	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
-		return fmt.Errorf("crear %s: %w", piAgentDir, err)
-	}
-	agentsPath, err := configTarget(filepath.Join(piAgentDir, "AGENTS.md"))
+// RetireLegacyInstructions quita de ~/.pi/agent/AGENTS.md el bloque que
+// escribían las instalaciones anteriores a HCD-045 y nunca escribe uno nuevo.
+// Devuelve true si había bloque. Sin AGENTS.md o sin bloque no toca nada.
+func RetireLegacyInstructions(piAgentDir string) (bool, error) {
+	path := filepath.Join(piAgentDir, "AGENTS.md")
+	target, err := configTarget(path)
 	if err != nil {
-		return err
+		return false, err
 	}
-
-	existing, err := os.ReadFile(agentsPath)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("leer %s: %w", agentsPath, err)
+	data, err := os.ReadFile(target)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
 	}
-
-	// Conserva el modo que la persona dio a AGENTS.md; uno nuevo, 0644 (HCD-032).
-	mode, err := modeOrDefault(agentsPath, 0644)
 	if err != nil {
-		return err
+		return false, fmt.Errorf("leer %s: %w", target, err)
 	}
-	return writeFileAtomic(agentsPath, []byte(mergeInstructions(string(existing))), mode)
+	out, ok := stripInstructions(string(data))
+	if !ok {
+		return false, nil
+	}
+	if err := writeStrippedAgents(path, target, out); err != nil {
+		return false, fmt.Errorf("retirar el protocolo heredado de %s: %w", path, err)
+	}
+	return true, nil
 }
 
-// mergeInstructions inserta o reemplaza el bloque de pi-gomemory en content.
-func mergeInstructions(content string) string {
-	block := instructionsStart + "\n" + GomemoryPiInstructions + instructionsEnd + "\n"
-
-	start := strings.Index(content, instructionsStart)
-	end := strings.Index(content, instructionsEnd)
-	if start >= 0 && end > start {
-		return content[:start] + block + strings.TrimPrefix(content[end+len(instructionsEnd):], "\n")
+// writeStrippedAgents escribe AGENTS.md ya sin el bloque de pi-gomemory. Lo
+// comparten install y uninstall (HCD-045, Q4): si no queda texto, un archivo
+// normal se borra y un enlace se conserva con su destino vacío (HCD-036); en
+// cualquier otro caso se conservan los permisos (HCD-032).
+func writeStrippedAgents(path, target, out string) error {
+	if strings.TrimSpace(out) == "" {
+		if target == path {
+			return os.Remove(path)
+		}
+		out = ""
 	}
-
-	// Instalaciones ≤ v1.0.0 escribían el protocolo sin marcadores.
-	if i := strings.Index(content, GomemoryPiInstructions); i >= 0 {
-		return content[:i] + block + strings.TrimPrefix(content[i+len(GomemoryPiInstructions):], "\n")
+	mode, err := modeOrDefault(target, 0644)
+	if err != nil {
+		return err
 	}
+	return writeFileAtomic(target, []byte(out), mode)
+}
 
-	if strings.TrimSpace(content) == "" {
-		return block
+// retireLegacyStep es el paso de install. Un AGENTS.md enlazado que no lleva a
+// un archivo aborta la instalación, como el resto de configuraciones de Pi
+// (HCD-036, Q6). Cualquier otro fallo solo se avisa y la instalación sigue
+// (HCD-045, C-07); doctor lo seguirá avisando.
+func retireLegacyStep(piAgentDir string, w io.Writer) error {
+	retired, err := RetireLegacyInstructions(piAgentDir)
+	var link *linkNotFileError
+	switch {
+	case errors.As(err, &link):
+		return err
+	case err != nil:
+		fmt.Fprintf(w, "%s    ⚠ No se pudo retirar el protocolo heredado de AGENTS.md: %v. Corrige el permiso y ejecuta pi-gomemory-setup install.%s\n", ColorWarning, err, ColorReset)
+	case retired:
+		fmt.Fprintf(w, "%s    ✓ Protocolo heredado retirado de AGENTS.md: el contexto llega en vivo con la extensión gomemory-context%s\n", ColorMuted, ColorReset)
 	}
-	return strings.TrimRight(content, "\n") + "\n\n" + block
+	return nil
+}
+
+// legacyAgentsItem es la comprobación de doctor: avisa si AGENTS.md conserva
+// el bloque heredado y devuelve nil si no hay nada que avisar.
+func legacyAgentsItem(piAgentDir string) *CheckItem {
+	target, err := configTarget(filepath.Join(piAgentDir, "AGENTS.md"))
+	if err != nil {
+		return nil
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		return nil
+	}
+	if _, ok := instructionsBlock(string(data)); !ok {
+		return nil
+	}
+	return &CheckItem{
+		Name:    "AGENTS.md de Pi",
+		Status:  "WARN",
+		Details: "AGENTS.md conserva el protocolo heredado de pi-gomemory; ejecuta pi-gomemory-setup install para retirarlo",
+	}
 }

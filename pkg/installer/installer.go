@@ -40,8 +40,9 @@ func InstallAll(assets fs.FS, opts *Options) error {
 	if err := os.Remove(UninstalledMarkerPath(opts.HomeDir)); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("retirar marca de desinstalado: %w", err)
 	}
-	fmt.Printf("%s==> [1/8] Registrando servidores MCP (gomemory, codegraph, codebase-memory)...%s\n", ColorCyan, ColorReset)
-	if err := InstallMCPServers(opts.PiAgentDir); err != nil {
+	// Codemode híbrido es el modo por defecto, salvo `codemode off` (HCD-046).
+	fmt.Printf("%s==> [1/8] Registrando servidores MCP (gomemory, codegraph, codebase-memory) en codemode híbrido...%s\n", ColorCyan, ColorReset)
+	if err := applyCodemodeDefault(opts, os.Stdout); err != nil {
 		return fmt.Errorf("paso MCP: %w", err)
 	}
 
@@ -60,8 +61,10 @@ func InstallAll(assets fs.FS, opts *Options) error {
 		return fmt.Errorf("paso Plugin CC Extensions: %w", err)
 	}
 
-	fmt.Printf("%s==> [5/8] Escribiendo instrucciones y protocolo de memoria en Pi...%s\n", ColorCyan, ColorReset)
-	if err := InstallInstructions(opts.PiAgentDir); err != nil {
+	// El protocolo ya no se escribe en AGENTS.md: llega en vivo con la extensión
+	// gomemory-context.ts (HCD-045). Este paso solo retira el bloque heredado.
+	fmt.Printf("%s==> [5/8] Retirando el protocolo heredado de AGENTS.md (el contexto llega en vivo desde gomemory)...%s\n", ColorCyan, ColorReset)
+	if err := retireLegacyStep(opts.PiAgentDir, os.Stdout); err != nil {
 		return fmt.Errorf("paso Instrucciones: %w", err)
 	}
 

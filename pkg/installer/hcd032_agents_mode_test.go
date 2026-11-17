@@ -19,31 +19,33 @@ func TestHCD032AgentsModePreserved(t *testing.T) {
 		return info.Mode().Perm()
 	}
 
+	// HCD-045: install ya no escribe el protocolo; al retirar el bloque
+	// heredado conserva el modo, y sin AGENTS.md no crea ninguno.
 	t.Run("install conserva 0600", func(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "AGENTS.md")
-		writeFile(t, path, "mis reglas\n")
+		writeFile(t, path, "mis reglas\n\n"+instructionsStart+"\nbloque\n"+instructionsEnd+"\n")
 		if err := os.Chmod(path, 0600); err != nil {
 			t.Fatal(err)
 		}
-		if err := InstallInstructions(dir); err != nil {
+		if _, err := RetireLegacyInstructions(dir); err != nil {
 			t.Fatal(err)
 		}
 		if m := modeOf(t, path); m != 0600 {
 			t.Fatalf("install dejó AGENTS.md en %o; quiero 600", m)
 		}
-		if !strings.Contains(readFile(t, path), instructionsStart) {
-			t.Fatal("install no escribió el bloque de pi-gomemory")
+		if got := readFile(t, path); strings.Contains(got, instructionsStart) || !strings.Contains(got, "mis reglas") {
+			t.Fatalf("contenido inesperado tras install: %q", got)
 		}
 	})
 
-	t.Run("install crea uno nuevo con 0644", func(t *testing.T) {
+	t.Run("install no crea AGENTS.md", func(t *testing.T) {
 		dir := t.TempDir()
-		if err := InstallInstructions(dir); err != nil {
+		if _, err := RetireLegacyInstructions(dir); err != nil {
 			t.Fatal(err)
 		}
-		if m := modeOf(t, filepath.Join(dir, "AGENTS.md")); m != 0644 {
-			t.Fatalf("AGENTS.md nuevo en %o; quiero 644", m)
+		if _, err := os.Lstat(filepath.Join(dir, "AGENTS.md")); !os.IsNotExist(err) {
+			t.Fatalf("install creó AGENTS.md: %v", err)
 		}
 	})
 

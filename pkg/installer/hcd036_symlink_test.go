@@ -140,18 +140,19 @@ func TestHCD036C02(t *testing.T) {
 	}
 }
 
-// C-03: AGENTS.md enlazado recibe el bloque en el destino con su contenido y modo.
+// C-03: en un AGENTS.md enlazado, install edita el destino (HCD-045: retira el
+// bloque heredado) conservando el enlace, el contenido propio y el modo.
 func TestHCD036C03(t *testing.T) {
 	opts := sandbox(t)
 	path := filepath.Join(opts.PiAgentDir, "AGENTS.md")
-	target := linkConfig(t, path, "# Mis reglas\n", 0640)
-	if err := InstallInstructions(opts.PiAgentDir); err != nil {
+	target := linkConfig(t, path, "# Mis reglas\n\n"+instructionsStart+"\nviejo\n"+instructionsEnd+"\n", 0640)
+	if _, err := RetireLegacyInstructions(opts.PiAgentDir); err != nil {
 		t.Fatal(err)
 	}
 	assertLink(t, path, target)
 	got := readFile(t, target)
-	if !strings.Contains(got, "# Mis reglas") || !strings.Contains(got, "Protocolo para Pi") {
-		t.Fatalf("C-03: el destino no tiene el contenido propio y el bloque: %q", got)
+	if !strings.Contains(got, "# Mis reglas") || strings.Contains(got, instructionsStart) {
+		t.Fatalf("C-03: el destino debe conservar lo propio y perder el bloque: %q", got)
 	}
 	assertMode(t, target, 0640)
 }

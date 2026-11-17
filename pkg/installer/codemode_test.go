@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+// El protocolo de Pi ya no es una lista copiada en AGENTS.md: el bloque Pi de
+// gomemory-context.ts se deriva de las tools efectivas (TestHCD045PiBlock), así
+// que la coherencia que blindaba HCD-044 la garantiza la propia derivación.
+
 func TestCodemodeMCP(t *testing.T) {
 	direct := DefaultMCPServers()
 	if direct["gomemory"].Exposure != "direct" {
@@ -24,7 +28,7 @@ func TestCodemodeMCP(t *testing.T) {
 	if gm.Exposure != "codemode" {
 		t.Fatalf("gomemory exposure = %q, want codemode", gm.Exposure)
 	}
-	for _, tool := range []string{"get_context", "get_plan_context", "search_memories", "get_memory", "save_memory", "save_session_summary", "end_session"} {
+	for _, tool := range []string{"get_context", "get_plan_context", "search_memories", "get_memory", "save_memory", "start_session", "save_session_summary", "end_session", "search_code", "get_symbol", "octopus_route_task", "judge_memories"} {
 		if gm.ToolExposure[tool] != "direct" {
 			t.Errorf("gomemory ToolExposure[%q] = %q, want direct", tool, gm.ToolExposure[tool])
 		}

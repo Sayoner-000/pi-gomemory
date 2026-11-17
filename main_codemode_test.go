@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -9,10 +10,12 @@ import (
 )
 
 func TestCodemodeCLI(t *testing.T) {
-	dir := t.TempDir()
+	home := t.TempDir()
+	opts := &installer.Options{HomeDir: home, PiAgentDir: filepath.Join(home, ".pi", "agent")}
+	dir := opts.PiAgentDir
 
 	var out bytes.Buffer
-	if err := runCodemode(dir, []string{"on"}, &out); err != nil {
+	if err := runCodemode(opts, []string{"on"}, &out); err != nil {
 		t.Fatalf("runCodemode on: %v", err)
 	}
 	if !strings.Contains(out.String(), "codemode") {
@@ -28,7 +31,7 @@ func TestCodemodeCLI(t *testing.T) {
 	}
 
 	out.Reset()
-	if err := runCodemode(dir, []string{"status"}, &out); err != nil {
+	if err := runCodemode(opts, []string{"status"}, &out); err != nil {
 		t.Fatalf("runCodemode status: %v", err)
 	}
 	if !strings.Contains(out.String(), "on") {
@@ -36,7 +39,7 @@ func TestCodemodeCLI(t *testing.T) {
 	}
 
 	out.Reset()
-	if err := runCodemode(dir, []string{"off"}, &out); err != nil {
+	if err := runCodemode(opts, []string{"off"}, &out); err != nil {
 		t.Fatalf("runCodemode off: %v", err)
 	}
 	stOff, err := installer.GetCodemodeStatus(dir)
@@ -47,7 +50,7 @@ func TestCodemodeCLI(t *testing.T) {
 		t.Fatalf("expected codemode disabled, got %+v", stOff)
 	}
 
-	if err := runCodemode(dir, []string{"invalid"}, &out); err == nil {
+	if err := runCodemode(opts, []string{"invalid"}, &out); err == nil {
 		t.Fatal("expected error for invalid subcommand")
 	}
 }

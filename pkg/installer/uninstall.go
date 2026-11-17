@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -454,14 +455,19 @@ func (p *UninstallPlan) planMCP(piAgentDir string) {
 			return
 		}
 	}
-	defs := DefaultMCPServers()
+	defs, hybrid := DefaultMCPServers(), CodemodeMCPServers()
 	for _, name := range []string{"gomemory", "codegraph", "codebase-memory"} {
 		cur, ok := servers[name]
 		if !ok {
 			continue
 		}
 		target := path + " › mcpServers." + name
+		// Es de pi-gomemory si coincide con el perfil directo o con el híbrido
+		// de codemode, que desde HCD-046 es el modo por defecto.
 		want, _ := json.Marshal(defs[name])
+		if hyb, _ := json.Marshal(hybrid[name]); sameJSON(cur, hyb) {
+			want = hyb
+		}
 		if !sameJSON(cur, want) {
 			p.add(ActionSkip, target, "no coincide con la definición de pi-gomemory", nil)
 			continue
@@ -500,11 +506,12 @@ func stripInstructions(content string) (string, bool) {
 	switch {
 	case start >= 0 && end > start:
 		before, after = content[:start], content[end+len(instructionsEnd):]
-	case strings.Contains(content, GomemoryPiInstructions):
-		i := strings.Index(content, GomemoryPiInstructions)
-		before, after = content[:i], content[i+len(GomemoryPiInstructions):]
 	default:
-		return content, false
+		i, p, ok := findLegacyProtocol(content)
+		if !ok {
+			return content, false
+		}
+		before, after = content[:i], content[i+len(p):]
 	}
 	after = strings.TrimPrefix(after, "\n")
 	if strings.TrimSpace(after) == "" {
@@ -520,11 +527,11 @@ func stripInstructions(content string) (string, bool) {
 func instructionsBlock(content string) (string, bool) {
 	start := strings.Index(content, instructionsStart)
 	end := strings.Index(content, instructionsEnd)
-	switch {
-	case start >= 0 && end > start:
+	if start >= 0 && end > start {
 		return content[start : end+len(instructionsEnd)], true
-	case strings.Contains(content, GomemoryPiInstructions):
-		return GomemoryPiInstructions, true
+	}
+	if _, p, ok := findLegacyProtocol(content); ok {
+		return p, true
 	}
 	return "", false
 }
@@ -562,17 +569,7 @@ func (p *UninstallPlan) planAgents(piAgentDir string) {
 			return errChangedAfterPlan
 		}
 		out, _ := stripInstructions(string(cur))
-		if strings.TrimSpace(out) == "" {
-			if target == path {
-				return os.Remove(path)
-			}
-			out = ""
-		}
-		mode, err := modeOrDefault(target, 0644)
-		if err != nil {
-			return err
-		}
-		return writeFileAtomic(target, []byte(out), mode)
+		return writeStrippedAgents(path, target, out)
 	})
 }
 
@@ -655,6 +652,34 @@ func (p *UninstallPlan) planSettings(piAgentDir, home, themeFile string) {
 				})
 			})
 			break
+		}
+	}
+
+	// `+codemode` solo se retira si consta que lo añadió pi-gomemory (HCD-046).
+	var tools []string
+	if raw, ok := obj["defaultTools"]; ok && json.Unmarshal(raw, &tools) == nil && slices.Contains(tools, "+codemode") {
+		if st, err := readCodemodeState(home); err == nil && st.AddedPlusCodemode {
+			p.add(ActionRemove, path+" › defaultTools (+codemode)", "codemode activado por pi-gomemory", func() error {
+				return editPlannedJSON(path, func(o map[string]json.RawMessage) error {
+					raw, ok := o["defaultTools"]
+					if !ok {
+						return errGoneAfterPlan
+					}
+					var cur []string
+					if json.Unmarshal(raw, &cur) != nil {
+						return errChangedAfterPlan
+					}
+					if !slices.Contains(cur, "+codemode") {
+						return errGoneAfterPlan
+					}
+					out := slices.DeleteFunc(slices.Clone(cur), func(x string) bool { return x == "+codemode" })
+					if len(out) == 0 {
+						delete(o, "defaultTools")
+						return nil
+					}
+					return setJSONField(o, "defaultTools", out)
+				})
+			})
 		}
 	}
 }
@@ -787,6 +812,9 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 	if flags.Self {
 		plan.planSelf(m, opts)
 	}
+	// Como el manifiesto, prueba la propiedad de +codemode para un reintento:
+	// solo se retira si nada falló (HCD-046).
+	plan.planRegularRemoval(CodemodeStatePath(opts.HomeDir), "preferencia de codemode de pi-gomemory", true)
 	plan.planManifest(ManifestPath(opts.HomeDir))
 	return plan, nil
 }

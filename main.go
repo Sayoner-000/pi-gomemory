@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -94,7 +97,7 @@ func main() {
 		}
 		fmt.Println("✓ Servidores MCP gomemory, codegraph y codebase-memory registrados en Pi.")
 	case "codemode":
-		if err := runCodemode(opts.PiAgentDir, os.Args[2:], os.Stdout); err != nil {
+		if err := runCodemode(opts, os.Args[2:], os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "Error en codemode: %v\n", err)
 			os.Exit(1)
 		}
@@ -211,26 +214,39 @@ func printHelp() {
 	fmt.Println("                                Retira lo instalado por pi-gomemory; conserva la memoria de gomemory")
 }
 
-func runCodemode(piAgentDir string, args []string, out io.Writer) error {
+// codemodeNote describe el perfil híbrido con la lista de tools directas
+// derivada de CodemodeMCPServers, para que no se desfase (HCD-044).
+func codemodeNote() string {
+	servers := installer.CodemodeMCPServers()
+	var direct []string
+	for _, name := range []string{"gomemory", "codebase-memory"} {
+		direct = append(direct, slices.Sorted(maps.Keys(servers[name].ToolExposure))...)
+	}
+	return "Nota: codemode híbrido es el modo por defecto de install y update; `codemode off` lo desactiva de forma persistente. En este modo, Pi habilita +codemode (sandbox QuickJS para paralelizar llamadas y filtrar salidas >20 KB antes de entrar al contexto) y pasa gomemory y codebase-memory a exposure \"codemode\", manteniendo direct las herramientas de protocolo y consulta diaria (" +
+		strings.Join(direct, ", ") + "). El resto sigue disponible a través de la tool codemode."
+}
+
+func runCodemode(opts *installer.Options, args []string, out io.Writer) error {
+	piAgentDir := opts.PiAgentDir
 	sub := "status"
 	if len(args) > 0 {
 		sub = args[0]
 	}
-	const note = "Nota: en modo codemode híbrido, Pi habilita +codemode (sandbox QuickJS para paralelizar llamadas y filtrar salidas >20 KB antes de entrar al contexto) y pasa gomemory y codebase-memory a exposure \"codemode\", manteniendo direct las herramientas de protocolo y consulta diaria (get_context, search_memories, get_memory, save_memory, search_graph, trace_path, get_code_snippet, check_index_coverage)."
+	note := codemodeNote()
 
 	switch sub {
 	case "on":
-		if err := installer.SetCodemode(piAgentDir, true); err != nil {
+		if err := installer.SetCodemodePreference(opts, true); err != nil {
 			return err
 		}
 		fmt.Fprintln(out, "✓ Modo codemode híbrido activado (settings.json + mcp.json).")
 		fmt.Fprintln(out, note)
 		return nil
 	case "off":
-		if err := installer.SetCodemode(piAgentDir, false); err != nil {
+		if err := installer.SetCodemodePreference(opts, false); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, "✓ Modo codemode desactivado (+codemode retirado y MCP restaurado a exposure \"direct\").")
+		fmt.Fprintln(out, "✓ Modo codemode desactivado (+codemode retirado y MCP restaurado a exposure \"direct\"). install y update respetarán esta elección; vuelve con `codemode on`.")
 		return nil
 	case "status":
 		st, err := installer.GetCodemodeStatus(piAgentDir)

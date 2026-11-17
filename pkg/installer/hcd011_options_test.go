@@ -106,7 +106,12 @@ func TestHCD011Doctor(t *testing.T) {
 // Tarea 9 · C-03: reinstalar tras desinstalar deja doctor como una instalación nueva.
 func TestHCD011Reinstall(t *testing.T) {
 	fakeTerminal(t, false, "")
-	fresh := installSandbox(t)
+	// La referencia es una instalación nueva de verdad: installSandbox siembra
+	// además el bloque heredado de AGENTS.md (HCD-045), que doctor avisaría.
+	fresh := sandbox(t)
+	if err := InstallAll(repoAssets(t), fresh); err != nil {
+		t.Fatal(err)
+	}
 	want := doctorSummary(RunDoctor(fresh))
 
 	opts := installSandbox(t)
