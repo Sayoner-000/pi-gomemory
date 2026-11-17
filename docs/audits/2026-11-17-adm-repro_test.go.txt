@@ -1,0 +1,50 @@
+package installer
+
+import (
+ "net/http"
+ "net/http/httptest"
+ "path/filepath"
+ "testing"
+)
+
+// Pruebas de contrato: deben fallar en la revisión auditada y pasar al cerrar los hallazgos.
+// Copiar a pkg/installer/adm_20261117_test.go SOLO en una copia temporal del repositorio.
+func TestADM20261117StreamOutputBound(t *testing.T) {
+ out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
+import assert from "node:assert/strict";
+import { streamLines } from "./gomemory-tdd.ts";
+const result = await streamLines(process.execPath,
+ ["-e", "process.stdout.write('x'.repeat(8 * 1024 * 1024))"],
+ { timeoutMs: 10000 }, () => {});
+const retained = result.tail.reduce((n, s) => n + Buffer.byteLength(s), 0);
+console.log(JSON.stringify({code: result.code, lines: result.tail.length, retained}));
+assert.ok(retained <= 65536, 'diagnóstico sin cota de bytes: ' + retained);
+`)
+ t.Log(out)
+}
+
+func TestADM20261117QuotaRejectsMissingData(t *testing.T) {
+ for _, body := range []string{"null", "{}"} {
+  t.Run(body, func(t *testing.T) {
+   requests := 0
+   srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    requests++
+    w.Header().Set("Content-Type", "application/json")
+    _, _ = w.Write([]byte(body))
+   }))
+   defer srv.Close()
+   old := endpoints
+   endpoints = []string{srv.URL, srv.URL}
+   defer func() { endpoints = old }()
+   dir := t.TempDir()
+   writeFile(t, filepath.Join(dir, "antigravity-accounts.json"), `{"activeAccountId":"synthetic","accounts":{"synthetic":{"access":"SYNTH-TOKEN-0001"}}}`)
+   summary, err := FetchQuotaSummary(dir)
+   t.Logf("summary=%+v error=%v requests=%d", summary, err, requests)
+   if err == nil { t.Error("respuesta sin cuotas aceptada por FetchQuotaSummary") }
+   requests = 0
+   text, err := FetchAndFormatUsage(dir)
+   t.Logf("text=%q error=%v requests=%d", text, err, requests)
+   if err == nil { t.Error("respuesta sin cuotas aceptada por FetchAndFormatUsage") }
+  })
+ }
+}
