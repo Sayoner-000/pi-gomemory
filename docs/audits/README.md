@@ -4,6 +4,7 @@ Los informes conservan la revisión, alcance, reproducciones y límites de cada 
 
 ## Revisiones recientes
 
+- [ACR de v1.15.0](2026-11-17-acr-v1.15.0.md): ocho hallazgos medios reproducidos con el binario de la release, con [reproductor](2026-11-17-acr-v1.15.0-repro.mjs.txt), [salida](2026-11-17-acr-v1.15.0-reproductions.log), [diff revisado](2026-11-17-acr-v1.15.0-target.md) y revisores [A](2026-11-17-acr-v1.15.0-reviewer-a.json) y [B](2026-11-17-acr-v1.15.0-reviewer-b.json). Corregidos en v1.15.1 (HCD-047); el informe describe v1.15.0 y no se ha modificado.
 - [HCD-045 en implementación](2026-11-17-acr-adm-hcd045.md): ACR incompleto sobre un snapshot congelado; incluye pruebas y resultados parciales.
 - [Implementaciones v1.14](2026-11-17-acr-adm-v1.14.md): defectos medios y observaciones sobre codemode y dependencias.
 - [Ronda 4 posterior a los cierres anteriores](2026-11-17-acr-adm-round4.md).

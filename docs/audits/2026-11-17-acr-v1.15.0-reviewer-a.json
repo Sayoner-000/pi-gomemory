@@ -1,0 +1,114 @@
+{
+  "findings": [
+    {
+      "id": "A-01",
+      "location": "pkg/installer/codemode.go:35",
+      "severity": "Major",
+      "category": "estado parcial",
+      "claim": "Un fallo posterior a la escritura de settings.json puede dejar un +codemode propio que ni un reintento exitoso consigue reconocer como propio.",
+      "evidence_class": "análisis estático; regresión introducida",
+      "evidence": [
+        "setCodemode escribe settings.json antes de mcp.json. Si mcp.json contiene JSON inválido, enableCodemode retorna antes de registrar AddedPlusCodemode.",
+        "Si falla únicamente la escritura final de codemode.json, settings.json y mcp.json ya se han modificado. En ambos casos, al corregir el fallo y reintentar, +codemode ya existe y setCodemodeSettings devuelve added=false.",
+        "uninstall.go:661 solo programa la retirada si el estado persistido acredita la propiedad."
+      ],
+      "question": "¿Cómo se conservará la prueba de propiedad entre escrituras o se revertirá el cambio de settings.json si falla un paso posterior?",
+      "confidence": "alta"
+    },
+    {
+      "id": "A-02",
+      "location": "pkg/installer/codemode.go:123",
+      "severity": "Major",
+      "category": "preferencia persistente",
+      "claim": "Con off persistido, install puede volver a publicar los MCP en modo híbrido aunque anuncie que conserva el modo directo.",
+      "evidence_class": "análisis estático; regresión introducida",
+      "evidence": [
+        "La rama off llama a InstallMCPServers, que selecciona el perfil híbrido si SettingsEnabled o MCPEnabled es verdadero (mcp.go:87–96).",
+        "Después de codemode off, si la persona vuelve a habilitar +codemode en Pi para otros usos, el siguiente install cambia gomemory y codebase-memory a híbrido. La reinstalación que ejecuta update sigue la misma ruta (main.go:285–295)."
+      ],
+      "question": "¿Puede la rama off aplicar directamente DefaultMCPServers sin modificar las herramientas globales que la persona configuró en Pi?",
+      "confidence": "alta"
+    },
+    {
+      "id": "A-03",
+      "location": "pkg/installer/installer.go:67",
+      "severity": "Major",
+      "category": "migración y estado parcial",
+      "claim": "La migración puede retirar el protocolo de AGENTS.md antes de que exista la extensión que lo reemplaza.",
+      "evidence_class": "análisis estático; regresión introducida",
+      "evidence": [
+        "InstallAll retira el protocolo en el paso 5, ejecuta InstallSkills en el paso 6 e instala las extensiones en el paso 7.",
+        "En una actualización desde v1.14.0, si extensions/gomemory-context.ts ya existe como directorio, el rename del archivo temporal falla al instalar la extensión. El protocolo ya se retiró y no se restaura (extension.go:34–37; jsonfile.go:67–92)."
+      ],
+      "question": "¿Puede retirarse el bloque heredado solo después de instalar correctamente gomemory-context.ts?",
+      "confidence": "alta"
+    },
+    {
+      "id": "A-04",
+      "location": "pkg/installer/uninstall.go:503",
+      "severity": "Major",
+      "category": "preservación de instrucciones",
+      "claim": "La migración puede borrar instrucciones propias al emparejar una apertura huérfana con el cierre de un bloque gestionado posterior.",
+      "evidence_class": "análisis estático; defecto preexistente en uninstall, ahora alcanzable desde install y update",
+      "evidence": [
+        "stripInstructions busca por separado la primera apertura y el primer cierre en todo el archivo; no comprueba si hay otra apertura entre ambos.",
+        "Si una apertura huérfana precede a instrucciones propias y después viene un bloque gestionado completo, la función elimina tanto las instrucciones propias como el bloque. RetireLegacyInstructions guarda ese resultado (instructions.go:64–69)."
+      ],
+      "question": "¿Puede el escáner detectar aperturas repetidas antes del cierre y preservar el contenido ambiguo?",
+      "confidence": "alta"
+    },
+    {
+      "id": "A-05",
+      "location": "pkg/installer/uninstall.go:458",
+      "severity": "Major",
+      "category": "compatibilidad de desinstalación",
+      "claim": "Desinstalar directamente una instalación v1.14.0 en modo híbrido deja registrado el perfil gestionado de gomemory.",
+      "evidence_class": "comparación estática con el diff base; limitación preexistente no resuelta por la nueva detección",
+      "evidence": [
+        "planMCP reconoce únicamente la definición directa y la híbrida actual, por igualdad JSON exacta.",
+        "El diff de mcp.go añade cinco entradas a toolExposure de gomemory. La definición híbrida exacta que escribía v1.14.0 no coincide con ninguna de las dos aceptadas; codebase-memory sí conserva su definición y puede retirarse, dejando una desinstalación desigual."
+      ],
+      "question": "¿Debe uninstall reconocer también la definición híbrida exacta de v1.14.0, sin ampliar la coincidencia a configuraciones personalizadas?",
+      "confidence": "alta"
+    },
+    {
+      "id": "A-06",
+      "location": "pkg/installer/uninstall.go:661",
+      "severity": "Major",
+      "category": "preservación del estado de desinstalación",
+      "claim": "Un codemode.json legible pero inválido se elimina sin aviso, mientras el +codemode queda intacto y se pierde el estado necesario para resolver su propiedad.",
+      "evidence_class": "análisis estático; regresión introducida",
+      "evidence": [
+        "readCodemodeState devuelve error si falla json.Unmarshal (codemode.go:70–72). planSettings descarta ese error y no añade ninguna acción ni aviso para +codemode.",
+        "BuildUninstallPlan programa igualmente la retirada del archivo regular en uninstall.go:817. Un JSON inválido no impide abrir el archivo ni genera por sí solo un fallo que bloquee la retirada condicional."
+      ],
+      "question": "¿Puede uninstall informar del error y conservar codemode.json para que la persona pueda corregirlo y reintentar?",
+      "confidence": "alta"
+    }
+  ],
+  "inspected": [
+    "docs/audits/2026-11-17-acr-v1.15.0-target.md",
+    "main.go",
+    "embed.go",
+    "extensions/gomemory-context.ts",
+    "extensions/gomemory-plan.ts",
+    "pkg/installer/codemode.go",
+    "pkg/installer/codemode_test.go",
+    "pkg/installer/deps.go",
+    "pkg/installer/doctor.go",
+    "pkg/installer/extension.go",
+    "pkg/installer/hcd045_context_test.go",
+    "pkg/installer/hcd045_install_test.go",
+    "pkg/installer/hcd046_test.go",
+    "pkg/installer/installer.go",
+    "pkg/installer/instructions.go",
+    "pkg/installer/jsonfile.go",
+    "pkg/installer/mcp.go",
+    "pkg/installer/skills.go",
+    "pkg/installer/uninstall.go"
+  ],
+  "limitations": [
+    "Se revisó el diff completo incluido en el documento; no se verificaron por separado el commit ni el árbol declarados.",
+    "Revisión estática y de solo lectura. No se ejecutaron tests, instalaciones ni Pi real. El contrato de eventos de Pi se revisó a partir del código y los dobles de prueba del repositorio, no contra Pi real."
+  ]
+}

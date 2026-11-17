@@ -1,0 +1,8 @@
+off-persistido {"exit":0,"preference":"off","exposure":"codemode"}
+propiedad-tras-reintento {"first":1,"inserted":true,"retry":0,"owned":false,"uninstall":0,"tokenRemains":true}
+migracion-antes-de-extension {"exit":1,"extensionRegular":false,"legacyRemains":false}
+perfil-historico {"exit":0,"remaining":["gomemory"]}
+marca-huerfana {"exit":0,"userTextRemains":false}
+estado-invalido {"exit":0,"stateRemains":false,"tokenRemains":true}
+cambio-dotfiles {"exit":0,"userTokenRemains":false}
+dos-formatos {"exit":0,"legacyUnmarkedRemains":true,"userTextRemains":true}

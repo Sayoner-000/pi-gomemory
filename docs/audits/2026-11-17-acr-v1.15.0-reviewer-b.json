@@ -1,0 +1,126 @@
+{
+  "findings": [
+    {
+      "id": "B-01",
+      "location": "pkg/installer/codemode.go:123",
+      "severity": "MEDIUM",
+      "splash_severity": "Major",
+      "category": "regresión de preferencia persistida",
+      "claim": "`install` y `update` pueden reactivar el perfil MCP híbrido pese a un `off` persistido.",
+      "evidence_class": "traza estática",
+      "evidence": [
+        "La rama `Preference == \"off\"` anuncia que conserva el modo directo, pero llama a `InstallMCPServers`.",
+        "`pkg/installer/mcp.go:87-97` selecciona el perfil híbrido si `SettingsEnabled || MCPEnabled`. Si, después de `off`, el usuario vuelve a habilitar `+codemode` para otros servidores, la reinstalación convierte gomemory y codebase-memory a híbrido sin cambiar la preferencia `off`.",
+        "`pkg/installer/hcd046_test.go:80-96` solo prueba la reinstalación inmediatamente después de `off`, con ambos indicadores apagados."
+      ],
+      "question": "¿Puede la rama `off` aplicar directamente el perfil MCP directo sin modificar las herramientas que el usuario haya habilitado por su cuenta?",
+      "confidence": "alta"
+    },
+    {
+      "id": "B-02",
+      "location": "pkg/installer/codemode.go:86",
+      "severity": "MEDIUM",
+      "splash_severity": "Major",
+      "category": "estado parcial y pérdida de propiedad",
+      "claim": "Un fallo de escritura puede dejar un `+codemode` gestionado que ni un reintento exitoso consigue registrar como propio.",
+      "evidence_class": "traza estática de error y reintento",
+      "evidence": [
+        "`pkg/installer/codemode.go:31-45` escribe `settings.json` antes que `mcp.json`; `enableCodemode` retorna ante un fallo de MCP sin guardar `AddedPlusCodemode`. Si falla la escritura de `codemode.json` en la línea 130, ambas configuraciones de Pi ya se escribieron.",
+        "Tras corregir el fallo, el reintento encuentra `+codemode` ya presente, por lo que las líneas 169-174 no vuelven a marcarlo como añadido. Partiendo de una instalación sin estado previo, el reintento puede terminar con éxito y sin prueba de propiedad.",
+        "`pkg/installer/uninstall.go:658-683` no retira la herramienta sin esa prueba. La posibilidad de un fallo entre las dos escrituras de Pi ya existía en `codemode on`; el flujo por defecto y la pérdida de propiedad en el reintento son nuevos."
+      ],
+      "question": "¿Cómo se recuperará o revertirá la primera escritura si falla MCP o el registro de propiedad?",
+      "confidence": "alta"
+    },
+    {
+      "id": "B-03",
+      "location": "pkg/installer/uninstall.go:661",
+      "severity": "MEDIUM",
+      "splash_severity": "Major",
+      "category": "retirada de configuración ajena",
+      "claim": "`uninstall` puede retirar un `+codemode` del usuario si `settings.json` pasa a apuntar a otros dotfiles.",
+      "evidence_class": "traza estática con cambio de destino",
+      "evidence": [
+        "`pkg/installer/codemode.go:48-58` registra la propiedad con un booleano por directorio personal; no identifica el archivo de configuración editado.",
+        "Si la instalación añade el token a un destino A y posteriormente el usuario cambia el enlace de `settings.json` a un destino B que ya tenía su propio `+codemode`, el plan acepta el booleano de A como prueba sobre B. `pkg/installer/uninstall.go:415-423` resuelve el destino actual y las líneas 672-680 eliminan el token que encuentren allí."
+      ],
+      "question": "¿Puede la prueba de propiedad vincularse al destino que se modificó y revalidarse antes de retirar el token?",
+      "confidence": "alta"
+    },
+    {
+      "id": "B-04",
+      "location": "pkg/installer/installer.go:67",
+      "severity": "MEDIUM",
+      "splash_severity": "Major",
+      "category": "pérdida de comportamiento en actualización parcial",
+      "claim": "Una actualización fallida puede borrar el protocolo de `AGENTS.md` sin que la extensión que lo sustituye llegue a instalarse.",
+      "evidence_class": "traza estática de orden y fallo",
+      "evidence": [
+        "`InstallAll` retira el protocolo en el paso 5. Un fallo de `InstallSkills` en el paso 6 aborta antes de `InstallTUIExtension` en el paso 7; un fallo al escribir un recurso anterior de la lista de extensiones también impide llegar a `gomemory-context.ts` (`pkg/installer/extension.go:16-40`).",
+        "`main.go:285-294` relanza `install` desde el binario nuevo. Una vez reemplazado el binario, repetir `update` con la misma versión publicada toma la salida «ya está al día» de `main.go:305-312` y no completa la migración."
+      ],
+      "question": "¿Puede mantenerse el protocolo anterior hasta que se haya escrito correctamente la extensión que lo reemplaza?",
+      "confidence": "alta"
+    },
+    {
+      "id": "B-05",
+      "location": "pkg/installer/uninstall.go:502",
+      "severity": "MEDIUM",
+      "splash_severity": "Major",
+      "category": "migración histórica incompleta",
+      "claim": "Una sola instalación puede dejar activo el protocolo antiguo sin marcadores cuando el archivo también contiene un bloque marcado de v1.14.",
+      "evidence_class": "traza estática entre versiones",
+      "evidence": [
+        "El código anterior, mostrado en `docs/audits/2026-11-17-acr-v1.15.0-target.md:675-684`, solo reconocía sin marcadores el texto exacto de la versión con Splash. Ante el texto V1 más corto y sin Splash, podía dejarlo intacto y anexar su bloque marcado.",
+        "`pkg/installer/uninstall.go:502-523` quita el bloque marcado o una versión sin marcas, nunca ambos. `pkg/installer/instructions.go:51-72` llama una sola vez a esa función. El protocolo V1 queda en el prompt junto al nuevo contexto, aunque la instalación anuncia que retiró el protocolo heredado.",
+        "`scripts/hcd045-pi-real.sh:20-22` solo busca el marcador de inicio, así que su comprobación de `AGENTS.md` no detecta ese residuo. La retirada de un solo bloque ya existía en `uninstall`; su uso como migración de `install` es nuevo."
+      ],
+      "question": "¿Puede una sola migración retirar ambos bloques reconocidos sin tocar el contenido intermedio del usuario, y comprobar también el formato sin marcas?",
+      "confidence": "alta"
+    },
+    {
+      "id": "B-06",
+      "location": "pkg/installer/uninstall.go:455",
+      "severity": "MEDIUM",
+      "splash_severity": "Major",
+      "category": "compatibilidad de desinstalación",
+      "claim": "`uninstall` sigue dejando la entrada `gomemory` del perfil híbrido exacto de v1.14 si antes no se completó una reinstalación con v1.15.",
+      "evidence_class": "comparación exacta de perfiles en el diff",
+      "evidence": [
+        "`docs/audits/2026-11-17-acr-v1.15.0-target.md:796-803` muestra cinco nuevas claves `toolExposure` en `gomemory`. La entrada híbrida anterior no coincide con el perfil directo ni con el híbrido actual que compara `pkg/installer/uninstall.go:455-474`.",
+        "`codebase-memory` no cambió de perfil híbrido y sí coincide, por lo que la retirada puede ser parcial. Dejar sin retirar el perfil antiguo ya ocurría en v1.14; el nuevo reconocimiento de perfiles no cubre ese caso histórico."
+      ],
+      "question": "¿Debe reconocerse también la definición híbrida exacta publicada en v1.14, manteniendo la exclusión de perfiles personalizados?",
+      "confidence": "alta"
+    }
+  ],
+  "inspected": [
+    "docs/audits/2026-11-17-acr-v1.15.0-target.md",
+    "extensions/gomemory-context.ts",
+    "extensions/gomemory-plan.ts",
+    "install.sh",
+    "main.go",
+    "pkg/installer/codemode.go",
+    "pkg/installer/deps.go",
+    "pkg/installer/doctor.go",
+    "pkg/installer/extension.go",
+    "pkg/installer/hcd045_context_test.go",
+    "pkg/installer/hcd045_install_test.go",
+    "pkg/installer/hcd046_test.go",
+    "pkg/installer/installer.go",
+    "pkg/installer/instructions.go",
+    "pkg/installer/jsonfile.go",
+    "pkg/installer/legacy/protocol-1.txt",
+    "pkg/installer/legacy/protocol-2.txt",
+    "pkg/installer/mcp.go",
+    "pkg/installer/skills.go",
+    "pkg/installer/uninstall.go",
+    "scripts/build-release.sh",
+    "scripts/hcd045-pi-real.sh",
+    "README.md"
+  ],
+  "limitations": [
+    "Revisión estática del diff congelado completo y de los tramos de soporte pertinentes. No se ejecutaron pruebas, Pi ni instalaciones, y no se modificaron archivos.",
+    "No se verificó la compatibilidad de los eventos de extensión con versiones externas de Pi. No se consultaron historial, memorias ni auditorías anteriores."
+  ]
+}

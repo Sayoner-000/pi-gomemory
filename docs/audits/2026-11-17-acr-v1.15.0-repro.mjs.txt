@@ -1,0 +1,22 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+const bin=process.argv[2], root=fs.mkdtempSync(path.join(os.tmpdir(),'acr-v115-'));
+const rm=(p)=>fs.rmSync(p,{recursive:true,force:true});
+const setup=(name)=>{const home=path.join(root,name), agent=path.join(home,'.pi','agent');fs.mkdirSync(agent,{recursive:true});return {home,agent,state:path.join(home,'.pi-gomemory','codemode.json'),settings:path.join(agent,'settings.json'),mcp:path.join(agent,'mcp.json'),agents:path.join(agent,'AGENTS.md')};};
+const put=(p,x)=>fs.writeFileSync(p, typeof x==='string'?x:JSON.stringify(x));
+const get=(p)=>JSON.parse(fs.readFileSync(p,'utf8'));
+const exec=(h,...a)=>spawnSync(bin,a,{encoding:'utf8',env:{HOME:h.home,PATH:'/usr/bin:/bin',PI_GOMEMORY_NO_UPDATE_CHECK:'1'},cwd:h.home,timeout:12000});
+const run=(id,fn)=>{try{console.log(id,JSON.stringify(fn()));}catch(e){console.log(id,String(e));process.exitCode=1;}};
+const block='<!-- pi-gomemory:start -->\nSYNTH-PROTOCOL\n<!-- pi-gomemory:end -->\n';
+try{
+run('off-persistido',()=>{const h=setup('off');if(exec(h,'codemode','off').status!==0)throw Error('off');put(h.settings,{defaultTools:['+codemode']});const r=exec(h,'install');return {exit:r.status,preference:get(h.state).preference,exposure:get(h.mcp).mcpServers.gomemory.exposure};});
+run('propiedad-tras-reintento',()=>{const h=setup('retry');put(h.mcp,'{');const first=exec(h,'codemode','on');const inserted=get(h.settings).defaultTools.includes('+codemode');put(h.mcp,{});const retry=exec(h,'codemode','on');const owned=Boolean(get(h.state).added_plus_codemode);const un=exec(h,'uninstall','--yes');return {first:first.status,inserted,retry:retry.status,owned,uninstall:un.status,tokenRemains:get(h.settings).defaultTools.includes('+codemode')};});
+run('migracion-antes-de-extension',()=>{const h=setup('migration');const target=path.join(h.agent,'extensions','gomemory-context.ts');fs.mkdirSync(target,{recursive:true});put(h.agents,'SYNTH-USER\n\n'+block);const r=exec(h,'install');return {exit:r.status,extensionRegular:fs.statSync(target).isFile(),legacyRemains:fs.readFileSync(h.agents,'utf8').includes('SYNTH-PROTOCOL')};});
+run('perfil-historico',()=>{const h=setup('historic');if(exec(h,'codemode','on').status!==0)throw Error('on');const obj=get(h.mcp);for(const k of ['start_session','search_code','get_symbol','octopus_route_task','judge_memories'])delete obj.mcpServers.gomemory.toolExposure[k];put(h.mcp,obj);const r=exec(h,'uninstall','--yes');return {exit:r.status,remaining:Object.keys(get(h.mcp).mcpServers)};});
+run('marca-huerfana',()=>{const h=setup('markers');put(h.agents,'<!-- pi-gomemory:start -->\nSYNTH-USER\n'+block);const r=exec(h,'install');return {exit:r.status,userTextRemains:fs.existsSync(h.agents)&&fs.readFileSync(h.agents,'utf8').includes('SYNTH-USER')};});
+run('estado-invalido',()=>{const h=setup('invalid');if(exec(h,'codemode','on').status!==0)throw Error('on');put(h.state,'{');const r=exec(h,'uninstall','--yes');return {exit:r.status,stateRemains:fs.existsSync(h.state),tokenRemains:get(h.settings).defaultTools.includes('+codemode')};});
+run('cambio-dotfiles',()=>{const h=setup('link');const a=path.join(h.home,'A.json'),b=path.join(h.home,'B.json');put(a,{});put(b,{defaultTools:['+codemode']});fs.symlinkSync(a,h.settings);if(exec(h,'codemode','on').status!==0)throw Error('on');fs.unlinkSync(h.settings);fs.symlinkSync(b,h.settings);const r=exec(h,'uninstall','--yes');return {exit:r.status,userTokenRemains:Boolean(get(b).defaultTools?.includes('+codemode'))};});
+run('dos-formatos',()=>{const h=setup('two');const historical=fs.readFileSync('pkg/installer/legacy/protocol-1.txt','utf8');put(h.agents,historical+'\nSYNTH-USER\n'+block);const r=exec(h,'install');const after=fs.readFileSync(h.agents,'utf8');return {exit:r.status,legacyUnmarkedRemains:after.includes(historical),userTextRemains:after.includes('SYNTH-USER')};});
+}finally{rm(root);}
