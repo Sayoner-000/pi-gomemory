@@ -1,0 +1,26 @@
+import contextExt, { buildSection, MAX_CONTEXT_BYTES, TRUNCATION_LINE } from "/tmp/pi-gomemory-hcd045-audit.LqKdyy/extensions/gomemory-context.ts";
+import planExt from "/tmp/pi-gomemory-hcd045-audit.LqKdyy/extensions/gomemory-plan.ts";
+import { buildSystemPromptSections } from "/Users/josegomezj/.pi/agent/install/releases/1.5.2/node_modules/@earendil-works/pi-coding-agent/dist/core/system-prompt.js";
+
+let release; const handlers={}, commands={};
+const pi={on:(n,h)=>(handlers[n]??=[]).push(h),registerCommand:(n,d)=>commands[n]=d,
+exec:(_cmd,args)=> args[0]==="plan-context" ? new Promise(r=>release=r) : Promise.resolve({code:0,stdout:"# Memoria del Proyecto\nSYNTH-CONTEXT",stderr:""}),
+sendUserMessage:()=>{}};
+contextExt(pi);planExt(pi);
+const ctx={cwd:"/tmp/SYNTH-PROJECT",ui:{notify:()=>{},setStatus:()=>{}},isIdle:()=>false};
+for(const h of handlers.session_start??[])await h({reason:"startup"},ctx);
+const activating=commands.plan.handler("SYNTH-REQUEST",ctx);
+await Promise.resolve();
+const before=[];for(const h of handlers.tool_call??[])before.push(await h({toolName:"write",input:{path:"/tmp/SYNTH",content:"SYNTH"}},ctx));
+console.log("plan_loading_write_blocked="+before.some(r=>r?.block===true));
+release({code:0,stdout:"SYNTH-METHOD",stderr:""});await activating;
+const opts={sections:{},selectedTools:["read","codemode","mcp__gomemory__get_context"],hiddenTools:[],cwd:"/tmp/SYNTH-PROJECT"};
+for(const h of handlers.before_agent_start??[])await h({systemPromptOptions:opts},ctx);
+const rendered=buildSystemPromptSections(opts);
+console.log("real_Pi_renderer_gomemory="+rendered.gomemory?.includes("SYNTH-CONTEXT")+" plan="+rendered["gomemory-plan"]?.includes("SYNTH-METHOD"));
+for(const h of handlers.session_start??[])await h({reason:"new"},ctx);
+const after=[];for(const h of handlers.tool_call??[])after.push(await h({toolName:"write",input:{}},ctx));
+console.log("new_session_inherits_plan_block="+after.some(r=>r?.block===true));
+const section=buildSection({text:"a".repeat(30000)},[]);
+const end=section.indexOf(TRUNCATION_LINE)+TRUNCATION_LINE.length;
+console.log("context_with_notice_bytes="+Buffer.byteLength(section.slice(0,end))+" configured_limit="+MAX_CONTEXT_BYTES);

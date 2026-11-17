@@ -1,0 +1,9 @@
+=== RUN   TestH45ReleasedUnmarkedProtocol
+    hcd045-audit-repro_test.go:10: retired=false err=<nil> legacyRemaining=true userPreserved=true
+    hcd045-audit-repro_test.go:11: released unmarked protocol not retired
+--- FAIL: TestH45ReleasedUnmarkedProtocol (0.00s)
+FAIL
+FAIL	command-line-arguments	0.344s
+FAIL
+
+exit_code=1

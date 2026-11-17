@@ -1,0 +1,69 @@
+package audit_test
+
+import (
+ "bytes"
+ "context"
+ "encoding/json"
+ "errors"
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+ "testing/fstest"
+ "time"
+ installer "pi-gomemory/pkg/installer"
+)
+
+func put(t *testing.T, path, content string) { t.Helper(); if err:=os.WriteFile(path, []byte(content),0600); err!=nil { t.Fatal(err) } }
+func get(t *testing.T, path string) []byte { t.Helper(); b,err:=os.ReadFile(path); if err!=nil { t.Fatal(err) }; return b }
+
+func TestAudit114AtomicCodemode(t *testing.T) {
+ for _,enabled:=range []bool{true,false} {
+  t.Run(map[bool]string{true:"on",false:"off"}[enabled],func(t *testing.T){
+   dir:=t.TempDir(); settings:=filepath.Join(dir,"settings.json"); mcp:=filepath.Join(dir,"mcp.json")
+   initial:=`{"defaultTools":["+grep"],"theme":"SYNTH-THEME"}`
+   if !enabled { initial=`{"defaultTools":["+grep","+codemode"],"theme":"SYNTH-THEME"}` }
+   put(t,settings,initial); put(t,mcp,`{"mcpServers":`)
+   err:=installer.SetCodemode(dir,enabled)
+   if err==nil { t.Fatal("expected invalid MCP to fail") }
+   after:=get(t,settings)
+   t.Logf("error=%v; settings after error=%s",err,after)
+   if !bytes.Equal(after,[]byte(initial)) { t.Fatal("settings changed despite rejected MCP configuration") }
+  })
+ }
+}
+
+func TestAudit114HybridUninstall(t *testing.T) {
+ home:=t.TempDir(); agent:=filepath.Join(home,".pi","agent")
+ if err:=installer.SetCodemode(agent,true); err!=nil { t.Fatal(err) }
+ var out bytes.Buffer
+ err:=installer.Uninstall(fstest.MapFS{},&installer.Options{HomeDir:home,PiAgentDir:agent,LocalBinDir:filepath.Join(home,".local","bin")},installer.UninstallFlags{Yes:true},&out)
+ t.Logf("uninstall err=%v output=%s",err,out.String())
+ if err!=nil { t.Fatal(err) }
+ raw:=get(t,filepath.Join(agent,"mcp.json")); t.Logf("remaining MCP=%s",raw)
+ var obj struct { Servers map[string]json.RawMessage `json:"mcpServers"` }; if err:=json.Unmarshal(raw,&obj); err!=nil {t.Fatal(err)}
+ for _,name:=range []string{"gomemory","codebase-memory"} { if _,ok:=obj.Servers[name];ok { t.Errorf("installer-owned hybrid server %s survived uninstall",name) } }
+ t.Logf("remaining settings=%s",get(t,filepath.Join(agent,"settings.json")))
+}
+
+func TestAudit114CurrentProbeFailure(t *testing.T) {
+ path:=filepath.Join(t.TempDir(),"deps.json")
+ data,err:=json.Marshal(map[string]any{"checked_at":time.Now(),"deps":[]installer.DepState{{Name:"mem",Current:"1.0.0",Latest:"1.0.0"}}}); if err!=nil {t.Fatal(err)}
+ put(t,path,string(data)); calls:=0
+ probe:=installer.DepProbe{Name:"mem",Current:func(context.Context)(string,error){ calls++; return "",errors.New("SYNTH-PROBE-FAILURE") }}
+ var out,stderr bytes.Buffer
+ code:=installer.RunDepsUpdate(path,[]installer.DepProbe{probe},&out,&stderr)
+ t.Logf("calls=%d exit=%d stdout=%q stderr=%q",calls,code,out.String(),stderr.String())
+ if calls!=1 {t.Fatalf("probe calls=%d",calls)}
+ if code==0 || strings.Contains(out.String(),"están al día") {t.Fatal("failed live probe reported success using cached current version")}
+}
+
+func TestAudit114AbsoluteToolSelection(t *testing.T) {
+ dir:=t.TempDir(); path:=filepath.Join(dir,"settings.json");put(t,path,`{"defaultTools":["codemode"]}`)
+ if err:=installer.SetCodemode(dir,true);err!=nil {t.Fatal(err)}
+ raw:=get(t,path); st,err:=installer.GetCodemodeStatus(dir);if err!=nil {t.Fatal(err)}
+ t.Logf("settings=%s status=%+v",raw,st)
+ var obj struct{Tools []string `json:"defaultTools"`};if err:=json.Unmarshal(raw,&obj);err!=nil {t.Fatal(err)}
+ additive:=false;for _,v:=range obj.Tools {if v=="+codemode" {additive=true}}
+ if !additive {t.Fatal("hybrid on preserved absolute codemode-only tool selection")}
+}

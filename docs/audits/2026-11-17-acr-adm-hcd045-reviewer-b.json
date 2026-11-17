@@ -1,0 +1,58 @@
+{
+  "findings": [
+    {
+      "location": "extensions/gomemory-plan.ts; documento:217-218,233-240",
+      "severity": "Major",
+      "category": "race-condition",
+      "claim": "La activación de /plan deja una ventana en la que siguen permitiéndose modificaciones.",
+      "evidence_class": "static",
+      "evidence": [
+        "Se ejecuta `method = await loadMethod(ctx.cwd)` antes de `setActive(ctx, true)`.",
+        "loadMethod espera un proceso con timeout de 5000 ms.",
+        "El interceptor permite todas las herramientas mientras `!active`: `if (!active) return;`.",
+        "El comando contempla explícitamente una ejecución en curso mediante `ctx.isIdle?.() === false`."
+      ],
+      "problem": "Si se solicita /plan mientras el agente trabaja, sus siguientes llamadas modificadoras pueden ejecutarse durante la carga del método.",
+      "question": "¿Se puede activar el bloqueo antes del await y usar FALLBACK hasta que termine la carga?",
+      "confidence": 0.97
+    },
+    {
+      "location": "extensions/gomemory-context.ts; documento:84-85",
+      "severity": "Nit",
+      "category": "limit-enforcement",
+      "claim": "El cuerpo de contexto truncado puede superar el límite de 24576 bytes.",
+      "evidence_class": "static",
+      "evidence": [
+        "`truncateUtf8(mem.text, MAX_CONTEXT_BYTES)` consume todo el presupuesto.",
+        "`parts.push(truncated ? `${text}\\n${TRUNCATION_LINE}` : text)` añade después el salto de línea y el aviso.",
+        "Con una entrada ASCII de más de 24576 bytes, el texto retenido ya ocupa exactamente 24576 bytes."
+      ],
+      "problem": "El aviso queda fuera del presupuesto aunque forma parte del cuerpo de contexto emitido, antes del bloque Pi.",
+      "question": "¿El límite incluye el aviso? Si lo incluye, ¿se reservarán sus bytes antes de truncar?",
+      "confidence": 0.99
+    }
+  ],
+  "inspected": [
+    {
+      "path": "extensions/gomemory-context.ts",
+      "scope": "Fuente completa incluida en el documento."
+    },
+    {
+      "path": "extensions/gomemory-plan.ts",
+      "scope": "Fuente completa incluida en el documento."
+    },
+    {
+      "path": "pkg/installer/instructions.go",
+      "scope": "Fuente completa incluida; la preservación efectiva depende de auxiliares no incluidos y no se considera verificada."
+    },
+    {
+      "path": "pkg/installer/extension.go",
+      "scope": "Fuente completa incluida en el documento."
+    }
+  ],
+  "limitations": [
+    "Revisión estática exclusivamente del documento indicado; sin ejecución.",
+    "Compatibilidad con Pi 1.5.2 no verificada contra sus definiciones de API.",
+    "No se revisaron codemode.go, deps.go ni otros módulos."
+  ]
+}

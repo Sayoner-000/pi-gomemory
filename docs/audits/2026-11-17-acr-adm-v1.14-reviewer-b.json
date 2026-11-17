@@ -1,0 +1,64 @@
+{
+  "findings": [
+    {
+      "id": "B-01",
+      "severity": "Major",
+      "location": "pkg/installer/codemode.go:25-32",
+      "category": "configuración parcial",
+      "claim": "codemode modifica settings.json antes de comprobar que mcp.json puede actualizarse; un error deja cambios persistentes.",
+      "evidence_class": "traza estática determinista",
+      "evidence": [
+        "Preparar settings.json con {} y mcp.json con JSON inválido. Invocar SetCodemode(dir, true).",
+        "setCodemodeSettings escribe +codemode; después writeMCPServers devuelve error al leer mcp.json. settings.json permanece modificado.",
+        "El mismo orden afecta a codemode off y a destinos MCP con enlaces inválidos."
+      ],
+      "question": "¿Se validarán ambos destinos antes de escribir y se restaurará settings.json si falla la segunda escritura?",
+      "minimal_fix": "Preparar y validar ambas configuraciones antes de modificarlas; gestionar explícitamente el rollback ante fallos posteriores.",
+      "confidence": "alta"
+    },
+    {
+      "id": "B-02",
+      "severity": "Major",
+      "location": "pkg/installer/uninstall.go:457-467",
+      "category": "ciclo de vida",
+      "claim": "uninstall no reconoce como propias las definiciones MCP híbridas que genera codemode on.",
+      "evidence_class": "traza estática determinista",
+      "evidence": [
+        "En un directorio sintético, ejecutar SetCodemode(dir, true) y construir el plan de desinstalación.",
+        "planMCP compara exclusivamente con DefaultMCPServers(). gomemory y codebase-memory difieren en exposure y toolExposure, por lo que ambas entradas se omiten como personalizadas.",
+        "planSettings tampoco retira +codemode. La desinstalación conserva el perfil generado por el propio instalador."
+      ],
+      "question": "¿Debe uninstall reconocer y retirar también el perfil híbrido intacto y su activación en settings?",
+      "minimal_fix": "Aceptar como propias las definiciones directas e híbridas exactas y definir la retirada segura del marcador +codemode.",
+      "confidence": "alta"
+    },
+    {
+      "id": "B-03",
+      "severity": "Major",
+      "location": "pkg/installer/deps.go:415-440",
+      "category": "éxito falso ante sondeo fallido",
+      "claim": "deps-update puede anunciar que todo está al día aunque el sondeo actual de la versión instalada haya fallado.",
+      "evidence_class": "traza estática determinista",
+      "evidence": [
+        "Preparar una caché válida con current=latest=1.0.0 y sin error; proporcionar un DepProbe.Current que devuelva error.",
+        "liveVersion descarta el error y devuelve una cadena vacía; effectiveDepState conserva current y Error de la caché.",
+        "RunDepsUpdate considera comparables esos datos y devuelve 0 con «El meta-harness y sus dependencias están al día»."
+      ],
+      "question": "¿Puede propagarse el error del sondeo actual como estado desconocido, al menos para deps-update?",
+      "minimal_fix": "Devolver y conservar el error de liveVersion; impedir el mensaje de éxito y devolver un código no cero cuando falle la comprobación actual.",
+      "confidence": "alta"
+    }
+  ],
+  "inspected": [
+    "Documento target y referencia HEAD: main apunta a 49cbbe91cdab33ec6f023ba09e6afe87ef5f43b8.",
+    "main.go; installer.go; codemode.go y codemode_test.go; mcp.go; jsonfile.go.",
+    "plugin.go; pins.go; pins_candidate.go; deps.go; doctor.go.",
+    "manifest.go; uninstall.go; update.go.",
+    "scripts/build-release.sh; install.sh; contratos codemode de README.md."
+  ],
+  "limits": [
+    "Revisión estática: las reproducciones descritas no se ejecutaron; las herramientas disponibles solo permiten lectura y búsqueda.",
+    "No se obtuvo el diff contra la base ni se verificó la limpieza del árbol de trabajo.",
+    "No se consultaron auditorías anteriores, historial ni configuraciones de otros agentes. No se modificaron archivos ni se instalaron dependencias."
+  ]
+}

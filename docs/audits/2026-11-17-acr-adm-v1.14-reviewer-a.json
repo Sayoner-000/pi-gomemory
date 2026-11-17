@@ -1,0 +1,66 @@
+{
+  "findings": [
+    {
+      "id": "A-01",
+      "severity": "Major",
+      "location": "pkg/installer/codemode.go:25-32",
+      "claim": "Un error en mcp.json deja settings.json modificado y el perfil parcialmente conmutado.",
+      "evidence_class": "Traza estática determinista; reproducción no ejecutada",
+      "evidence": [
+        "SetCodemode escribe settings.json antes de validar o escribir mcp.json.",
+        "Caso reproducible: settings.json contiene {\"defaultTools\":[\"+grep\"]} y mcp.json contiene JSON inválido. SetCodemode(dir, true) añade +codemode y después devuelve error.",
+        "En sentido inverso, un fallo durante off retira +codemode aunque los servidores sigan con exposure codemode."
+      ],
+      "question": "¿Se validarán ambos destinos antes de modificar cualquiera y se restaurará el primer archivo si falla la segunda escritura?",
+      "minimal_fix": "Preparar y validar ambas configuraciones antes de escribir; incorporar recuperación ante fallos de la segunda escritura.",
+      "confidence": "alta"
+    },
+    {
+      "id": "A-02",
+      "severity": "Major",
+      "location": "pkg/installer/codemode.go:72-73,113",
+      "claim": "codemode on acepta y conserva una selección codemode-only en lugar de establecer +codemode.",
+      "evidence_class": "Traza estática determinista; reproducción no ejecutada",
+      "evidence": [
+        "Con settings.json igual a {\"defaultTools\":[\"codemode\"]}, la condición evita añadir +codemode.",
+        "La operación configura los servidores híbridos, devuelve éxito y conserva defaultTools:[\"codemode\"].",
+        "hasCodemodeInSettings considera equivalentes codemode y +codemode, por lo que status tampoco distingue este caso.",
+        "El contrato del target exige +codemode y prohíbe activar codemode-only."
+      ],
+      "question": "¿Debe normalizarse la entrada codemode a +codemode, o rechazarse explícitamente esa selección para no anunciar una activación híbrida correcta?",
+      "minimal_fix": "Distinguir la selección absoluta de la aditiva y garantizar +codemode en on, preservando las demás herramientas.",
+      "confidence": "alta"
+    },
+    {
+      "id": "A-03",
+      "severity": "Major",
+      "location": "pkg/installer/uninstall.go:457-467; pkg/installer/uninstall.go:579-677",
+      "claim": "Uninstall no reconoce el perfil híbrido que instala codemode on y deja activos sus registros.",
+      "evidence_class": "Traza estática determinista; reproducción no ejecutada",
+      "evidence": [
+        "planMCP compara exclusivamente contra DefaultMCPServers().",
+        "Después de SetCodemode(dir, true), gomemory y codebase-memory no coinciden con esas definiciones por Exposure y ToolExposure; se omiten como si fueran personalizados.",
+        "planSettings no contempla defaultTools ni la retirada de +codemode.",
+        "Secuencia reproducible: activar codemode y después desinstalar. Se conserva +codemode y quedan los dos servidores híbridos, aunque la desinstalación puede terminar con éxito."
+      ],
+      "question": "¿Se reconocerán ambas definiciones administradas —directa e híbrida— y se retirará la activación de codemode atribuible al instalador?",
+      "minimal_fix": "Aceptar las definiciones híbridas exactas al planificar y revalidar MCP; registrar procedencia para retirar +codemode sin borrar una configuración preexistente ajena.",
+      "confidence": "alta"
+    }
+  ],
+  "inspected": [
+    "Documento target y contratos públicos",
+    "main.go",
+    "pkg/installer: codemode.go, codemode_test.go, mcp.go, jsonfile.go, installer.go, plugin.go, pins.go, pins_candidate.go, deps.go, manifest.go, uninstall.go",
+    "doctor.go y update.go parcialmente",
+    "scripts/build-release.sh",
+    "install.sh",
+    "README.md: contrato de codemode"
+  ],
+  "limits": [
+    "Revisión estática de las fuentes disponibles; no se ejecutaron pruebas ni reproducciones.",
+    "Las herramientas disponibles no permiten comprobar HEAD, limpieza del árbol ni el diff entre los commits indicados; no se certifica identidad con la revisión congelada.",
+    "No se modificaron archivos, instalaron dependencias ni consultaron historial, memoria del proyecto o configuraciones de otros agentes."
+  ],
+  "model": "ChatGPT; identificador exacto no disponible"
+}

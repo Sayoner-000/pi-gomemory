@@ -1,0 +1,12 @@
+package audit_test
+import("os";"path/filepath";"strings";"testing"; installer "pi-gomemory/pkg/installer")
+func TestH45ReleasedUnmarkedProtocol(t *testing.T) {
+ legacy,err:=os.ReadFile("/tmp/hcd045-legacy-fixture.txt"); if err!=nil { t.Fatal(err) }
+ dir:=t.TempDir();path:=filepath.Join(dir,"AGENTS.md")
+ original:="# SYNTH-USER\n\n"+string(legacy)+"\nSYNTH-FOOTER\n"
+ if err:=os.WriteFile(path,[]byte(original),0600);err!=nil {t.Fatal(err)}
+ retired,err:=installer.RetireLegacyInstructions(dir)
+ after,readErr:=os.ReadFile(path);if readErr!=nil {t.Fatal(readErr)}
+ t.Logf("retired=%v err=%v legacyRemaining=%v userPreserved=%v",retired,err,strings.Contains(string(after),"Protocolo para Pi"),strings.Contains(string(after),"SYNTH-USER")&&strings.Contains(string(after),"SYNTH-FOOTER"))
+ if err!=nil||!retired||strings.Contains(string(after),"Protocolo para Pi"){t.Fatal("released unmarked protocol not retired")}
+}

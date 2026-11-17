@@ -1,0 +1,86 @@
+=== RUN   TestAudit114AtomicCodemode
+=== RUN   TestAudit114AtomicCodemode/on
+    repro_test.go:30: error=/var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestAudit114AtomicCodemodeon39903646/001/mcp.json no es JSON válido; no se modifica: unexpected end of JSON input; settings after error={
+          "defaultTools": [
+            "+grep",
+            "+codemode"
+          ],
+          "theme": "SYNTH-THEME"
+        }
+    repro_test.go:31: settings changed despite rejected MCP configuration
+=== RUN   TestAudit114AtomicCodemode/off
+    repro_test.go:30: error=/var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestAudit114AtomicCodemodeoff3760339400/001/mcp.json no es JSON válido; no se modifica: unexpected end of JSON input; settings after error={
+          "defaultTools": [
+            "+grep"
+          ],
+          "theme": "SYNTH-THEME"
+        }
+    repro_test.go:31: settings changed despite rejected MCP configuration
+--- FAIL: TestAudit114AtomicCodemode (0.01s)
+    --- FAIL: TestAudit114AtomicCodemode/on (0.01s)
+    --- FAIL: TestAudit114AtomicCodemode/off (0.01s)
+=== RUN   TestAudit114HybridUninstall
+    repro_test.go:41: uninstall err=<nil> output=Plan de desinstalación:
+          [omitir] /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestAudit114HybridUninstall1146689380/001/.pi/agent/mcp.json › mcpServers.gomemory — no coincide con la definición de pi-gomemory
+          [retirar] /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestAudit114HybridUninstall1146689380/001/.pi/agent/mcp.json › mcpServers.codegraph — servidor MCP registrado por pi-gomemory
+          [omitir] /var/folders/34/jwxjynms09b21_4rb72hqxk80000gn/T/TestAudit114HybridUninstall1146689380/001/.pi/agent/mcp.json › mcpServers.codebase-memory — no coincide con la definición de pi-gomemory
+        Resumen: 1 retirados, 0 conservados, 2 omitidos, 0 fallidos.
+        ✓ pi-gomemory desinstalado. Para reinstalar: pi-gomemory-setup install
+    repro_test.go:43: remaining MCP={
+          "mcpServers": {
+            "codebase-memory": {
+              "command": "codebase-memory-mcp",
+              "exposure": "codemode",
+              "toolExposure": {
+                "check_index_coverage": "direct",
+                "get_code_snippet": "direct",
+                "search_graph": "direct",
+                "trace_path": "direct"
+              },
+              "description": "Codebase memory knowledge graph for deep structural queries and call tracing"
+            },
+            "gomemory": {
+              "command": "mem",
+              "args": [
+                "mcp"
+              ],
+              "exposure": "codemode",
+              "toolExposure": {
+                "end_session": "direct",
+                "get_context": "direct",
+                "get_memory": "direct",
+                "get_plan_context": "direct",
+                "save_memory": "direct",
+                "save_session_summary": "direct",
+                "search_memories": "direct"
+              },
+              "description": "Gomemory persistent project memory, semantic graphs, checkpoints, HCD and review protocol"
+            }
+          }
+        }
+    repro_test.go:45: installer-owned hybrid server gomemory survived uninstall
+    repro_test.go:45: installer-owned hybrid server codebase-memory survived uninstall
+    repro_test.go:46: remaining settings={
+          "defaultTools": [
+            "+codemode"
+          ]
+        }
+--- FAIL: TestAudit114HybridUninstall (0.01s)
+=== RUN   TestAudit114CurrentProbeFailure
+    repro_test.go:56: calls=1 exit=0 stdout="✓ El meta-harness y sus dependencias están al día.\n" stderr=""
+    repro_test.go:58: failed live probe reported success using cached current version
+--- FAIL: TestAudit114CurrentProbeFailure (0.00s)
+=== RUN   TestAudit114AbsoluteToolSelection
+    repro_test.go:65: settings={
+          "defaultTools": [
+            "codemode"
+          ]
+        }
+         status={Enabled:true SettingsEnabled:true MCPEnabled:true Partial:false}
+    repro_test.go:68: hybrid on preserved absolute codemode-only tool selection
+--- FAIL: TestAudit114AbsoluteToolSelection (0.01s)
+FAIL
+FAIL	command-line-arguments	0.347s
+FAIL
+
+exit_code=1

@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "severity": "Nit",
+      "category": "limitación UTF-8",
+      "location": "docs/audits/2026-11-17-acr-adm-hcd045-source.md:84-85",
+      "target": "extensions/gomemory-context.ts",
+      "claim": "El cuerpo de contexto puede superar el límite de 24576 bytes.",
+      "evidence_class": "análisis estático",
+      "evidence": [
+        "truncateUtf8(mem.text, MAX_CONTEXT_BYTES) consume todo el presupuesto.",
+        "Después se añade `${text}\\n${TRUNCATION_LINE}`. Para una entrada ASCII suficientemente larga, el cuerpo resultante supera 24576 bytes, incluso sin contar el bloque Pi."
+      ],
+      "question": "¿Debe reservarse dentro del límite el espacio UTF-8 del aviso de truncamiento y su salto de línea?",
+      "confidence": "alta"
+    },
+    {
+      "severity": "Major",
+      "category": "concurrencia",
+      "location": "docs/audits/2026-11-17-acr-adm-hcd045-source.md:215-223",
+      "target": "extensions/gomemory-plan.ts",
+      "claim": "Activar /plan durante una ejecución deja una ventana sin bloqueo mientras se carga el método.",
+      "evidence_class": "análisis estático",
+      "evidence": [
+        "Primero se ejecuta `method = await loadMethod(ctx.cwd)` y después `setActive(ctx, true)`.",
+        "loadMethod espera un proceso con timeout de 5000 ms.",
+        "El manejador tool_call permite todas las llamadas mientras active sea false; el propio comando contempla una ejecución ocupada mediante ctx.isIdle()."
+      ],
+      "question": "¿Puede activarse el bloqueo antes del await, usando FALLBACK mientras carga el método, para impedir modificaciones durante esa ventana?",
+      "confidence": "alta"
+    },
+    {
+      "severity": "Major",
+      "category": "aislamiento de sesiones",
+      "location": "docs/audits/2026-11-17-acr-adm-hcd045-source.md:179-181,237-257",
+      "target": "extensions/gomemory-plan.ts",
+      "claim": "El estado de /plan y su contexto no se reinicializan al cambiar de sesión.",
+      "evidence_class": "análisis estático",
+      "evidence": [
+        "active y method residen en el cierre de la extensión.",
+        "No existe manejador session_start que los restablezca o recargue.",
+        "tool_call y before_agent_start siguen utilizando esos valores: si la instancia sobrevive a new/resume/fork, la sesión siguiente hereda el bloqueo y el método anterior."
+      ],
+      "question": "¿Debe /plan persistir entre sesiones? Si no, ¿se restablecerán active, method y el indicador visual en session_start?",
+      "confidence": "media"
+    }
+  ],
+  "inspected": [
+    "Fuente completa incluida de extensions/gomemory-context.ts.",
+    "Fuente completa incluida de extensions/gomemory-plan.ts.",
+    "Fuente completa incluida de pkg/installer/instructions.go.",
+    "Fuente completa incluida de pkg/installer/extension.go.",
+    "Revisión estática exclusivamente del documento indicado; sin consultar otros módulos, historial ni configuraciones. La compatibilidad con Pi 1.5.2 y los auxiliares de migración no pueden verificarse con esta fuente solamente."
+  ]
+}
