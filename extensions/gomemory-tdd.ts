@@ -1026,14 +1026,23 @@ export function playwrightLineParser(
 				}
 			}
 
+			const suiteBefore = store.getState().suites.find((s) => s.id === suiteId);
+			if (res.code !== 0 && !suiteBefore?.tests.some((t) => t.status === "failed")) {
+				const id = "pw::(proceso)";
+				store.startTest(suiteId, id, "playwright test");
+				store.finishTest(suiteId, id, "failed", 0, {
+					message: clip(res.tail.join("\n") || `playwright salió con código ${res.code}`),
+				});
+			}
+
 			const suite = store.getState().suites.find((s) => s.id === suiteId);
 			const anyFailed = suite?.tests.some((t) => t.status === "failed");
 			const anyFlaky = suite?.tests.some((t) => t.status === "flaky");
 			const allPassed = suite?.tests.length ? suite.tests.every((t) => t.status === "passed") : false;
-			const suiteStatus: StepStatus = anyFailed ? "failed" : anyFlaky ? "flaky" : allPassed ? "passed" : (res.code === 0 && jsonReportParsed ? "passed" : "failed");
+			const suiteStatus: StepStatus = anyFailed ? "failed" : anyFlaky ? "flaky" : res.code !== 0 ? "failed" : allPassed ? "passed" : (jsonReportParsed ? "passed" : "failed");
 			store.finishSuite(suiteId, suiteStatus);
 
-			return anyFailed || (!jsonReportParsed && res.code !== 0);
+			return Boolean(anyFailed) || res.code !== 0;
 		},
 	};
 }

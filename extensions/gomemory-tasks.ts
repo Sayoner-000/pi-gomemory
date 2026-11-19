@@ -53,23 +53,33 @@ export function renderTasks(u: Unit): string[] | undefined {
 export default function (pi: ExtensionAPI) {
 	let visible = true;
 	let busy = false;
+	let pendingCtx: any = null;
 
 	async function refresh(ctx: any) {
-		if (busy) return;
+		if (busy) {
+			pendingCtx = ctx;
+			return;
+		}
 		busy = true;
 		try {
 			let lines: string[] | undefined;
 			if (visible) {
 				try {
 					const r = await pi.exec("mem", ["hcd", "show", "--json"], { cwd: ctx.cwd, timeout: 5000 });
-					if (r.code === 0) lines = renderTasks(JSON.parse(r.stdout ?? ""));
+					if (r.code === 0 && visible) lines = renderTasks(JSON.parse(r.stdout ?? ""));
 				} catch {
 					// mem ausente, sin unidad o salida inválida: no se muestra nada
 				}
 			}
+			if (!visible) lines = undefined;
 			ctx.ui?.setWidget?.(WIDGET, lines);
 		} finally {
 			busy = false;
+			if (pendingCtx) {
+				const next = pendingCtx;
+				pendingCtx = null;
+				await refresh(next);
+			}
 		}
 	}
 

@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -37,13 +36,17 @@ func isPristineEmbeddedCopy(dir string) bool {
 
 // SanitizeFrontmatter asegura que los campos de YAML no contengan mappings anidados inválidos.
 func SanitizeFrontmatter(content []byte) []byte {
-	scanner := bufio.NewScanner(bytes.NewReader(content))
 	var buf bytes.Buffer
 	inFrontmatter := false
 	frontmatterDashes := 0
 
-	for scanner.Scan() {
-		line := scanner.Text()
+	rawLines := bytes.SplitAfter(content, []byte("\n"))
+	for i, raw := range rawLines {
+		// bytes.SplitAfter deja un elemento vacío al final si content termina en "\n".
+		if i == len(rawLines)-1 && len(raw) == 0 {
+			continue
+		}
+		line := strings.TrimSuffix(string(bytes.TrimSuffix(raw, []byte("\n"))), "\r")
 		trimmed := strings.TrimSpace(line)
 
 		if trimmed == "---" {
@@ -53,11 +56,7 @@ func SanitizeFrontmatter(content []byte) []byte {
 			} else if frontmatterDashes == 2 {
 				inFrontmatter = false
 			}
-			buf.WriteString(line + "\n")
-			continue
-		}
-
-		if inFrontmatter && strings.HasPrefix(trimmed, "description:") {
+		} else if inFrontmatter && strings.HasPrefix(trimmed, "description:") {
 			val := strings.TrimSpace(strings.TrimPrefix(trimmed, "description:"))
 			if !strings.HasPrefix(val, `"`) && !strings.HasPrefix(val, `'`) && strings.Contains(val, ":") {
 				cleanVal := strings.ReplaceAll(val, `"`, `\"`)
@@ -65,7 +64,8 @@ func SanitizeFrontmatter(content []byte) []byte {
 			}
 		}
 
-		buf.WriteString(line + "\n")
+		buf.WriteString(line)
+		buf.WriteByte('\n')
 	}
 
 	return buf.Bytes()

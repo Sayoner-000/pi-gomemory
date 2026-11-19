@@ -597,6 +597,8 @@ export function validateQuotaSummary(data: any): QuotaSummaryInfo | null {
 
 export default function (pi: ExtensionAPI) {
 	let visible = false;
+	let opening = false;
+	let shutDown = false;
 	let overlayMinimized = false;
 	let closeSidebar: (() => void) | null = null;
 	let requestRender: ((force?: boolean) => void) | null = null;
@@ -813,9 +815,19 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	async function openSidebar(ctx: ExtensionCommandContext) {
-		if (!ctx.hasUI) return;
+		if (!ctx.hasUI || visible || opening || shutDown) return;
+		opening = true;
 		activeCtx = ctx;
-		cachedTitle = await fetchTitle(ctx);
+		try {
+			cachedTitle = await fetchTitle(ctx);
+		} finally {
+			// Si session_shutdown ocurrió mientras fetchTitle esperaba, abortar antes de montar overlay/timer.
+		}
+		if (shutDown || !opening || visible) {
+			opening = false;
+			return;
+		}
+		opening = false;
 		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
 		void refreshAnthropicPlanIfNeeded(ctx); // respaldo de una sola consulta; luego mandan las cabeceras
@@ -979,12 +991,15 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("session_start", async (_event: any, ctx: any) => {
+		shutDown = false;
 		cachedTitle = await fetchTitle(ctx);
 		void refreshQuotaIfNeeded(ctx);
 		void refreshClaudeUsageIfNeeded(ctx);
 	});
 
 	pi.on("session_shutdown", async (_event: any, _ctx: any) => {
+		shutDown = true;
+		opening = false;
 		if (autoRefreshTimer) {
 			clearInterval(autoRefreshTimer);
 			autoRefreshTimer = null;

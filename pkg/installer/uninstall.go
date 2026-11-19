@@ -1131,10 +1131,6 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Dir(UninstalledMarkerPath(opts.HomeDir)), 0755); err == nil {
-		_ = os.WriteFile(UninstalledMarkerPath(opts.HomeDir), []byte(Version+"\n"), 0644)
-	}
-
 	counts := map[string]int{}
 	changed := 0
 	blocking := 0 // fallos ajenos al manifiesto (Q12)
@@ -1190,6 +1186,9 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (
 		counts[ActionRemove], counts[ActionKeep], counts[ActionSkip], counts[ActionFail])
 	if counts[ActionFail] > 0 {
 		return fmt.Errorf("%d acciones fallaron", counts[ActionFail])
+	}
+	if err := os.MkdirAll(filepath.Dir(UninstalledMarkerPath(opts.HomeDir)), 0755); err == nil {
+		_ = os.WriteFile(UninstalledMarkerPath(opts.HomeDir), []byte(Version+"\n"), 0644)
 	}
 	if changed > 0 {
 		fmt.Fprintf(w, "✓ pi-gomemory desinstalado; se conservaron %d elementos que cambiaron después del plan\n", changed)
