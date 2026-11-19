@@ -4,6 +4,17 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.15.4] - 2026-11-19
+
+### Changed
+- `install` y `update` vuelven a dejar los servidores MCP (`gomemory`, `codegraph` y `codebase-memory`) en modo directo (`codemode off`) por defecto (HCD-050).
+- Quien quiera trabajar con el perfil híbrido puede activarlo con `pi-gomemory-setup codemode on`; la elección queda guardada en `~/.pi-gomemory/codemode.json` y se respeta en siguientes instalaciones y actualizaciones.
+- Al actualizar desde v1.15.0–v1.15.3 sin una preferencia explícita (`preference == ""`), `install` retira `+codemode` cuando consta que lo añadió `pi-gomemory` en el mismo `settings.json` y restaura los tres servidores a `direct` bajo rollback, evitando dejar configuraciones en estado parcial. Si `+codemode` es propio del usuario o apunta a otro archivo, se conserva sin tocar `defaultTools`.
+- Las versiones predeterminadas de `install.sh` y `scripts/build-release.sh` apuntan a v1.15.4.
+
+### Documentation
+- Notas de [v1.15.4](docs/releases/v1.15.4.md), enmienda en [ADR-0004](docs/adr/0004-contexto-vivo-y-codemode.md), badge, `README.md` y guías de instalación, uso y arquitectura actualizados.
+
 ## [v1.15.3] - 2026-11-19
 
 ### Added

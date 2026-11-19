@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación local](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación manual y reversión. La mitigación no se instala por defecto.
 
+[Notas de v1.15.4](releases/v1.15.4.md)
+Modo MCP directo (`codemode off`) por defecto en `install` y `update`, con `codemode on` opt-in persistente y transición limpia desde v1.15.x (HCD-050).
+
 [Notas de v1.15.3](releases/v1.15.3.md)
 Regresión offline de Antigravity, cierre verificado de HCD-040 y documentación de la mitigación local opt-in.
 
