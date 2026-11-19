@@ -62,43 +62,87 @@ func TestHCD046Preference(t *testing.T) {
 	})
 }
 
-// Tarea 2: install deja codemode híbrido salvo un off explícito.
+// Tarea 2 (HCD-050): install deja modo MCP directo (codemode off) por defecto,
+// respeta un codemode on explícito y revierte limpiamente instalaciones v1.15.x
+// sin preferencia (respetando +codemode ajeno).
 func TestHCD046InstallDefault(t *testing.T) {
-	t.Run("instalación nueva en codemode", func(t *testing.T) {
+	t.Run("instalación nueva en modo directo (codemode off)", func(t *testing.T) {
 		opts := sandbox(t)
 		if err := InstallAll(repoAssets(t), opts); err != nil {
 			t.Fatal(err)
 		}
-		if s, _ := GetCodemodeStatus(opts.PiAgentDir); !s.Enabled {
-			t.Fatalf("install no activó codemode: %+v", s)
+		if s, _ := GetCodemodeStatus(opts.PiAgentDir); s.Enabled || s.SettingsEnabled || s.MCPEnabled {
+			t.Fatalf("install debe dejar codemode off por defecto: %+v", s)
 		}
 		st := hcd046State(t, opts.HomeDir)
-		if !st.AddedPlusCodemode || st.Preference != "" {
-			t.Fatalf("install debe registrar la propiedad sin fijar preferencia: %+v", st)
+		if st.AddedPlusCodemode || st.Preference != "" {
+			t.Fatalf("install no debe activar ni fijar preferencia por defecto: %+v", st)
 		}
 	})
-	t.Run("respeta codemode off", func(t *testing.T) {
+	t.Run("respeta codemode on explícito", func(t *testing.T) {
 		opts := sandbox(t)
-		if err := SetCodemodePreference(opts, false); err != nil {
+		if err := SetCodemodePreference(opts, true); err != nil {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
 		if err := applyCodemodeDefault(opts, &out); err != nil {
 			t.Fatal(err)
 		}
-		if s, _ := GetCodemodeStatus(opts.PiAgentDir); s.SettingsEnabled || s.MCPEnabled {
-			t.Fatalf("install pisó codemode off: %+v", s)
+		if s, _ := GetCodemodeStatus(opts.PiAgentDir); !s.Enabled || !s.SettingsEnabled || !s.MCPEnabled {
+			t.Fatalf("install pisó codemode on: %+v", s)
 		}
 		if out.Len() == 0 {
-			t.Fatal("install no informa de que respeta codemode off")
+			t.Fatal("install no informa de que respeta codemode on")
+		}
+	})
+	t.Run("revierte limpiamente default v1.15.x sin preferencia", func(t *testing.T) {
+		opts := sandbox(t)
+		// Simula una instalación de v1.15.x: activó codemode por defecto (preference == "")
+		// dejando added_plus_codemode=true y settings_target apuntando a settings.json.
+		var st codemodeState
+		if err := enableCodemode(opts, &st); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeCodemodeState(opts.HomeDir, st); err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		if err := applyCodemodeDefault(opts, &out); err != nil {
+			t.Fatal(err)
+		}
+		if s, _ := GetCodemodeStatus(opts.PiAgentDir); s.Enabled || s.SettingsEnabled || s.MCPEnabled || s.Partial {
+			t.Fatalf("no revirtió limpiamente a modo directo: %+v", s)
+		}
+		after := hcd046State(t, opts.HomeDir)
+		if after.AddedPlusCodemode || after.SettingsTarget != "" || after.Preference != "" {
+			t.Fatalf("el estado no quedó limpio tras revertir v1.15.x: %+v", after)
+		}
+	})
+	t.Run("no toca +codemode de v1.15.0 sin settings_target ni de otro destino", func(t *testing.T) {
+		opts := sandbox(t)
+		settings := filepath.Join(opts.PiAgentDir, "settings.json")
+		writeFile(t, settings, `{"defaultTools":["+codemode"]}`)
+		writeFile(t, CodemodeStatePath(opts.HomeDir), `{"added_plus_codemode":true}`)
+		var out bytes.Buffer
+		if err := applyCodemodeDefault(opts, &out); err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Contains(hcd046DefaultTools(t, opts.PiAgentDir), "+codemode") {
+			t.Fatal("retiró +codemode sin settings_target verificable")
+		}
+		if s, _ := GetCodemodeStatus(opts.PiAgentDir); s.MCPEnabled {
+			t.Fatalf("MCP debe quedar en modo directo: %+v", s)
 		}
 	})
 }
 
-// Tarea 3: uninstall retira el perfil híbrido, el +codemode propio y el estado.
+// Tarea 3: uninstall retira el perfil directo, el perfil híbrido, el +codemode propio y el estado.
 func TestHCD046Uninstall(t *testing.T) {
-	t.Run("propio", func(t *testing.T) {
+	t.Run("propio tras codemode on", func(t *testing.T) {
 		opts := installSandbox(t)
+		if err := SetCodemodePreference(opts, true); err != nil {
+			t.Fatal(err)
+		}
 		plan, err := BuildUninstallPlan(repoAssets(t), opts, UninstallFlags{})
 		if err != nil {
 			t.Fatal(err)

@@ -78,11 +78,11 @@ Comandos:
 
 ## Codemode y contexto vivo
 
-`install` y `update` usan codemode híbrido por defecto. Estas órdenes guardan una elección explícita para las siguientes instalaciones:
+`install` y `update` usan modo MCP **directo** (`codemode off`) por defecto para `gomemory`, `codegraph` y `codebase-memory`. Estas órdenes permiten activar el modo híbrido o volver a directo, guardando una elección explícita para las siguientes instalaciones:
 
 ```bash
-pi-gomemory-setup codemode off
 pi-gomemory-setup codemode on
+pi-gomemory-setup codemode off
 pi-gomemory-setup codemode status
 ```
 

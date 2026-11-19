@@ -148,14 +148,14 @@ Con `usage`, si la API no responde o el token caducó, el comando termina con un
 
 ### Codemode y contexto por sesión
 
-`install` y `update` activan codemode híbrido por defecto. Para desactivarlo:
+`install` y `update` dejan los servidores MCP (`gomemory`, `codegraph` y `codebase-memory`) en modo **directo** (`codemode off`) por defecto. Si quieres activar el modo codemode híbrido de forma persistente:
 
 ```bash
-pi-gomemory-setup codemode off
+pi-gomemory-setup codemode on
 pi-gomemory-setup codemode status
 ```
 
-La elección queda en `~/.pi-gomemory/codemode.json` y se respeta al reinstalar. `codemode on` vuelve a habilitarlo. El perfil conserva herramientas MCP de consulta frecuente como directas; las demás siguen disponibles desde `codemode` mediante `tools.<nombre>(args)`. CodeGraph permanece directo.
+La elección queda en `~/.pi-gomemory/codemode.json` y se respeta al reinstalar o actualizar. `codemode off` vuelve al modo directo. En modo híbrido se conservan herramientas MCP de consulta frecuente como directas y las demás siguen disponibles desde `codemode` mediante `tools.<nombre>(args)`. CodeGraph permanece siempre directo.
 
 La extensión de contexto ejecuta `mem context` una vez por sesión con un timeout de tres segundos. Conserva hasta 24 576 bytes de texto UTF-8 y añade un aviso si lo recorta. Si la consulta falla, muestra una advertencia y carga solo el bloque específico de Pi. `/plan` añade su método en una sección separada del prompt.
 

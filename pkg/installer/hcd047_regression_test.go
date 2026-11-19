@@ -105,8 +105,9 @@ func TestHCD047Regression(t *testing.T) {
 			const origSettings, origMCP = `{"defaultTools":["read"]}`, `{"mcpServers":{"mine":{"command":"x"}}}`
 			writeFile(t, settings, origSettings)
 			writeFile(t, mcp, origMCP)
-			stateDir := filepath.Dir(CodemodeStatePath(opts.HomeDir))
-			mkdir(t, stateDir)
+			statePath := CodemodeStatePath(opts.HomeDir)
+			stateDir := filepath.Dir(statePath)
+			writeFile(t, statePath, `{"preference":"on"}`)
 			if err := os.Chmod(stateDir, 0555); err != nil {
 				t.Fatal(err)
 			}

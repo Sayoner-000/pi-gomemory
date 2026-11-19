@@ -18,8 +18,8 @@ func TestCodemodeCLI(t *testing.T) {
 	if err := runCodemode(opts, []string{"on"}, &out); err != nil {
 		t.Fatalf("runCodemode on: %v", err)
 	}
-	if !strings.Contains(out.String(), "codemode") {
-		t.Fatalf("expected codemode note in output, got %q", out.String())
+	if !strings.Contains(out.String(), "codemode") || !strings.Contains(out.String(), "directo") {
+		t.Fatalf("expected codemode note mentioning modo directo in output, got %q", out.String())
 	}
 
 	st, err := installer.GetCodemodeStatus(dir)
