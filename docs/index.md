@@ -16,6 +16,9 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
+[Notas de v1.15.2](releases/v1.15.2.md)
+Cierre de los cinco hallazgos (dos medios y tres bajos) de la [auditoría ACR/ADM de v1.15.1](audits/2026-11-18-acr-adm-v1.15.1.md) (HCD-048): re-entrancia en `openSidebar`, códigos de salida en `playwrightLineParser.finish`, marca `.uninstalled` ante fallos parciales, líneas >64 KiB en `SanitizeFrontmatter` y carrera en `/tasks`.
+
 [Notas de v1.15.1](releases/v1.15.1.md)
 Corrección de los ocho hallazgos del ACR de v1.15.0: codemode se restaura si falla a medias y respeta `off` sin tocar `defaultTools`, la migración de `AGENTS.md` conserva el texto propio y `uninstall` solo retira lo que puede probar como propio.
 

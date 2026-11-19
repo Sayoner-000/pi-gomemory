@@ -1,10 +1,10 @@
-# Problemas conocidos — v1.15.1
+# Problemas conocidos — v1.15.2
 
 ## Estado de la revisión más reciente
 
-El [ACR de v1.15.0](audits/2026-11-17-acr-v1.15.0.md) encontró ocho hallazgos medios, corregidos en v1.15.1 (ver abajo). La suite completa con detector de carreras y `go vet` pasa sobre v1.15.1; no hubo una nueva revisión independiente de esta versión. El [ACR de HCD-045](audits/2026-11-17-acr-adm-hcd045.md) terminó `INCOMPLETE` sobre una copia anterior mientras la implementación seguía en curso; sus dos fallos de tests heredados ya no aparecen en la validación.
+La [auditoría ACR/ADM de v1.15.1](audits/2026-11-18-acr-adm-v1.15.1.md) encontró cinco hallazgos (dos medios y tres bajos), corregidos en v1.15.2 ([HCD-048](../hcd/HCD-048-cerrar-h-01-a-h-05-de-la-auditoria-acr-a.md)). La suite completa con detector de carreras (`go test -race ./...`) y `go vet ./...` pasa sobre v1.15.2. El [ACR de v1.15.0](audits/2026-11-17-acr-v1.15.0.md) encontró ocho hallazgos medios, corregidos en v1.15.1 (ver abajo). El [ACR de HCD-045](audits/2026-11-17-acr-adm-hcd045.md) terminó `INCOMPLETE` sobre una copia anterior mientras la implementación seguía en curso; sus dos fallos de tests heredados ya no aparecen en la validación.
 
-| Caso | Estado en v1.15.1 | Medida recomendada |
+| Caso | Estado en v1.15.2 | Medida recomendada |
 |---|---|---|
 | Codemode modifica settings antes de validar o escribir MCP | **Corregido** en v1.15.1 (C-001): se restauran `settings.json` y `mcp.json` si la conmutación falla | En v1.15.0, respalda los archivos y comprueba `codemode status` si la orden falla; corrige el JSON o los permisos y repite la orden |
 | deps-update reutiliza la versión de caché si falla el sondeo local | Abierto: puede anunciar «al día» sin confirmar la versión actual | Ejecuta `deps-refresh` y verifica por separado el binario instalado si hubo errores de lectura |

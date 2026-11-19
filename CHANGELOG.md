@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.15.2] - 2026-11-18
+
+### Fixed
+- `openSidebar` en `gomemory-sidebar.ts` protege contra re-entrancia y aborta si ocurrió `session_shutdown` durante `fetchTitle`, evitando overlays duplicados huérfanos y temporizadores activos en sesiones cerradas.
+- `playwrightLineParser.finish` en `gomemory-tdd.ts` registra un fallo de proceso y retorna error cuando `res.code !== 0`, incluso si el reporte JSON previo marcó todos los tests en `passed`.
+- `Uninstall` escribe la marca `~/.pi-gomemory/uninstalled` únicamente cuando `counts[ActionFail] == 0`.
+- `SanitizeFrontmatter` reemplaza `bufio.Scanner` por `bytes.SplitAfter` para procesar líneas mayores a 64 KiB sin truncamiento silencioso.
+- `refresh(ctx)` en `gomemory-tasks.ts` encola actualizaciones cuando `busy` está activo y vuelve a comprobar `visible` antes de `setWidget`.
+
+### Documentation
+- Informe de la [auditoría ACR/ADM de v1.15.1](docs/audits/2026-11-18-acr-adm-v1.15.1.md), notas de `v1.15.2` y referencias en `README.md` y `docs/` actualizadas (HCD-048).
+
 ## [v1.15.1] - 2026-11-17
 
 ### Fixed
