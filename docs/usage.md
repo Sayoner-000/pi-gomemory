@@ -41,6 +41,12 @@ Si la API no responde o el token caducó, el comando termina con código 1 y un 
 
 Desde v1.13.8, una respuesta 200 sin ningún límite (`null`, `{}` o grupos vacíos) o con un porcentaje fuera de rango cuenta como fallo de ese endpoint: el comando prueba el siguiente y, si ninguno trae cuotas, termina con código 1, y el panel lateral muestra el error en vez de «Cargando cuota...». Si Google envía cuotas pero no el nombre del plan, la primera línea dice «Plan no informado» en lugar de suponer «Google AI Pro (g1-pro-tier)».
 
+## Antigravity devuelve HTTP 429 con cuota disponible
+
+Si `/sidebar` o `pi-gomemory usage` muestran cuota, pero la generación termina con `Resource has been exhausted`, no des por probado un problema de login ni borres las credenciales. En HCD-040 se reprodujo un patrón asociado al contenido o ubicación de las instrucciones de Pi con la misma credencial.
+
+Consulta el [diagnóstico de Antigravity](antigravity.md) antes de aplicar la referencia local opt-in. El guard conserva el texto, pero baja su prioridad al trasladarlo a un turno de usuario; no se instala con `install` ni `update`. Para desactivar una copia instalada manualmente, inicia un proceso nuevo con `ANTIGRAVITY_PROMPT_GUARD=off pi`. La validación de `/sidebar` incluye la confirmación de la persona, no una inspección visual del agente.
+
 ## Referencia de comandos CLI
 
 El binario `pi-gomemory-setup` acepta los siguientes argumentos:

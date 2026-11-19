@@ -1,10 +1,18 @@
-# Problemas conocidos — v1.15.2
+# Problemas conocidos — v1.15.3
+
+## Antigravity: HTTP 429 con OAuth y cuota disponibles
+
+**Mitigación local opt-in; no corregido automáticamente por v1.15.3.** En la instalación investigada, la comparación A/B/A con la misma credencial produjo 429 con las instrucciones originales de Pi, 200 al trasladarlas al primer mensaje de usuario y 429 al restaurarlas. También se reprodujo con versiones anteriores de Pi y del plugin; no se atribuye el fallo exclusivamente al pin 0.14.0 ni al hardening.
+
+La [guía de Antigravity](antigravity.md) explica la referencia publicada, su desactivación y el riesgo: conservar el texto no conserva su prioridad ni garantiza protección equivalente frente a inyección de instrucciones. La prueba real recuperó Hydrogen, Sonnet y un ciclo de herramientas; la persona confirmó el panel y las cuotas. Esto no demuestra que todos los HTTP 429 tengan la misma causa. Los pins ya publicados en v1.14.0 no equivalían a ese smoke real; HCD-040 se cerró después de completarlo y obtener aprobación.
 
 ## Estado de la revisión más reciente
 
+v1.15.3 añade regresión offline y documentación; no se presenta como una nueva auditoría ACR/ADM independiente.
+
 La [auditoría ACR/ADM de v1.15.1](audits/2026-11-18-acr-adm-v1.15.1.md) encontró cinco hallazgos (dos medios y tres bajos), corregidos en v1.15.2 ([HCD-048](../hcd/HCD-048-cerrar-h-01-a-h-05-de-la-auditoria-acr-a.md)). La suite completa con detector de carreras (`go test -race ./...`) y `go vet ./...` pasa sobre v1.15.2. El [ACR de v1.15.0](audits/2026-11-17-acr-v1.15.0.md) encontró ocho hallazgos medios, corregidos en v1.15.1 (ver abajo). El [ACR de HCD-045](audits/2026-11-17-acr-adm-hcd045.md) terminó `INCOMPLETE` sobre una copia anterior mientras la implementación seguía en curso; sus dos fallos de tests heredados ya no aparecen en la validación.
 
-| Caso | Estado en v1.15.2 | Medida recomendada |
+| Caso | Estado en v1.15.3 | Medida recomendada |
 |---|---|---|
 | Codemode modifica settings antes de validar o escribir MCP | **Corregido** en v1.15.1 (C-001): se restauran `settings.json` y `mcp.json` si la conmutación falla | En v1.15.0, respalda los archivos y comprueba `codemode status` si la orden falla; corrige el JSON o los permisos y repite la orden |
 | deps-update reutiliza la versión de caché si falla el sondeo local | Abierto: puede anunciar «al día» sin confirmar la versión actual | Ejecuta `deps-refresh` y verifica por separado el binario instalado si hubo errores de lectura |

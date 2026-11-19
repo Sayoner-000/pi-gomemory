@@ -4,6 +4,20 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.15.3] - 2026-11-19
+
+### Added
+- Referencia opt-in del guard de Antigravity y 22 pruebas offline en `tests/antigravity-prompt-guard/`, ejecutadas también desde `TestHCD040PromptGuardRegression`. La suite de Go requiere Node.js para esta comprobación; no consulta Google ni lee credenciales.
+
+### Changed
+- Las versiones predeterminadas de `install.sh` y `scripts/build-release.sh` apuntan a v1.15.3. Los pins se mantienen en `pi-antigravity@0.14.0` y `pi-cc-extensions@1.0.21`.
+
+### Documentation
+- Diagnóstico del HTTP 429 de Antigravity mediante comparación controlada A/B/A con la misma credencial. OAuth y cuota disponibles no bastaban: el patrón reproducido dependía del contenido o ubicación de las instrucciones de Pi.
+- Mitigación local reversible: conserva las instrucciones, pero las mueve a un mensaje de usuario y reduce su prioridad. **No está embebida ni se instala por defecto**; actualizar el binario no la activa y no se garantiza seguridad equivalente frente a inyección de instrucciones.
+- Cierre aprobado de HCD-040 tras validar la instalación real, el ciclo de herramientas, la exclusión de otros proveedores, la desactivación y la confirmación visual de la persona. La evidencia de rojo/verde reconstruida queda identificada como nueva, no como evidencia histórica.
+- README, badge, guías de instalación/uso/arquitectura, problemas conocidos, guía HTML vigente e índices de releases actualizados; el histórico se conserva.
+
 ## [v1.15.2] - 2026-11-18
 
 ### Fixed

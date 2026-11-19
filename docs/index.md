@@ -8,13 +8,19 @@ Esta carpeta contiene la documentación técnica de pi-gomemory, el instalador y
 Guía larga de uso, con el formato de la Guía SDD_HCD de gomemory: instalación, qué cambia en tu máquina, launcher, memoria y grafos, skills, comandos dentro de Pi, `/sidebar`, `/tdd`, HCD, revisión con Splash/ACR/ADM, una sesión de punta a punta y mantenimiento. Se puede imprimir o guardar como PDF.
 
 [Arquitectura del sistema](architecture.md)
-Detalla cómo funciona el binario autocontenido con `embed.FS`, la integración de los servidores MCP, el parche para Antigravity, la interfaz TUI y la sanitización de skills.
+Detalla el binario autocontenido con `embed.FS`, la integración de los servidores MCP, los ajustes del paquete Antigravity, la interfaz TUI y la sanitización de skills. El guard opcional de generación queda fuera del embebido.
 
 [Guía de instalación](installation.md)
 Instrucciones paso a paso para instalar con el script de una línea, compilar desde el código fuente o usar los binarios de release.
 
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
+
+[Antigravity: HTTP 429 y mitigación local](antigravity.md)
+Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación manual y reversión. La mitigación no se instala por defecto.
+
+[Notas de v1.15.3](releases/v1.15.3.md)
+Regresión offline de Antigravity, cierre verificado de HCD-040 y documentación de la mitigación local opt-in.
 
 [Notas de v1.15.2](releases/v1.15.2.md)
 Cierre de los cinco hallazgos (dos medios y tres bajos) de la [auditoría ACR/ADM de v1.15.1](audits/2026-11-18-acr-adm-v1.15.1.md) (HCD-048): re-entrancia en `openSidebar`, códigos de salida en `playwrightLineParser.finish`, marca `.uninstalled` ante fallos parciales, líneas >64 KiB en `SanitizeFrontmatter` y carrera en `/tasks`.

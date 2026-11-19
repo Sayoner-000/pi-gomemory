@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.15.2"><img src="https://img.shields.io/badge/version-1.15.2-blue" alt="Version 1.15.2"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.15.3"><img src="https://img.shields.io/badge/version-1.15.3-blue" alt="Version 1.15.3"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -200,6 +200,8 @@ Desde v1.12.0, con el proveedor `openai-codex` activo, `/sidebar` muestra «▼ 
 
 ## Limitaciones conocidas
 
+**Antigravity y HTTP 429:** una sesión OAuth válida y cuota disponible no garantizan que Google acepte la petición de generación. v1.15.3 publica una regresión y una [mitigación local opcional](docs/antigravity.md) para el patrón reproducido con las instrucciones de Pi. El guard conserva el texto, pero reduce su prioridad al moverlo a un mensaje de usuario. No se instala por defecto; actualizar pi-gomemory no activa la mitigación.
+
 Desde v1.12.1 están corregidos los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) (permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD), así como el bucle de `/tdd watch`. v1.13.0 corrige que `uninstall` con otro `HOME` borrara el launcher de la instalación real ([HCD-030](hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md)). `install`, `update` y `uninstall` conservan los permisos que tenga `~/.pi/agent/AGENTS.md` ([HCD-032](hcd/HCD-032-install-y-uninstall-conservan-los-permis.md)). v1.13.4 hace que `uninstall` conserve lo que cambió después del plan y falle si no pudo leer algo, y que `update` rechace un ejecutable incompleto ([HCD-034](hcd/HCD-034-uninstall-y-update-no-pierden-datos-ni-a.md)). v1.13.5 conserva el manifiesto si `uninstall` falla, mata los procesos de prueba que ignoran SIGTERM al cancelar `/tdd` y hace que `update` reinstale en el `BIN_DIR` de la instalación y consulte siempre ([HCD-035](hcd/HCD-035-cerrar-h-01-a-h-05-de-la-auditoria-acr-a.md)). v1.13.6 conserva los enlaces simbólicos de `mcp.json`, `settings.json`, `AGENTS.md` y `pi-cc-extensions.json`: escribe en el archivo de destino y rechaza los enlaces rotos sin tocar nada ([HCD-036](hcd/HCD-036-las-configuraciones-de-pi-enlazadas-con.md)). Los límites vigentes están en [problemas conocidos](docs/known-issues.md).
 
 ## Desarrollo
@@ -210,11 +212,15 @@ go test ./...   # pruebas del instalador en un HOME aislado
 make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 ```
 
+La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.js; requiere `node` en el PATH y falla si falta. No accede a credenciales ni a Google. Puedes ejecutarlas por separado con `node --test tests/antigravity-prompt-guard/guard.test.mjs`.
+
 `install.sh` acepta `PI_GOMEMORY_VERSION`, `PI_GOMEMORY_BIN_DIR` y `PI_GOMEMORY_BASE_URL`. Esta última permite probar el instalador contra un `dist/` local, por ejemplo `file://$PWD/dist`.
 
 ## Documentación
 
 - [Guía HTML v1.15](docs/Guia-PI-GOMEMORY-v1.15.html): instalación, contexto por sesión y referencia de comandos
+- [Notas de v1.15.3](docs/releases/v1.15.3.md): regresión de Antigravity, cierre verificado de HCD-040 y mitigación local opt-in
+- [Antigravity: HTTP 429 y mitigación local](docs/antigravity.md): diagnóstico, riesgo de prioridad, activación manual y reversión
 - [Notas de v1.15.2](docs/releases/v1.15.2.md): cierre de cinco hallazgos ACR/ADM de v1.15.1 (HCD-048)
 - [Notas de v1.15.1](docs/releases/v1.15.1.md): corrección de los ocho hallazgos del ACR de v1.15.0
 - [Notas de v1.15.0](docs/releases/v1.15.0.md): contexto vivo, codemode por defecto y migración del protocolo

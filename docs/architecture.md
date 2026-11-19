@@ -77,6 +77,12 @@ La función `InstallMCPServers` lee el archivo `mcp.json` existente y solo agreg
 
 Para conectar Pi con los modelos de Google AI Pro mediante Antigravity, el instalador registra el paquete `npm:pi-antigravity@0.14.0` en `settings.json` (junto con `npm:pi-cc-extensions@1.0.21`). Ambos van fijados a una versión exacta, porque Pi no reinstala un paquete fijado así. `uninstall --packages` retira también las entradas de pins anteriores que escribió pi-gomemory (`historicPins` en `plugin.go`). Además, inyecta la dependencia `typebox: "*"` en la sección `peerDependencies` de la configuración para evitar avisos molestos de npm al resolver tipos.
 
+### Guard opcional de generación
+
+La [referencia del guard](../tests/antigravity-prompt-guard/guard.mjs) vive en `tests/`, fuera de los patrones de `embed.go` y de los recursos que instala `InstallAll`. Solo se carga si la persona la copia manualmente a las extensiones de Pi. Su hook `before_provider_request` actúa sobre peticiones `agent` de Antigravity con instrucciones textuales compatibles: clona el payload, conserva herramientas y metadatos, sustituye `systemInstruction` por un texto breve y antepone las instrucciones originales al primer turno de usuario. No cambia otros proveedores ni generación de imágenes y permite desactivación por entorno.
+
+Conservar el texto no conserva la jerarquía: las instrucciones trasladadas tienen menor prioridad. El [diagnóstico y procedimiento opt-in](antigravity.md) describen ese riesgo; la mitigación no sustituye las protecciones locales ni una corrección upstream. Las 22 pruebas offline se ejecutan también desde la suite de Go, que requiere Node.js.
+
 ### Monitor de cuotas
 
 El archivo `pkg/installer/usage.go` lee la cuenta activa guardada en `~/.pi/agent/antigravity-accounts.json` y hace una llamada POST al endpoint `retrieveUserQuotaSummary`. Con la respuesta construye una barra de texto que muestra el porcentaje restante y el tiempo que falta para que se reinicien las cuotas semanal y de cinco horas.
