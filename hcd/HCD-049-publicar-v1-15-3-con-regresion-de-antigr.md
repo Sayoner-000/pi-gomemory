@@ -27,16 +27,29 @@ Crear solo un commit con la regresión y una nota breve cuesta menos, pero no en
 ## Checklist
 - [x] 1. Actualizar las referencias vigentes de README.md, CHANGELOG.md, docs/, install.sh y scripts/build-release.sh para v1.15.3 sin presentar el guard como instalado por defecto → node /tmp/pi-gomemory-v1.15.3-checks/check-docs.mjs
 - [x] 2. Validar el código fuente de v1.15.3 y la regresión pkg/installer/hcd040_prompt_guard_test.go → go build ./... && go vet ./... && go vet -tags pins ./... && go test -race ./... -count=1
-- [ ] 3. Validar los cuatro paquetes dist/ de v1.15.3 generados por scripts/build-release.sh, sus SHA256, plataformas y revisión Git → node /tmp/pi-gomemory-v1.15.3-checks/check-artifacts.mjs
-- [ ] 4. Verificar los commits, tag y cinco assets publicados de v1.15.3 en origin → node /tmp/pi-gomemory-v1.15.3-checks/check-remote.mjs
+- [x] 3. Validar los cuatro paquetes dist/ de v1.15.3 generados por scripts/build-release.sh, sus SHA256, plataformas y revisión Git → node /tmp/pi-gomemory-v1.15.3-checks/check-artifacts.mjs
+- [x] 4. Verificar los commits, tag y cinco assets publicados de v1.15.3 en origin → node /tmp/pi-gomemory-v1.15.3-checks/check-remote.mjs
 
 ## Evidencia
 <!-- La escribe `mem hcd verify`. Lo escrito a mano aquí no cuenta. -->
-- 2026-11-19 05:50 -05:00 · tarea 1 · verde · vigente · `node /tmp/pi-gomemory-v1.15.3-checks/check-docs.mjs` (salida 0)
+- 2026-11-19 05:50 -05:00 · tarea 1 · verde · caducada · `node /tmp/pi-gomemory-v1.15.3-checks/check-docs.mjs` (salida 0)
       OK: 12 current documentation files; 143 local references; versions, scope and shell syntax checked
-- 2026-11-19 05:50 -05:00 · tarea 2 · verde · vigente · `go build ./... && go vet ./... && go vet -tags pins ./... && go test -race ./... -count=1` (salida 0)
+- 2026-11-19 05:50 -05:00 · tarea 2 · verde · caducada · `go build ./... && go vet ./... && go vet -tags pins ./... && go test -race ./... -count=1` (salida 0)
       ok  	pi-gomemory	1.856s
       ok  	pi-gomemory/pkg/installer	104.327s
+- 2026-11-19 06:03 -05:00 · tarea 3,4 · verde · vigente · `node /tmp/pi-gomemory-v1.15.3-checks/check-artifacts.mjs && node /tmp/pi-gomemory-v1.15.3-checks/check-remote.mjs` (salida 0)
+      OK darwin_amd64: SHA256, four regular entries, tagged documents, static Go metadata and clean source 092a857361d3
+      OK native version: v1.15.3
+      OK darwin_arm64: SHA256, four regular entries, tagged documents, static Go metadata and clean source 092a857361d3
+      OK linux_amd64: SHA256, four regular entries, tagged documents, static Go metadata and clean source 092a857361d3
+      OK linux_arm64: SHA256, four regular entries, tagged documents, static Go metadata and clean source 092a857361d3
+      OK: four release archives match tag v1.15.3 (092a857361d3109ba0e27ae76d796e3d3b915c0d)
+      OK downloaded pi-gomemory-setup_v1.15.3_darwin_amd64.tar.gz: 0634df41493cfffa1f0da8e983f6436bfd8732705e09ed8821767cbd31489fef
+      OK downloaded pi-gomemory-setup_v1.15.3_darwin_arm64.tar.gz: 982c78c40c2056063832564b78ed0e508426c3c2f68290d10b419690946eb4ad
+      OK downloaded pi-gomemory-setup_v1.15.3_linux_amd64.tar.gz: d4e9bbaa898b69ed5da39082fd6c408f6f94a213f0cbbc182aa5edcce94f4654
+      OK downloaded pi-gomemory-setup_v1.15.3_linux_arm64.tar.gz: ecb6d51a2bda5cc527a3e5f672292a2571c6b62e2bc38ddacb6fa027eb835beb
+      OK: origin main 092a857361d3109ba0e27ae76d796e3d3b915c0d, annotated tag 092a857361d3109ba0e27ae76d796e3d3b915c0d, latest public release and all five downloaded assets
+      https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.15.3
 
 ## Siguiente
 pendiente
