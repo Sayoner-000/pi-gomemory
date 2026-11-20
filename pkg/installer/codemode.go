@@ -31,6 +31,10 @@ func SetCodemode(piAgentDir string, enabled bool) error {
 // setCodemode es SetCodemode sin reversión: informa además si fue esta llamada
 // la que añadió `+codemode` a defaultTools y el destino real de settings.json.
 func setCodemode(piAgentDir string, enabled bool) (bool, string, error) {
+	return setCodemodeWithLite(piAgentDir, enabled, false)
+}
+
+func setCodemodeWithLite(piAgentDir string, enabled, liteEnabled bool) (bool, string, error) {
 	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
 		return false, "", fmt.Errorf("crear %s: %w", piAgentDir, err)
 	}
@@ -38,11 +42,7 @@ func setCodemode(piAgentDir string, enabled bool) (bool, string, error) {
 	if err != nil {
 		return false, "", err
 	}
-	servers := DefaultMCPServers()
-	if enabled {
-		servers = CodemodeMCPServers()
-	}
-	return added, target, writeMCPServers(piAgentDir, servers)
+	return added, target, reconcileMCPServers(piAgentDir, enabled, liteEnabled)
 }
 
 // configSnapshot conserva los bytes de una configuración de Pi para
@@ -84,13 +84,12 @@ func (s configSnapshot) restore() error {
 	return writeFileAtomic(s.path, s.data, s.mode)
 }
 
-// withConfigRollback ejecuta fn y, si falla, devuelve settings.json y
-// mcp.json a sus bytes anteriores; un error al restaurar se informa junto al
-// original. Así un fallo no deja una activación sin registro de propiedad.
-func withConfigRollback(piAgentDir string, fn func() error) error {
+// withFileRollback ejecuta fn y, si falla, devuelve todas las rutas indicadas
+// a sus bytes anteriores; un error al restaurar se informa junto al original.
+func withFileRollback(paths []string, fn func() error) error {
 	var snaps []configSnapshot
-	for _, name := range []string{"settings.json", "mcp.json"} {
-		s, err := takeConfigSnapshot(filepath.Join(piAgentDir, name))
+	for _, p := range paths {
+		s, err := takeConfigSnapshot(p)
 		if err != nil {
 			return err
 		}
@@ -101,13 +100,23 @@ func withConfigRollback(piAgentDir string, fn func() error) error {
 		return nil
 	}
 	var restoreErr error
-	for _, s := range snaps {
-		restoreErr = errors.Join(restoreErr, s.restore())
+	for i := len(snaps) - 1; i >= 0; i-- {
+		restoreErr = errors.Join(restoreErr, snaps[i].restore())
 	}
 	if restoreErr != nil {
 		return fmt.Errorf("%w; no se pudo restaurar la configuración anterior de Pi: %v", err, restoreErr)
 	}
 	return err
+}
+
+// withConfigRollback ejecuta fn y, si falla, devuelve settings.json y
+// mcp.json a sus bytes anteriores; un error al restaurar se informa junto al
+// original. Así un fallo no deja una activación sin registro de propiedad.
+func withConfigRollback(piAgentDir string, fn func() error) error {
+	return withFileRollback([]string{
+		filepath.Join(piAgentDir, "settings.json"),
+		filepath.Join(piAgentDir, "mcp.json"),
+	}, fn)
 }
 
 // codemodeState es la preferencia de codemode que recuerda pi-gomemory
@@ -155,7 +164,15 @@ func writeCodemodeState(home string, st codemodeState) error {
 // añadió `+codemode` y en qué destino. Conserva una propiedad ya probada en el
 // mismo destino; si el destino cambió, esa prueba ya no vale (HCD-047, C-08).
 func enableCodemode(opts *Options, st *codemodeState) error {
-	added, target, err := setCodemode(opts.PiAgentDir, true)
+	liteSt, err := readLiteState(opts.HomeDir)
+	if err != nil {
+		return err
+	}
+	return enableCodemodeWithLite(opts, st, liteSt.Enabled)
+}
+
+func enableCodemodeWithLite(opts *Options, st *codemodeState, liteEnabled bool) error {
+	added, target, err := setCodemodeWithLite(opts.PiAgentDir, true, liteEnabled)
 	if err != nil {
 		return err
 	}
@@ -169,21 +186,25 @@ func enableCodemode(opts *Options, st *codemodeState) error {
 }
 
 // SetCodemodePreference aplica `codemode on|off` y recuerda la elección para
-// que install y update la respeten (HCD-046). Si algo falla, settings.json y
-// mcp.json vuelven a su estado anterior (HCD-047, C-01).
+// que install y update la respeten (HCD-046), componiendo con el modo lite (C-002).
+// Si algo falla, settings.json y mcp.json vuelven a su estado anterior (HCD-047, C-01).
 func SetCodemodePreference(opts *Options, enabled bool) error {
 	st, err := readCodemodeState(opts.HomeDir)
 	if err != nil {
 		return err
 	}
+	liteSt, err := readLiteState(opts.HomeDir)
+	if err != nil {
+		return err
+	}
 	return withConfigRollback(opts.PiAgentDir, func() error {
 		if enabled {
-			if err := enableCodemode(opts, &st); err != nil {
+			if err := enableCodemodeWithLite(opts, &st, liteSt.Enabled); err != nil {
 				return err
 			}
 			st.Preference = "on"
 		} else {
-			if _, _, err := setCodemode(opts.PiAgentDir, false); err != nil {
+			if _, _, err := setCodemodeWithLite(opts.PiAgentDir, false, liteSt.Enabled); err != nil {
 				return err
 			}
 			st = codemodeState{Preference: "off"}
@@ -194,21 +215,29 @@ func SetCodemodePreference(opts *Options, enabled bool) error {
 
 // applyCodemodeDefault es el paso MCP de install: modo MCP directo (codemode
 // off) por defecto, salvo que la persona lo activara con `codemode on`
-// (HCD-050). En modo directo solo escribe el perfil directo de los tres
-// servidores propios y no toca defaultTools, que puede llevar un `+codemode`
-// de la persona (HCD-047, C-02). Si una instalación anterior de v1.15.x dejó
-// `+codemode` propio sin preferencia explícita y el destino de settings.json
-// coincide (C-08), lo retira limpiamente bajo rollback para no dejar estado
-// parcial.
+// (HCD-050), respetando además el modo lite activo (C-002). En modo directo
+// solo escribe el perfil directo de los servidores propios y no toca
+// defaultTools, que puede llevar un `+codemode` de la persona (HCD-047, C-02).
+// Si una instalación anterior de v1.15.x dejó `+codemode` propio sin
+// preferencia explícita y el destino de settings.json coincide (C-08), lo
+// retira limpiamente bajo rollback para no dejar estado parcial.
 func applyCodemodeDefault(opts *Options, w io.Writer) error {
 	st, err := readCodemodeState(opts.HomeDir)
 	if err != nil {
 		return err
 	}
+	liteSt, err := readLiteState(opts.HomeDir)
+	if err != nil {
+		return err
+	}
 	if st.Preference == "on" {
-		fmt.Fprintf(w, "%s    · codemode activado por la persona (pi-gomemory-setup codemode on): se conserva el perfil híbrido%s\n", ColorMuted, ColorReset)
+		if liteSt.Enabled {
+			fmt.Fprintf(w, "%s    · codemode y modo lite activos: se conserva gomemory en perfil híbrido%s\n", ColorMuted, ColorReset)
+		} else {
+			fmt.Fprintf(w, "%s    · codemode activado por la persona (pi-gomemory-setup codemode on): se conserva el perfil híbrido%s\n", ColorMuted, ColorReset)
+		}
 		return withConfigRollback(opts.PiAgentDir, func() error {
-			if err := enableCodemode(opts, &st); err != nil {
+			if err := enableCodemodeWithLite(opts, &st, liteSt.Enabled); err != nil {
 				return err
 			}
 			return writeCodemodeState(opts.HomeDir, st)
@@ -222,7 +251,7 @@ func applyCodemodeDefault(opts *Options, w io.Writer) error {
 		if st.SettingsTarget != "" && st.SettingsTarget == target {
 			fmt.Fprintf(w, "%s    · revirtiendo codemode híbrido del valor por defecto anterior a modo directo (HCD-050)%s\n", ColorMuted, ColorReset)
 			return withConfigRollback(opts.PiAgentDir, func() error {
-				if _, _, err := setCodemode(opts.PiAgentDir, false); err != nil {
+				if _, _, err := setCodemodeWithLite(opts.PiAgentDir, false, liteSt.Enabled); err != nil {
 					return err
 				}
 				st.AddedPlusCodemode, st.SettingsTarget = false, ""
@@ -231,7 +260,10 @@ func applyCodemodeDefault(opts *Options, w io.Writer) error {
 		}
 		fmt.Fprintf(w, "%s    · se conserva +codemode en settings.json (no se pudo comprobar destino propio); servidores MCP en modo directo%s\n", ColorMuted, ColorReset)
 	}
-	return writeMCPServers(opts.PiAgentDir, DefaultMCPServers())
+	if liteSt.Enabled {
+		fmt.Fprintf(w, "%s    · modo lite activo (pi-gomemory-setup lite on): se conserva perfil liviano%s\n", ColorMuted, ColorReset)
+	}
+	return reconcileMCPServers(opts.PiAgentDir, false, liteSt.Enabled)
 }
 
 // GetCodemodeStatus inspecciona settings.json y mcp.json para informar si el
@@ -339,5 +371,12 @@ func hasCodemodeInMCP(piAgentDir string) (bool, error) {
 	if err := json.Unmarshal(rawServers, &servers); err != nil {
 		return false, fmt.Errorf("%s: mcpServers no es un objeto válido: %w", mcpPath, err)
 	}
-	return servers["gomemory"].Exposure == "codemode" && servers["codebase-memory"].Exposure == "codemode", nil
+	gm, hasGM := servers["gomemory"]
+	if !hasGM {
+		return false, nil
+	}
+	if cbm, hasCBM := servers["codebase-memory"]; hasCBM {
+		return gm.Exposure == "codemode" && cbm.Exposure == "codemode", nil
+	}
+	return gm.Exposure == "codemode", nil
 }

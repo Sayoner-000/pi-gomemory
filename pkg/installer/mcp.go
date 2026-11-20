@@ -33,6 +33,32 @@ func managedMCPProfiles() map[string][]json.RawMessage {
 	return profiles
 }
 
+// isManagedMCPServer informa si cur coincide exactamente con alguna definición
+// escrita por pi-gomemory para ese servidor (directa, híbrida o histórica).
+func isManagedMCPServer(name string, cur json.RawMessage) bool {
+	for _, p := range managedMCPProfiles()[name] {
+		if sameJSON(cur, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveMCPProfile compone de forma centralizada la exposición (codemode) y
+// el subconjunto de servidores propios (lite).
+func resolveMCPProfile(codemodeEnabled, liteEnabled bool) (present map[string]MCPServerDef, absent []string) {
+	base := DefaultMCPServers()
+	if codemodeEnabled {
+		base = CodemodeMCPServers()
+	}
+	if !liteEnabled {
+		return base, nil
+	}
+	return map[string]MCPServerDef{
+		"gomemory": base["gomemory"],
+	}, []string{"codegraph", "codebase-memory"}
+}
+
 // MCPServerDef define la especificación de un servidor MCP en Pi.
 type MCPServerDef struct {
 	Command      string            `json:"command"`
@@ -106,26 +132,47 @@ func CodemodeMCPServers() map[string]MCPServerDef {
 	return servers
 }
 
-// InstallMCPServers registra los 3 servidores MCP en ~/.pi/agent/mcp.json.
-// Solo reemplaza esas tres entradas: los demás servidores y claves del archivo
-// se conservan byte a byte, y un mcp.json ilegible aborta sin escribir.
-// Si codemode está activo en settings.json o mcp.json, preserva el perfil híbrido.
+// InstallMCPServers registra los servidores MCP propios en ~/.pi/agent/mcp.json.
+// Conserva servidores ajenos y definiciones personalizadas, y un mcp.json
+// ilegible aborta sin escribir. Si codemode está activo en settings.json o
+// mcp.json, preserva el perfil híbrido.
 func InstallMCPServers(piAgentDir string) error {
 	st, err := GetCodemodeStatus(piAgentDir)
 	if err != nil {
 		return err
 	}
-	servers := DefaultMCPServers()
-	if st.SettingsEnabled || st.MCPEnabled {
-		servers = CodemodeMCPServers()
+	return reconcileMCPServers(piAgentDir, st.SettingsEnabled || st.MCPEnabled, false)
+}
+
+// InstallMCPServersForOptions compone la configuración de mcp.json respetando
+// tanto la preferencia de codemode como el modo lite guardado en HomeDir.
+func InstallMCPServersForOptions(opts *Options) error {
+	liteSt, err := readLiteState(opts.HomeDir)
+	if err != nil {
+		return err
 	}
-	return writeMCPServers(piAgentDir, servers)
+	cmState, err := readCodemodeState(opts.HomeDir)
+	if err != nil {
+		return err
+	}
+	cmStatus, err := GetCodemodeStatus(opts.PiAgentDir)
+	if err != nil {
+		return err
+	}
+	codemodeOn := cmState.Preference == "on" || (cmState.Preference == "" && (cmStatus.SettingsEnabled || cmStatus.MCPEnabled))
+	return reconcileMCPServers(opts.PiAgentDir, codemodeOn, liteSt.Enabled)
+}
+
+func reconcileMCPServers(piAgentDir string, codemodeEnabled, liteEnabled bool) error {
+	present, absent := resolveMCPProfile(codemodeEnabled, liteEnabled)
+	return applyMCPServers(piAgentDir, present, absent)
 }
 
 func writeMCPServers(piAgentDir string, targetServers map[string]MCPServerDef) error {
-	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
-		return fmt.Errorf("crear %s: %w", piAgentDir, err)
-	}
+	return applyMCPServers(piAgentDir, targetServers, nil)
+}
+
+func applyMCPServers(piAgentDir string, present map[string]MCPServerDef, absent []string) error {
 	mcpPath, err := configTarget(filepath.Join(piAgentDir, "mcp.json"))
 	if err != nil {
 		return err
@@ -143,7 +190,19 @@ func writeMCPServers(piAgentDir string, targetServers map[string]MCPServerDef) e
 		}
 	}
 
-	for name, def := range targetServers {
+	// Retira solo servidores gestionados cuya propiedad se acredita (C-003).
+	for _, name := range absent {
+		if cur, ok := servers[name]; ok && isManagedMCPServer(name, cur) {
+			delete(servers, name)
+		}
+	}
+
+	// Escribe solo entradas ausentes o propiedad verificada de pi-gomemory;
+	// nunca sobrescribe una definición personalizada del usuario (C-003).
+	for name, def := range present {
+		if cur, ok := servers[name]; ok && !isManagedMCPServer(name, cur) {
+			continue
+		}
 		if err := setJSONField(servers, name, def); err != nil {
 			return err
 		}
@@ -152,5 +211,8 @@ func writeMCPServers(piAgentDir string, targetServers map[string]MCPServerDef) e
 		return err
 	}
 
+	if err := os.MkdirAll(piAgentDir, 0755); err != nil {
+		return fmt.Errorf("crear %s: %w", piAgentDir, err)
+	}
 	return writeJSONObject(mcpPath, config)
 }

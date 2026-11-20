@@ -2,7 +2,9 @@ package installer
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -16,17 +18,50 @@ func LiteStatePath(homeDir string) string {
 	return filepath.Join(homeDir, ".pi-gomemory", "lite.json")
 }
 
+func readLiteState(homeDir string) (liteState, error) {
+	var st liteState
+	target, err := configTarget(LiteStatePath(homeDir))
+	if err != nil {
+		return st, err
+	}
+	data, err := os.ReadFile(target)
+	if errors.Is(err, fs.ErrNotExist) {
+		return st, nil
+	}
+	if err != nil {
+		return st, err
+	}
+	if err := json.Unmarshal(data, &st); err != nil {
+		return st, fmt.Errorf("%s no es JSON válido: %w", target, err)
+	}
+	return st, nil
+}
+
+func writeLiteState(homeDir string, st liteState) error {
+	target, err := configTarget(LiteStatePath(homeDir))
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+		return fmt.Errorf("crear directorio de estado lite: %w", err)
+	}
+	if err := writeJSONObject(target, st); err != nil {
+		return fmt.Errorf("guardar estado lite: %w", err)
+	}
+	return nil
+}
+
+// GetLiteStatus devuelve si el modo liviano está activo o un error si el archivo
+// de estado es ilegible o inválido.
+func GetLiteStatus(homeDir string) (bool, error) {
+	st, err := readLiteState(homeDir)
+	return st.Enabled, err
+}
+
 // IsLiteMode indica si el modo liviano está activo en ~/.pi-gomemory/lite.json.
 func IsLiteMode(homeDir string) bool {
-	data, err := os.ReadFile(LiteStatePath(homeDir))
-	if err != nil {
-		return false
-	}
-	var st liteState
-	if err := json.Unmarshal(data, &st); err != nil {
-		return false
-	}
-	return st.Enabled
+	enabled, err := GetLiteStatus(homeDir)
+	return err == nil && enabled
 }
 
 // LiteMCPServers devuelve solo gomemory en mcp.json (sin codegraph ni codebase-memory)
@@ -39,42 +74,30 @@ func LiteMCPServers() map[string]MCPServerDef {
 }
 
 // SetLiteMode activa o desactiva el modo liviano en ~/.pi-gomemory/lite.json y
-// actualiza ~/.pi/agent/mcp.json en consecuencia.
+// actualiza ~/.pi/agent/mcp.json preservando entradas personalizadas (C-003),
+// componiendo con codemode (C-002) y restaurando ambos archivos si algo falla (C-001).
 func SetLiteMode(opts *Options, enabled bool) error {
-	if err := os.MkdirAll(filepath.Dir(LiteStatePath(opts.HomeDir)), 0755); err != nil {
-		return fmt.Errorf("crear directorio de estado lite: %w", err)
+	// Validar estado y configuración actuales antes de mutar ningún archivo.
+	if _, err := readLiteState(opts.HomeDir); err != nil {
+		return err
 	}
-	if err := writeJSONObject(LiteStatePath(opts.HomeDir), liteState{Enabled: enabled}); err != nil {
-		return fmt.Errorf("guardar estado lite: %w", err)
+	cmState, err := readCodemodeState(opts.HomeDir)
+	if err != nil {
+		return err
 	}
-	if !enabled {
-		return InstallMCPServers(opts.PiAgentDir)
+	cmStatus, err := GetCodemodeStatus(opts.PiAgentDir)
+	if err != nil {
+		return err
 	}
+	codemodeEnabled := cmState.Preference == "on" || (cmState.Preference == "" && (cmStatus.SettingsEnabled || cmStatus.MCPEnabled))
 
-	if err := os.MkdirAll(opts.PiAgentDir, 0755); err != nil {
-		return fmt.Errorf("crear %s: %w", opts.PiAgentDir, err)
-	}
-	mcpPath, err := configTarget(filepath.Join(opts.PiAgentDir, "mcp.json"))
-	if err != nil {
-		return err
-	}
-	config, err := readJSONObject(mcpPath)
-	if err != nil {
-		return err
-	}
-	servers := map[string]json.RawMessage{}
-	if raw, ok := config["mcpServers"]; ok {
-		if err := json.Unmarshal(raw, &servers); err != nil || servers == nil {
-			return fmt.Errorf("%s: mcpServers no es un objeto; no se modifica", mcpPath)
+	return withFileRollback([]string{
+		filepath.Join(opts.PiAgentDir, "mcp.json"),
+		LiteStatePath(opts.HomeDir),
+	}, func() error {
+		if err := reconcileMCPServers(opts.PiAgentDir, codemodeEnabled, enabled); err != nil {
+			return err
 		}
-	}
-	delete(servers, "codegraph")
-	delete(servers, "codebase-memory")
-	if err := setJSONField(servers, "gomemory", LiteMCPServers()["gomemory"]); err != nil {
-		return err
-	}
-	if err := setJSONField(config, "mcpServers", servers); err != nil {
-		return err
-	}
-	return writeJSONObject(mcpPath, config)
+		return writeLiteState(opts.HomeDir, liteState{Enabled: enabled})
+	})
 }
