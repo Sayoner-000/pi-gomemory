@@ -4,6 +4,14 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.20.0] - 2026-11-20
+
+### Changed
+- En `/tasks`, la tarea en curso parpadea alternando `●` y `○` cada medio segundo en lugar de girar (`◐◓◑◒`). Una tarea verificada sigue siendo `●` fijo y en verde.
+
+### Fixed
+- `/tasks` se oculta en unos 10 segundos cuando la unidad HCD se cierra o se cancela desde otra sesión de Pi. Antes, las demás sesiones seguían mostrando las tareas hasta su siguiente turno.
+
 ## [v1.19.2] - 2026-11-20
 
 ### Fixed
