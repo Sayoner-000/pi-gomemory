@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.18.0](releases/v1.18.0.md)
+Subcomandos explícitos `/plan on`, `/plan off` y `/plan status`, corrección de carga tardía de `mem plan-context` y pruebas unitarias en `tests/gomemory-plan.test.mjs`.
+
 [Notas de v1.17.0](releases/v1.17.0.md)
 Árbol de actividad por tarea en `/tasks`, progreso de las verificaciones HCD en `/tdd` y correcciones al modo `lite`.
 

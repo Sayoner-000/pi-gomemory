@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.18.0] - 2026-11-19
+
+### Added
+- Subcomandos explícitos `/plan on`, `/plan off` y `/plan status` en `extensions/gomemory-plan.ts` para activar, desactivar o consultar el modo plan sin iniciar un turno. Se conservan `/plan` (alternar), `/plan run` (desactivar sin ejecutar) y `/plan <petición>`.
+- Pruebas unitarias en `tests/gomemory-plan.test.mjs` que cubren el ciclo `on`/`off`/`status`/`run` y la sincronización de estado ante carga asíncrona.
+
+### Fixed
+- Evita que una resolución tardía de `mem plan-context` reactive el modo plan o reinyecte la sección `gomemory-plan` después de ejecutar `/plan off`.
+
+### Documentation
+- Notas de [v1.18.0](docs/releases/v1.18.0.md), actualización de `README.md`, `docs/usage.md`, `docs/installation.md`, `docs/index.md`, `install.sh` y `scripts/build-release.sh`.
+
 ## [v1.17.0] - 2026-11-19
 
 ### Added
