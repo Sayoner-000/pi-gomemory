@@ -4,6 +4,12 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.19.2] - 2026-11-20
+
+### Fixed
+- `/tdd` vuelve a recoger las últimas líneas de un Bash de tests cuya salida Pi truncó o que terminó con error. El aviso de truncado y el estado de salida que Pi añade al resultado final desplazaban la reconciliación de v1.19.1.
+- `install.sh` borra el binario temporal (`pi-gomemory-setup.tmp.*`) si falla al copiarlo, darle permisos o moverlo a su sitio.
+
 ## [v1.19.1] - 2026-11-20
 
 ### Fixed

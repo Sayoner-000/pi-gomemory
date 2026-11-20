@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.19.2](releases/v1.19.2.md)
+Cierre de los dos hallazgos de la auditoría defensiva del 2026-11-20: `/tdd` no pierde el final de una salida de Bash truncada o con error, e `install.sh` no deja el binario temporal si falla al colocarlo.
+
 [Notas de v1.19.1](releases/v1.19.1.md)
 Correcciones de la auditoría de v1.19.0: `/tdd` conserva la salida final de los tests lanzados por Bash, la sugerencia del input no se cuela en el turno siguiente y watch no da por comprobado el frontend tras un `go test`.
 
