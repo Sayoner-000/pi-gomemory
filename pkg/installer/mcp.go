@@ -19,7 +19,7 @@ var legacyHybridV1140 []byte
 // pi-gomemory ha escrito: directa, híbrida vigente e híbridas publicadas.
 func managedMCPProfiles() map[string][]json.RawMessage {
 	profiles := map[string][]json.RawMessage{}
-	for _, set := range []map[string]MCPServerDef{DefaultMCPServers(), CodemodeMCPServers()} {
+	for _, set := range []map[string]MCPServerDef{DefaultMCPServers(), CodemodeMCPServers(), LiteMCPServers()} {
 		for name, def := range set {
 			raw, _ := json.Marshal(def)
 			profiles[name] = append(profiles[name], raw)

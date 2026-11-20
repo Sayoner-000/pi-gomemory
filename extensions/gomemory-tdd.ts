@@ -405,7 +405,7 @@ export function classifyFailure(errorMessage: string): FailureDiagnostic {
 
 // ── 3b. Detección de suites y ejecución real con streaming ─────────────────
 
-export type CheckParser = "go-test" | "exit-code" | "playwright-line" | "hcd";
+export type CheckParser = "go-test" | "exit-code" | "playwright-line" | "hcd" | "pytest" | "vitest" | "phpunit" | "java-test";
 
 /** Un comando real que verifica algo del proyecto. */
 export interface CheckSpec {
@@ -425,6 +425,9 @@ export interface SuitePlan {
 }
 
 const PLAYWRIGHT_CONFIGS = ["ts", "js", "mjs", "cjs", "mts", "cts"].map((e) => `playwright.config.${e}`);
+const VITEST_CONFIGS = ["ts", "js", "mts", "mjs", "cts", "cjs"].map((e) => `vitest.config.${e}`);
+const ESLINT_CONFIGS = ["eslint.config.js", "eslint.config.mjs", "eslint.config.cjs", "eslint.config.ts", ".eslintrc", ".eslintrc.json", ".eslintrc.js", ".eslintrc.cjs", ".eslintrc.yml", ".eslintrc.yaml"];
+const STYLELINT_CONFIGS = [".stylelintrc", ".stylelintrc.json", ".stylelintrc.js", ".stylelintrc.cjs", ".stylelintrc.yml", ".stylelintrc.yaml", "stylelint.config.js", "stylelint.config.mjs", "stylelint.config.cjs"];
 const NPM_DEFAULT_TEST = /no test specified/;
 
 function packageTestScript(cwd: string): string | undefined {
@@ -437,24 +440,103 @@ function packageTestScript(cwd: string): string | undefined {
 	}
 }
 
+function readTextSafe(path: string): string {
+	try {
+		return readFileSync(path, "utf8");
+	} catch {
+		return "";
+	}
+}
+
+function composerHasTestScript(cwd: string): boolean {
+	try {
+		const pkg = JSON.parse(readFileSync(join(cwd, "composer.json"), "utf8"));
+		return typeof pkg?.scripts?.test === "string" && pkg.scripts.test.trim().length > 0;
+	} catch {
+		return false;
+	}
+}
+
 /** Decide las suites según los archivos del proyecto; lo que no aplica queda omitido con su motivo. */
 export function detectSuites(cwd: string): SuitePlan[] {
 	const has = (f: string) => existsSync(join(cwd, f));
 	const goMod = has("go.mod");
 	const tsconfig = has("tsconfig.json");
 	const pwConfig = PLAYWRIGHT_CONFIGS.some(has);
+	const pyProject = has("pyproject.toml");
+	const pyProjectText = pyProject ? readTextSafe(join(cwd, "pyproject.toml")) : "";
+	const pythonProject = pyProject || has("pytest.ini") || has("setup.cfg") || has("requirements.txt") || has("requirements-dev.txt");
+	const phpProject = has("composer.json") || has("phpunit.xml") || has("phpunit.xml.dist");
+	const javaMaven = has("pom.xml");
+	const javaGradle = has("build.gradle") || has("build.gradle.kts");
+
 	const plan = (id: SuiteDomain, name: string, checks: CheckSpec[], skipReason: string): SuitePlan =>
 		checks.length ? { id, name, checks } : { id, name, checks, skipReason };
+
+	const backend: CheckSpec[] = [];
+	if (goMod) {
+		backend.push({ id: "go-test", name: "go test", cmd: "go", args: ["test", "-json", "./..."], parser: "go-test" });
+	}
+	if (pythonProject) {
+		const venvPytest = join(cwd, ".venv", "bin", "pytest");
+		if (existsSync(venvPytest)) {
+			backend.push({ id: "pytest", name: "pytest", cmd: venvPytest, args: ["-q"], parser: "pytest" });
+		} else if (has("uv.lock")) {
+			backend.push({ id: "pytest", name: "uv run pytest", cmd: "uv", args: ["run", "pytest", "-q"], parser: "pytest" });
+		} else {
+			backend.push({ id: "pytest", name: "pytest", cmd: "pytest", args: ["-q"], parser: "pytest" });
+		}
+	}
+	if (phpProject) {
+		const vendorPhpunit = join(cwd, "vendor", "bin", "phpunit");
+		if (existsSync(vendorPhpunit)) {
+			backend.push({ id: "phpunit", name: "phpunit", cmd: vendorPhpunit, args: [], parser: "phpunit" });
+		} else if (composerHasTestScript(cwd)) {
+			backend.push({ id: "phpunit", name: "composer test", cmd: "composer", args: ["test"], parser: "phpunit" });
+		} else if (has("phpunit.xml") || has("phpunit.xml.dist")) {
+			backend.push({ id: "phpunit", name: "phpunit", cmd: "phpunit", args: [], parser: "phpunit" });
+		}
+	}
+	if (javaMaven) {
+		backend.push({ id: "mvn-test", name: "mvn test", cmd: has("mvnw") ? "./mvnw" : "mvn", args: ["test"], parser: "java-test" });
+	} else if (javaGradle) {
+		backend.push({ id: "gradle-test", name: "gradle test", cmd: has("gradlew") ? "./gradlew" : "gradle", args: ["test"], parser: "java-test" });
+	}
 
 	const ci: CheckSpec[] = [];
 	if (goMod) ci.push({ id: "go-vet", name: "go vet ./...", cmd: "go", args: ["vet", "./..."], parser: "exit-code" });
 	if (tsconfig) ci.push({ id: "tsc", name: "tsc --noEmit", cmd: "npx", args: ["tsc", "--noEmit"], parser: "exit-code" });
+	if (pythonProject && (has("ruff.toml") || has(".ruff.toml") || /\[tool\.ruff\]/.test(pyProjectText))) {
+		ci.push({ id: "ruff", name: "ruff check .", cmd: "ruff", args: ["check", "."], parser: "exit-code" });
+	}
+	if (pythonProject && (has("mypy.ini") || /\[tool\.mypy\]/.test(pyProjectText))) {
+		ci.push({ id: "mypy", name: "mypy .", cmd: "mypy", args: ["."], parser: "exit-code" });
+	}
+	if (phpProject) {
+		ci.push({ id: "php-lint", name: "php -l", cmd: "sh", args: ["-c", "find . -maxdepth 4 -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -r -n1 php -l"], parser: "exit-code" });
+	}
+	if (ESLINT_CONFIGS.some(has)) {
+		ci.push({ id: "eslint", name: "eslint .", cmd: "npx", args: ["eslint", "."], parser: "exit-code" });
+	}
+	if (has(".htmlhintrc")) {
+		ci.push({ id: "htmlhint", name: "htmlhint", cmd: "npx", args: ["htmlhint"], parser: "exit-code" });
+	}
+	if (STYLELINT_CONFIGS.some(has)) {
+		ci.push({ id: "stylelint", name: "stylelint", cmd: "npx", args: ["stylelint", "**/*.css"], parser: "exit-code" });
+	}
+
+	const frontend: CheckSpec[] = [];
+	if (packageTestScript(cwd)) {
+		frontend.push({ id: "npm-test", name: "npm test", cmd: "npm", args: ["test"], parser: "exit-code" });
+	} else if (VITEST_CONFIGS.some(has)) {
+		frontend.push({ id: "vitest", name: "vitest run", cmd: "npx", args: ["vitest", "run"], parser: "vitest" });
+	}
 
 	return [
-		plan("backend", "Backend", goMod ? [{ id: "go-test", name: "go test", cmd: "go", args: ["test", "-json", "./..."], parser: "go-test" }] : [], "sin go.mod"),
-		plan("frontend", "Frontend", packageTestScript(cwd) ? [{ id: "npm-test", name: "npm test", cmd: "npm", args: ["test"], parser: "exit-code" }] : [], "sin script test en package.json"),
+		plan("backend", "Backend", backend, "sin go.mod, Python, PHP ni Java"),
+		plan("frontend", "Frontend", frontend, "sin script test en package.json ni vitest.config"),
 		plan("playwright", "Playwright E2E", pwConfig ? [{ id: "pw", name: "playwright test", cmd: "npx", args: ["playwright", "test", "--reporter=line"], parser: "playwright-line" }] : [], "sin playwright.config"),
-		plan("ci", "CI & Static", ci, "sin go.mod ni tsconfig.json"),
+		plan("ci", "CI & Static", ci, "sin checks estáticos configurados"),
 		{ id: "data", name: "Data & Graph", checks: [{ id: "hcd-show", name: "Unidad HCD activa", cmd: "mem", args: ["hcd", "show", "--json"], parser: "hcd" }] },
 	];
 }
@@ -1047,6 +1129,296 @@ export function playwrightLineParser(
 	};
 }
 
+/** Parser para salida de pytest (-v, -q o resumen). */
+export function pytestParser(store: TDDStore, suiteId: SuiteDomain, fallbackName = "pytest"): LineParser {
+	let recorded = 0;
+	let failed = false;
+	const seen = new Set<string>();
+	const failureLines: string[] = [];
+	let lastLocation: string | undefined;
+
+	return {
+		onLine(raw) {
+			const line = clean(raw).trimEnd();
+			const locMatch = line.match(/^([\w./-]+\.py:\d+):/);
+			if (locMatch) lastLocation = locMatch[1];
+
+			// Formato: "tests/test_api.py::test_ok PASSED" o "FAILED tests/test_api.py::test_fail - msg"
+			const prefixMatch = line.match(/^(PASSED|FAILED|SKIPPED|ERROR)\s+([^\s]+)(?:\s+-\s+(.*))?$/);
+			const suffixMatch = !prefixMatch ? line.match(/^([^\s]+::[^\s]+)\s+(PASSED|FAILED|SKIPPED|ERROR)\b(.*)$/) : null;
+			const statusWord = prefixMatch?.[1] ?? suffixMatch?.[2];
+			const testId = prefixMatch?.[2] ?? suffixMatch?.[1];
+			const detail = (prefixMatch?.[3] ?? suffixMatch?.[3] ?? "").trim();
+
+			if (statusWord && testId && !seen.has(testId)) {
+				seen.add(testId);
+				recorded++;
+				store.startTest(suiteId, testId, testId);
+				if (statusWord === "PASSED") {
+					store.finishTest(suiteId, testId, "passed", 0);
+				} else if (statusWord === "SKIPPED") {
+					store.finishTest(suiteId, testId, "skipped", 0);
+				} else {
+					failed = true;
+					store.finishTest(suiteId, testId, "failed", 0, {
+						message: clip(detail || `${statusWord} ${testId}`),
+						location: lastLocation,
+					});
+				}
+				return;
+			}
+			if (line.trim()) failureLines.push(line);
+		},
+		finish(res) {
+			if (res.code !== 0) failed = true;
+			if (recorded === 0) {
+				const id = `pytest::${fallbackName}`;
+				store.startTest(suiteId, id, fallbackName);
+				if (!failed) {
+					store.finishTest(suiteId, id, "passed", 0);
+				} else {
+					const tail = failureLines.slice(-12).join("\n") || res.tail.map(clean).slice(-12).join("\n") || `salió con código ${res.code}`;
+					store.finishTest(suiteId, id, "failed", 0, { message: clip(tail), location: lastLocation });
+				}
+			}
+			return failed;
+		},
+	};
+}
+
+/** Parser para salida de Vitest (reporter default/verbose). */
+export function vitestParser(store: TDDStore, suiteId: SuiteDomain, fallbackName = "vitest"): LineParser {
+	let recorded = 0;
+	let failed = false;
+	const failureLines: string[] = [];
+
+	return {
+		onLine(raw) {
+			const line = clean(raw);
+			const m = line.match(/^\s*([✓×↓])\s+(.+?)(?:\s+(\d+(?:\.\d+)?)\s*m?s)?\s*$/);
+			if (m) {
+				const [, glyph, name, dur] = m;
+				const id = `vitest::${name.trim()}`;
+				const ms = dur ? Math.round(parseFloat(dur)) : 0;
+				recorded++;
+				store.startTest(suiteId, id, name.trim());
+				if (glyph === "✓") {
+					store.finishTest(suiteId, id, "passed", ms);
+				} else if (glyph === "↓") {
+					store.finishTest(suiteId, id, "skipped", ms);
+				} else {
+					failed = true;
+					store.finishTest(suiteId, id, "failed", ms, { message: clip(failureLines.slice(-6).join("\n") || name.trim()) });
+				}
+				return;
+			}
+			if (line.trim()) failureLines.push(line.trim());
+		},
+		finish(res) {
+			if (res.code !== 0) failed = true;
+			if (recorded === 0) {
+				const id = `vitest::${fallbackName}`;
+				store.startTest(suiteId, id, fallbackName);
+				if (!failed) {
+					store.finishTest(suiteId, id, "passed", 0);
+				} else {
+					store.finishTest(suiteId, id, "failed", 0, { message: clip(failureLines.slice(-12).join("\n") || res.tail.map(clean).slice(-12).join("\n") || `salió con código ${res.code}`) });
+				}
+			}
+			return failed;
+		},
+	};
+}
+
+/** Parser para salida de PHPUnit. */
+export function phpunitParser(store: TDDStore, suiteId: SuiteDomain, fallbackName = "phpunit"): LineParser {
+	let recorded = 0;
+	let failed = false;
+	const lines: string[] = [];
+
+	return {
+		onLine(raw) {
+			const line = clean(raw).trim();
+			if (!line) return;
+			lines.push(line);
+			const failCase = line.match(/^\d+\)\s+([^\s]+::[^\s]+)$/);
+			if (failCase) {
+				const id = failCase[1];
+				recorded++;
+				failed = true;
+				store.startTest(suiteId, id, id);
+				store.finishTest(suiteId, id, "failed", 0, { message: `Fallo en ${id}` });
+			}
+		},
+		finish(res) {
+			if (res.code !== 0) failed = true;
+			if (recorded === 0) {
+				const id = `phpunit::${fallbackName}`;
+				store.startTest(suiteId, id, fallbackName);
+				if (!failed) {
+					store.finishTest(suiteId, id, "passed", 0);
+				} else {
+					store.finishTest(suiteId, id, "failed", 0, { message: clip(lines.slice(-12).join("\n") || res.tail.map(clean).slice(-12).join("\n") || `salió con código ${res.code}`) });
+				}
+			}
+			return failed;
+		},
+	};
+}
+
+/** Parser para salida de Maven Surefire y Gradle test. */
+export function javaTestParser(store: TDDStore, suiteId: SuiteDomain, fallbackName = "java test"): LineParser {
+	let recorded = 0;
+	let failed = false;
+	const lines: string[] = [];
+
+	return {
+		onLine(raw) {
+			const line = clean(raw).trim();
+			if (!line) return;
+			lines.push(line);
+			// Maven: [ERROR]   OrderServiceTest.rejectsEmpty:34 expected: ...
+			const mvnFail = line.match(/^\[ERROR\]\s+([A-Za-z0-9_.$]+):(\d+)\s+(.*)$/);
+			if (mvnFail) {
+				const [, name, ln, msg] = mvnFail;
+				recorded++;
+				failed = true;
+				store.startTest(suiteId, name, name);
+				store.finishTest(suiteId, name, "failed", 0, { message: clip(msg), location: `${name}:${ln}` });
+				return;
+			}
+			// Gradle: ClassName > methodName FAILED
+			const gradleFail = line.match(/^([A-Za-z0-9_.$]+\s+>\s+[^\s]+)\s+FAILED$/);
+			if (gradleFail) {
+				const name = gradleFail[1];
+				recorded++;
+				failed = true;
+				store.startTest(suiteId, name, name);
+				store.finishTest(suiteId, name, "failed", 0, { message: `Fallo en ${name}` });
+			}
+		},
+		finish(res) {
+			if (res.code !== 0) failed = true;
+			if (recorded === 0) {
+				const id = `java::${fallbackName}`;
+				store.startTest(suiteId, id, fallbackName);
+				if (!failed) {
+					store.finishTest(suiteId, id, "passed", 0);
+				} else {
+					store.finishTest(suiteId, id, "failed", 0, { message: clip(lines.slice(-12).join("\n") || res.tail.map(clean).slice(-12).join("\n") || `salió con código ${res.code}`) });
+				}
+			}
+			return failed;
+		},
+	};
+}
+
+export interface BashTestMatch {
+	suiteId: SuiteDomain;
+	parser: CheckParser;
+	name: string;
+}
+
+/** Clasifica un comando bash para saber si ejecuta tests o `mem hcd verify`. */
+export function classifyBashTestCommand(command: string): BashTestMatch | null {
+	const cmd = command.trim();
+	if (!cmd) return null;
+	if (/\bmem\s+hcd\s+verify\b/.test(cmd)) {
+		return { suiteId: "data", parser: "hcd", name: "mem hcd verify" };
+	}
+	if (/\bpytest\b/.test(cmd)) {
+		return { suiteId: "backend", parser: "pytest", name: "pytest (bash)" };
+	}
+	if (/\bgo\s+test\b/.test(cmd)) {
+		return { suiteId: "backend", parser: /\s-json\b/.test(cmd) ? "go-test" : "exit-code", name: "go test (bash)" };
+	}
+	if (/\b(?:phpunit|composer\s+test)\b/.test(cmd)) {
+		return { suiteId: "backend", parser: "phpunit", name: "phpunit (bash)" };
+	}
+	if (/\b(?:\.\/)?(?:mvnw|mvn|gradlew|gradle)\s+test\b/.test(cmd)) {
+		return { suiteId: "backend", parser: "java-test", name: "java test (bash)" };
+	}
+	if (/\bplaywright\s+test\b/.test(cmd)) {
+		return { suiteId: "playwright", parser: "playwright-line", name: "playwright (bash)" };
+	}
+	if (/\b(?:vitest|npm\s+test|pnpm\s+test|node\s+--test)\b/.test(cmd)) {
+		return { suiteId: "frontend", parser: "vitest", name: "frontend test (bash)" };
+	}
+	return null;
+}
+
+/** Ingiere la salida de una ejecución `bash` de tests o `mem hcd verify` en el store de /tdd. */
+export function ingestBashTestResult(
+	store: TDDStore,
+	command: string,
+	outputText: string,
+	isError: boolean,
+	cwd: string,
+): boolean {
+	const match = classifyBashTestCommand(command);
+	if (!match) return false;
+
+	if (store.getState().suites.length === 0) {
+		store.initSuites(detectSuites(cwd).map((s) => ({ id: s.id, name: s.name, domain: s.id })));
+	}
+
+	store.clearSuite(match.suiteId);
+	store.finishSuite(match.suiteId, "running");
+
+	const lines = outputText.split(/\r?\n/);
+	const res: StreamResult = {
+		code: isError ? 1 : 0,
+		missing: false,
+		tail: lines.slice(-MAX_TAIL_LINES),
+	};
+
+	if (match.parser === "hcd") {
+		let passed = !isError;
+		let label = match.name;
+		let detail = "";
+		try {
+			const parsed = JSON.parse(outputText);
+			if (parsed?.unit_id) label = `${parsed.unit_id} verify`;
+			if (parsed?.data?.evidence && typeof parsed.data.evidence.passed === "boolean") {
+				passed = parsed.data.evidence.passed;
+			}
+			if (parsed?.data?.evidence?.excerpt) detail = String(parsed.data.evidence.excerpt);
+		} catch {
+			// Salida no JSON: se respeta isError
+		}
+		store.startTest(match.suiteId, "hcd-verify-bash", label);
+		if (passed) {
+			store.finishTest(match.suiteId, "hcd-verify-bash", "passed", 0);
+		} else {
+			store.finishTest(match.suiteId, "hcd-verify-bash", "failed", 0, {
+				message: clip(detail || lines.slice(-8).join("\n") || "mem hcd verify falló"),
+			});
+		}
+		store.finishSuite(match.suiteId, passed ? "passed" : "failed");
+		return true;
+	}
+
+	let parser: LineParser;
+	if (match.parser === "go-test") {
+		parser = goTestParser(store, match.suiteId);
+	} else if (match.parser === "pytest") {
+		parser = pytestParser(store, match.suiteId, match.name);
+	} else if (match.parser === "vitest") {
+		parser = vitestParser(store, match.suiteId, match.name);
+	} else if (match.parser === "phpunit") {
+		parser = phpunitParser(store, match.suiteId, match.name);
+	} else if (match.parser === "java-test") {
+		parser = javaTestParser(store, match.suiteId, match.name);
+	} else {
+		parser = exitCodeParser(store, match.suiteId, { id: "bash-test", name: match.name, cmd: "bash", args: [], parser: "exit-code" }, Date.now());
+	}
+
+	for (const line of lines) parser.onLine(line);
+	const failed = parser.finish(res);
+	store.finishSuite(match.suiteId, failed ? "failed" : "passed");
+	return true;
+}
+
 /** Un comando = un test; el resultado es su código de salida y el fallo, sus últimas líneas. */
 function exitCodeParser(store: TDDStore, suiteId: string, check: CheckSpec, startedAt: number): LineParser {
 	store.startTest(suiteId, check.id, check.name);
@@ -1464,6 +1836,14 @@ export default function (pi: ExtensionAPI) {
 			parser = playwrightLineParser(store, suiteId, cwd, tmpJsonPath);
 		} else if (check.parser === "go-test") {
 			parser = goTestParser(store, suiteId);
+		} else if (check.parser === "pytest") {
+			parser = pytestParser(store, suiteId, check.name);
+		} else if (check.parser === "vitest") {
+			parser = vitestParser(store, suiteId, check.name);
+		} else if (check.parser === "phpunit") {
+			parser = phpunitParser(store, suiteId, check.name);
+		} else if (check.parser === "java-test") {
+			parser = javaTestParser(store, suiteId, check.name);
 		} else {
 			parser = exitCodeParser(store, suiteId, check, startedAt);
 		}
@@ -1680,6 +2060,18 @@ export default function (pi: ExtensionAPI) {
 			const st = structuredClone(store.getState());
 			return { content: [{ type: "text", text: formatAgentReport(st, ran) }], details: st };
 		},
+	});
+
+	// ── Escucha de tests ejecutados por el agente en bash ──────────────────
+	pi.on("tool_result", async (event: any, ctx: any) => {
+		if (event?.toolName !== "bash") return;
+		const cmd = String(event.input?.command ?? "");
+		const text = Array.isArray(event.content)
+			? event.content.map((c: any) => (typeof c?.text === "string" ? c.text : "")).join("\n")
+			: String(event.content ?? "");
+		if (ingestBashTestResult(store, cmd, text, Boolean(event.isError), ctx?.cwd || process.cwd())) {
+			requestOverlayRender?.();
+		}
 	});
 
 	// ── Reactividad en vivo (Watch mode al asentarse el agente) ─────────────

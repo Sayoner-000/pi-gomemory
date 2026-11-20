@@ -101,6 +101,34 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error en codemode: %v\n", err)
 			os.Exit(1)
 		}
+	case "lite":
+		sub := "status"
+		if len(os.Args) > 2 {
+			sub = os.Args[2]
+		}
+		switch sub {
+		case "on":
+			if err := installer.SetLiteMode(opts, true); err != nil {
+				fmt.Fprintf(os.Stderr, "Error activando modo lite: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("✓ Modo liviano activado: solo gomemory queda en mcp.json (sin codegraph ni codebase-memory).")
+		case "off":
+			if err := installer.SetLiteMode(opts, false); err != nil {
+				fmt.Fprintf(os.Stderr, "Error desactivando modo lite: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("✓ Modo liviano desactivado: gomemory, codegraph y codebase-memory restaurados en mcp.json.")
+		case "status":
+			if installer.IsLiteMode(opts.HomeDir) {
+				fmt.Println("lite: on")
+			} else {
+				fmt.Println("lite: off")
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "Uso: pi-gomemory-setup lite [on|off|status]\n")
+			os.Exit(2)
+		}
 	case "plugin":
 		if err := installer.InstallAntigravityPlugin(opts.PiAgentDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error configurando plugin: %v\n", err)

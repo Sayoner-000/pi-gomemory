@@ -50,10 +50,36 @@ export function renderTasks(u: Unit): string[] | undefined {
 	];
 }
 
+/** Detecta llamadas bash que agrupan múltiples `mem hcd verify` o los envuelven en funciones/bucles. */
+export function isBundledHcdVerifyCommand(command: string): string | null {
+	const cmd = command.trim();
+	if (!cmd) return null;
+	const verifyCount = (cmd.match(/\bmem\s+hcd\s+verify\b/g) ?? []).length;
+	if (verifyCount > 1) {
+		return "Ejecuta un solo `mem hcd verify` por llamada bash para permitir refresco en vivo y entrega de steering.";
+	}
+	if (
+		verifyCount === 1 &&
+		(/\b(?:for|while|until)\b[\s\S]*\bmem\s+hcd\s+verify\b/.test(cmd) ||
+			/\b[A-Za-z_][A-Za-z0-9_]*\s*\(\s*\)\s*\{[\s\S]*\bmem\s+hcd\s+verify\b/.test(cmd))
+	) {
+		return "No envuelvas `mem hcd verify` en funciones o bucles dentro de una sola llamada bash; ejecuta cada verificación por separado.";
+	}
+	return null;
+}
+
 export default function (pi: ExtensionAPI) {
 	let visible = true;
 	let busy = false;
 	let pendingCtx: any = null;
+	let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+	function stopPolling() {
+		if (pollTimer) {
+			clearInterval(pollTimer);
+			pollTimer = null;
+		}
+	}
 
 	async function refresh(ctx: any) {
 		if (busy) {
@@ -96,13 +122,42 @@ export default function (pi: ExtensionAPI) {
 		await refresh(ctx);
 	});
 
+	pi.on("tool_call", async (event: any) => {
+		if (event?.toolName !== "bash") return undefined;
+		const cmd = String(event?.input?.command ?? event?.args?.command ?? "");
+		const reason = isBundledHcdVerifyCommand(cmd);
+		if (reason) return { block: true, reason };
+		return undefined;
+	});
+
+	pi.on("tool_execution_start", async (event: any, ctx: any) => {
+		const cmd = String(event?.args?.command ?? event?.input?.command ?? "");
+		if (event?.toolName === "bash" && /\bmem\s+hcd\b/.test(cmd)) {
+			stopPolling();
+			pollTimer = setInterval(() => {
+				void refresh(ctx);
+			}, 1500);
+			(pollTimer as any)?.unref?.();
+		}
+	});
+
+	pi.on("tool_execution_end", async () => {
+		stopPolling();
+	});
+
 	pi.on("tool_result", async (event: any, ctx: any) => {
 		if (event.toolName === "bash" && /\bmem\s+hcd\b/.test(String(event.input?.command ?? ""))) {
+			stopPolling();
 			await refresh(ctx);
 		}
 	});
 
 	pi.on("agent_end", async (_event: any, ctx: any) => {
+		stopPolling();
 		await refresh(ctx);
+	});
+
+	pi.on("session_shutdown", async () => {
+		stopPolling();
 	});
 }

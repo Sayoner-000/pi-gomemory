@@ -25,4 +25,5 @@ description: "Paso verify de HCD: registra la evidencia de cada tarea ejecutando
    - Una evidencia puede cubrir varias tareas: `--task 2,3`.
 3. `--json` y `--client` van **antes** de `--`: todo lo que sigue es el comando.
 4. Lee `data.evidence`: `passed`, `red_observed`, `exit_code` y `excerpt`. Si falló, corrige y vuelve a verificar. No reinterpretes un fallo como éxito.
-5. Cuando el paso sea `close`, sigue con `/hcd-analyze` y `/hcd-close`.
+5. **Una verificación por llamada Bash**: ejecuta **un solo `mem hcd verify` por llamada `bash`** (nunca los agrupes en funciones `v(){ ... }` ni bucles), para que el panel de tareas se actualice en vivo y Pi pueda entregar *steering* entre verificaciones.
+6. Cuando el paso sea `close`, sigue con `/hcd-analyze` y `/hcd-close`.
