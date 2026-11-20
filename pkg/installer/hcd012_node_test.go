@@ -19,7 +19,25 @@ export const createExtensionRuntime = () => ({});
 export const ModelRuntime = { create: async () => { calls.push("ModelRuntime"); return {}; } };
 export const createAgentSession = async () => { calls.push("createAgentSession"); throw new Error("no provider in tests"); };
 export const SessionManager = { inMemory: () => ({}) };
-export const SettingsManager = { inMemory: () => ({}) };`,
+export const SettingsManager = { inMemory: () => ({}) };
+// Editor mínimo con la forma del de pi-tui: borde, línea con cursor falso y
+// relleno de espacios hasta el ancho, borde. Tab llama al autocompletado.
+export class CustomEditor {
+	constructor(tui, theme, keybindings) { this.tui = tui; this.text = ""; this.autocompleted = 0; }
+	getText() { return this.text; }
+	setText(t) { this.text = t; }
+	handleInput(d) {
+		if (d === "\t") { this.autocompleted++; return; }
+		if (d === "\x7f") { this.text = this.text.slice(0, -1); return; }
+		if (d === "\r") { this.onSubmit?.(this.text); return; }
+		this.text += d;
+	}
+	render(w) {
+		const used = [...this.text].length + 1;
+		return ["─".repeat(w), this.text + "\x1b[7m \x1b[27m" + " ".repeat(Math.max(0, w - used)), "─".repeat(w)];
+	}
+	invalidate() {}
+}`,
 	// truncateToWidth recorta de verdad (como pi-tui): un stub identidad ocultó
 	// el defecto C-004 de la auditoría v1.9.0 (el recorte eliminaba [−]).
 	"@earendil-works/pi-tui": `
@@ -31,7 +49,8 @@ export const truncateToWidth = (s, width, ellipsis = "…", pad = false) => {
 	if (chars.length <= width) return pad ? s + " ".repeat(width - chars.length) : s;
 	const keep = Math.max(0, width - [...ellipsis].length);
 	return chars.slice(0, keep).join("") + ellipsis;
-};`,
+};
+export const matchesKey = (data, key) => (key === "tab" ? data === "\t" : key === "enter" ? data === "\r" : false);`,
 }
 
 // runNodeExt copia las extensiones indicadas a un directorio temporal con los

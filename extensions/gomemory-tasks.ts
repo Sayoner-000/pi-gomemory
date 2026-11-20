@@ -61,13 +61,36 @@ export interface TaskActivityTracker {
 	collapseTask(taskId: string): void;
 	toggleExpand(taskId: string, activeTaskId: string | null): void;
 	toggleShowMore(taskId: string): void;
+	/** Primera tarea visible fijada por la persona; null = la ventana sigue a la tarea activa (HCD-057). */
+	getScrollStart(): number | null;
+	setScrollStart(start: number | null): void;
 }
 
-function mark(status: string): string {
-	if (status === "verified") return "✓";
-	if (status === "failed" || status === "red") return "✗";
-	if (status === "unverified") return "◌"; // tenía evidencia y caducó
-	return "○";
+/** Frames del spinner de /tdd (gomemory-tdd.ts): misma animación en ambos paneles (HCD-057). */
+export const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SPINNER_INTERVAL_MS = 80;
+
+function spinner(now: number): string {
+	return SPINNER_FRAMES[Math.floor(now / SPINNER_INTERVAL_MS) % SPINNER_FRAMES.length];
+}
+
+/** Color del tema de cada línea; el glifo se conserva para no depender solo del color. */
+export type LineTone = "accent" | "success" | "error" | "warning" | "dim";
+
+/** Círculo que gira para la tarea en curso (Q5); más lento que el spinner de llamadas. */
+export const TASK_FRAMES = ["◐", "◓", "◑", "◒"];
+const TASK_FRAME_MS = 250;
+
+/**
+ * Círculo que se llena (HCD-057, Q5): ○ pendiente → gira ◐◓◑◒ en curso → ● verificada;
+ * ◍ verificada pero caducada (hay que volver a verificar); ✗ fallida.
+ */
+function taskVisual(status: string, active: boolean, now: number): { glyph: string; tone: LineTone } {
+	if (status === "verified") return { glyph: "●", tone: "success" };
+	if (active) return { glyph: TASK_FRAMES[Math.floor(now / TASK_FRAME_MS) % TASK_FRAMES.length], tone: "accent" };
+	if (status === "failed" || status === "red") return { glyph: "✗", tone: "error" };
+	if (status === "unverified") return { glyph: "◍", tone: "warning" }; // tenía evidencia y caducó
+	return { glyph: "○", tone: "dim" };
 }
 
 function short(text: string): string {
@@ -77,7 +100,20 @@ function short(text: string): string {
 
 export interface RenderedTaskLine {
 	text: string;
-	action?: { kind: "toggle-task" | "toggle-more"; taskId: string };
+	tone?: LineTone;
+	action?: { kind: "toggle-task" | "toggle-more"; taskId: string } | { kind: "scroll"; delta: number };
+}
+
+/** Tareas visibles a la vez en /tasks; el resto se recorre con scroll (HCD-057, Q3). */
+export const TASK_WINDOW = 8;
+/** En modo automático, tareas de contexto por encima de la activa. */
+const WINDOW_LEAD = 2;
+
+/** Primera tarea visible: la fijada por la persona o la que deja la activa en la tercera fila. */
+export function windowStart(total: number, activeIdx: number, manual: number | null): number {
+	const max = Math.max(0, total - TASK_WINDOW);
+	const wanted = manual ?? (activeIdx >= 0 ? activeIdx - WINDOW_LEAD : 0);
+	return Math.min(max, Math.max(0, wanted));
 }
 
 function formatDurationMs(ms: number): string {
@@ -85,10 +121,19 @@ function formatDurationMs(ms: number): string {
 	return safe >= 1000 ? `${(safe / 1000).toFixed(1)}s` : `${safe}ms`;
 }
 
-function callMark(status: TaskCallEntry["status"]): string {
-	if (status === "running") return "⟳";
-	if (status === "error") return "✗";
-	return "✓";
+function callVisual(status: TaskCallEntry["status"], now: number): { glyph: string; tone: LineTone } {
+	if (status === "running") return { glyph: spinner(now), tone: "accent" };
+	if (status === "error") return { glyph: "✗", tone: "error" };
+	return { glyph: "✓", tone: "dim" };
+}
+
+const PROGRESS_CELLS = 10;
+
+/** Barra de progreso de la unidad: «▰▰▰▰▱▱▱▱▱▱  5/13 · 38 %»; dos espacios separan barra y números (HCD-057). */
+function progressBar(done: number, total: number): string {
+	const ratio = total > 0 ? done / total : 0;
+	const filled = Math.round(ratio * PROGRESS_CELLS);
+	return `${"▰".repeat(filled)}${"▱".repeat(PROGRESS_CELLS - filled)}  ${done}/${total} · ${Math.round(ratio * 100)} %`;
 }
 
 function callsWord(n: number): string {
@@ -103,17 +148,24 @@ export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Da
 	const done = u.tasks.filter((t) => t.status === "verified").length;
 	const activeTaskId = tracker ? resolveActiveTaskId(u, tracker.getFocus()) : null;
 	const out: RenderedTaskLine[] = [
-		{ text: `${u.unit_id} · ${u.kind} · paso ${u.stage} · ${done}/${u.tasks.length}` },
+		{ text: `${u.unit_id} · ${u.kind} · paso ${u.stage} · ${progressBar(done, u.tasks.length)}`, tone: "accent" },
 	];
 
-	for (const t of u.tasks) {
+	const currentId = activeTaskId ?? resolveActiveTaskId(u, null);
+	const activeIdx = u.tasks.findIndex((t) => t.id === currentId);
+	const start = windowStart(u.tasks.length, activeIdx, tracker?.getScrollStart() ?? null);
+	const shown = u.tasks.slice(start, start + TASK_WINDOW);
+	const hiddenBelow = u.tasks.length - start - shown.length;
+	if (start > 0) out.push({ text: `  ↑ ${start} más · Alt+Shift+↑ o rueda`, tone: "dim", action: { kind: "scroll", delta: -1 } });
+
+	for (const t of shown) {
 		const activity = tracker?.getTaskActivity(t.id);
 		const hasCalls = (activity?.totalCalls ?? 0) > 0;
 		const running = Boolean(activity?.calls.some((c) => c.status === "running"));
-		const glyph = t.status === "verified" ? "✓" : running ? "⟳" : mark(t.status);
+		const { glyph, tone } = taskVisual(t.status, running || t.id === currentId, now);
 
 		if (!tracker || !activity || !hasCalls) {
-			out.push({ text: `  ${glyph} ${t.id}. ${short(t.text)}` });
+			out.push({ text: `  ${glyph} ${t.id}. ${short(t.text)}`, tone });
 			continue;
 		}
 
@@ -121,6 +173,7 @@ export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Da
 		if (!expanded) {
 			out.push({
 				text: `  ${glyph} ${t.id}. ${short(t.text)} · ${activity.totalCalls} ${callsWord(activity.totalCalls)} · ${activity.totalOutputLines} lines output · click to expand`,
+				tone,
 				action: { kind: "toggle-task", taskId: t.id },
 			});
 			continue;
@@ -128,6 +181,7 @@ export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Da
 
 		out.push({
 			text: `  ${glyph} ${t.id}. ${short(t.text)}`,
+			tone,
 			action: { kind: "toggle-task", taskId: t.id },
 		});
 
@@ -138,31 +192,34 @@ export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Da
 				call.status === "running"
 					? formatDurationMs(now - call.startedAt)
 					: formatDurationMs(call.durationMs ?? 0);
-			out.push({
-				text: `   ├ ${callMark(call.status)} ${call.label} ${dur}`,
-			});
+			const cv = callVisual(call.status, now);
+			out.push({ text: `   ├─ ${cv.glyph} ${call.label} ${dur}`, tone: cv.tone });
 		}
 
+		// El pie es el último hijo del árbol: cierra con └─.
+		const summary = `   └─ ${activity.totalCalls} ${callsWord(activity.totalCalls)} · ${activity.totalOutputLines} lines output`;
 		const hasHidden = activity.totalCalls > visibleCalls.length;
 		if (!showAll && hasHidden) {
-			out.push({
-				text: `   └ ${activity.totalCalls} ${callsWord(activity.totalCalls)} · ${activity.totalOutputLines} lines output · click to show more`,
-				action: { kind: "toggle-more", taskId: t.id },
-			});
+			out.push({ text: `${summary} · click to show more`, tone: "dim", action: { kind: "toggle-more", taskId: t.id } });
 		} else if (showAll && activity.calls.length > DEFAULT_VISIBLE_CALLS) {
-			out.push({
-				text: `   └ ${activity.totalCalls} ${callsWord(activity.totalCalls)} · ${activity.totalOutputLines} lines output · click to show less`,
-				action: { kind: "toggle-more", taskId: t.id },
-			});
+			out.push({ text: `${summary} · click to show less`, tone: "dim", action: { kind: "toggle-more", taskId: t.id } });
 		} else {
-			out.push({
-				text: `   └ ${activity.totalCalls} ${callsWord(activity.totalCalls)} · ${activity.totalOutputLines} lines output · click to collapse`,
-				action: { kind: "toggle-task", taskId: t.id },
-			});
+			out.push({ text: `${summary} · click to collapse`, tone: "dim", action: { kind: "toggle-task", taskId: t.id } });
 		}
 	}
 
+	if (hiddenBelow > 0) out.push({ text: `  ↓ ${hiddenBelow} más · Alt+Shift+↓ o rueda`, tone: "dim", action: { kind: "scroll", delta: 1 } });
 	return out;
+}
+
+/** Desplaza la ventana de tareas delta filas, sin salirse de la lista; true si se movió. */
+export function scrollTaskWindow(u: Unit | null, tracker: TaskActivityTracker, delta: number): boolean {
+	if (!u?.tasks?.length || !delta) return false;
+	const activeIdx = u.tasks.findIndex((t) => t.id === resolveActiveTaskId(u, tracker.getFocus()));
+	const current = windowStart(u.tasks.length, activeIdx, tracker.getScrollStart());
+	const next = windowStart(u.tasks.length, activeIdx, current + delta);
+	tracker.setScrollStart(next);
+	return next !== current;
 }
 
 export function renderTasks(u: Unit, tracker?: TaskActivityTracker, now = Date.now()): string[] | undefined {
@@ -516,6 +573,7 @@ export function createTaskActivityTracker(): TaskActivityTracker {
 	const expandedTasks = new Set<string>();
 	const collapsedTasks = new Set<string>();
 	const showAllTasks = new Set<string>();
+	let scrollStart: number | null = null;
 
 	const reset = () => {
 		manualFocus = null;
@@ -526,6 +584,7 @@ export function createTaskActivityTracker(): TaskActivityTracker {
 		expandedTasks.clear();
 		collapsedTasks.clear();
 		showAllTasks.clear();
+		scrollStart = null;
 	};
 
 	const ensureTotals = (taskId: string) => {
@@ -538,6 +597,14 @@ export function createTaskActivityTracker(): TaskActivityTracker {
 	};
 
 	return {
+		getScrollStart() {
+			return scrollStart;
+		},
+
+		setScrollStart(start) {
+			scrollStart = start;
+		},
+
 		syncUnit(unit) {
 			const nextId = unit?.ok && unit.state === "active" && unit.unit_id ? unit.unit_id : null;
 			if (nextId !== unitId) {
@@ -683,18 +750,14 @@ export function createTaskActivityTracker(): TaskActivityTracker {
 	};
 }
 
-function styleTaskLine(line: RenderedTaskLine, index: number, theme: any): string {
-	const fg = typeof theme?.fg === "function" ? (color: string, text: string) => theme.fg(color, text) : (_c: string, text: string) => text;
-	const text = line.text;
-	if (index === 0) return fg("accent", text);
-	if (text.startsWith("   └ ")) return fg("dim", text);
-	if (text.startsWith("   ├ ⟳ ")) return fg("accent", text);
-	if (text.startsWith("   ├ ✗ ")) return fg("error", text);
-	if (text.startsWith("   ├ ✓ ")) return fg("dim", text);
-	if (text.startsWith("  ✓ ")) return fg("success", text);
-	if (text.startsWith("  ✗ ")) return fg("error", text);
-	if (text.startsWith("  ⟳ ")) return fg("accent", text);
-	return text;
+function styleTaskLine(line: RenderedTaskLine, theme: any): string {
+	if (!line.tone || typeof theme?.fg !== "function") return line.text;
+	return theme.fg(line.tone, line.text);
+}
+
+/** Hay alguna llamada en curso en la unidad: el spinner necesita repintado periódico. */
+function hasRunningCall(unit: Unit | null, tracker: TaskActivityTracker): boolean {
+	return Boolean(unit?.tasks.some((t) => tracker.getTaskActivity(t.id).calls.some((c) => c.status === "running")));
 }
 
 export default function (pi: ExtensionAPI) {
@@ -707,6 +770,31 @@ export default function (pi: ExtensionAPI) {
 	let mounted = false;
 	let requestWidgetRender: (() => void) | null = null;
 	let seqCounter = 0;
+	let spinTimer: ReturnType<typeof setInterval> | null = null;
+	let spinEvery = 0;
+
+	/**
+	 * Anima el panel (HCD-057): al ritmo del spinner si hay una llamada en curso, al
+	 * del círculo si solo hay una tarea activa (Q5), y nada si todo está verificado.
+	 */
+	function syncSpinner() {
+		const shown = visible && mounted;
+		const every = !shown
+			? 0
+			: hasRunningCall(currentUnit, tracker)
+				? SPINNER_INTERVAL_MS
+				: resolveActiveTaskId(currentUnit, tracker.getFocus())
+					? TASK_FRAME_MS
+					: 0;
+		if (every === spinEvery) return;
+		if (spinTimer) clearInterval(spinTimer);
+		spinTimer = null;
+		spinEvery = every;
+		if (every) {
+			spinTimer = setInterval(() => requestWidgetRender?.(), every);
+			(spinTimer as any)?.unref?.();
+		}
+	}
 
 	function stopPolling() {
 		if (pollTimer) {
@@ -727,10 +815,12 @@ export default function (pi: ExtensionAPI) {
 		if (!hasView) {
 			mounted = false;
 			requestWidgetRender = null;
+			syncSpinner();
 			ctx?.ui?.setWidget?.(WIDGET, undefined);
 			return;
 		}
 		if (mounted && requestWidgetRender) {
+			syncSpinner();
 			requestWidgetRender();
 			return;
 		}
@@ -746,16 +836,28 @@ export default function (pi: ExtensionAPI) {
 					}
 					lastRendered = renderTasksTree(currentUnit, tracker) ?? [];
 					const maxW = Math.max(10, width || 100);
-					return lastRendered.map((line, i) => truncateToWidth(styleTaskLine(line, i, theme), maxW, "…", false));
+					return lastRendered.map((line) => truncateToWidth(styleTaskLine(line, theme), maxW, "…", false));
 				},
 				handleMouse(event: any) {
+					// Rueda sobre el panel: recorre la ventana de tareas (HCD-057, Q3).
+					if (event?.type === "wheel" && currentUnit) {
+						// wheelDelta llega en líneas lógicas (negativo hacia arriba).
+						const raw = Number(event.wheelDelta) || 0;
+						const delta = Math.round(raw) || Math.sign(raw);
+						if (!delta) return undefined;
+						scrollTaskWindow(currentUnit, tracker, delta);
+						tui?.requestRender?.();
+						return { handled: true, render: false };
+					}
 					if (event?.button !== "left") return undefined;
 					const row = typeof event.y === "number" ? event.y : -1;
 					const action = lastRendered[row]?.action;
 					if (!action || !currentUnit) return undefined;
 					if (event.type === "click") {
 						const activeId = resolveActiveTaskId(currentUnit, tracker.getFocus());
-						if (action.kind === "toggle-more") {
+						if (action.kind === "scroll") {
+							scrollTaskWindow(currentUnit, tracker, action.delta);
+						} else if (action.kind === "toggle-more") {
 							tracker.toggleShowMore(action.taskId);
 						} else {
 							tracker.toggleExpand(action.taskId, activeId);
@@ -771,6 +873,7 @@ export default function (pi: ExtensionAPI) {
 				invalidate() {},
 			};
 		});
+		syncSpinner();
 	}
 
 	async function refresh(ctx: any) {
@@ -864,6 +967,16 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	// Alt+Shift+↑/↓ recorren la lista desde el input; ↑/↓ y Alt+↑ quedan para Pi (HCD-057, Q4).
+	for (const [key, delta] of [["alt+shift+up", -1], ["alt+shift+down", 1]] as const) {
+		pi.registerShortcut?.(key, {
+			description: delta < 0 ? "Tareas HCD: subir la lista" : "Tareas HCD: bajar la lista",
+			handler: async () => {
+				if (visible && scrollTaskWindow(currentUnit, tracker, delta)) requestWidgetRender?.();
+			},
+		});
+	}
+
 	pi.on("session_start", async (_event: any, ctx: any) => {
 		await refresh(ctx);
 	});
@@ -923,5 +1036,6 @@ export default function (pi: ExtensionAPI) {
 		stopPolling();
 		mounted = false;
 		requestWidgetRender = null;
+		syncSpinner();
 	});
 }

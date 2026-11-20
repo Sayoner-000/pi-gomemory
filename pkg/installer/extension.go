@@ -18,6 +18,7 @@ var tuiResources = []struct{ source, destination string }{
 	{"extensions/gomemory-sidebar.ts", "gomemory-sidebar.ts"},
 	{"extensions/gomemory-tdd.ts", "gomemory-tdd.ts"},
 	{"extensions/gomemory-context.ts", "gomemory-context.ts"},                 // contexto vivo de gomemory (HCD-045)
+	{"extensions/gomemory-suggest.ts", "gomemory-suggest.ts"},                 // sugerencia del siguiente comando (HCD-057)
 	{"extensions/antigravity-prompt-guard.js", "antigravity-prompt-guard.js"}, // workaround temporal pi-antigravity#152
 	{"config/splash.md", "gomemory-splash-prompt.md"},
 }

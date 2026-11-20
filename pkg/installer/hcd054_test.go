@@ -3,6 +3,8 @@ package installer
 import "testing"
 
 func TestHCD054ActivityTracking(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tasks.ts"}, `
 import assert from "node:assert/strict";
 import {
@@ -76,6 +78,8 @@ assert.equal(tracker.getTaskActivity("2").totalCalls, 0);
 }
 
 func TestHCD054TreeRendering(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tasks.ts"}, `
 import assert from "node:assert/strict";
 import { createTaskActivityTracker, renderTasks, renderTasksTree } from "./gomemory-tasks.ts";
@@ -114,31 +118,35 @@ assert.ok(tree && tree.length > 0);
 const lines = tree.map((l) => l.text);
 
 // Q1: tarea 1 (completada) colapsada en una línea con resumen de llamadas y líneas
-const task1Row = lines.find((l) => l.includes("✓ 1. Tarea completada"));
+// Desde HCD-057 (Q5) la tarea verificada se pinta con el círculo lleno ●.
+const task1Row = lines.find((l) => l.includes("● 1. Tarea completada"));
 assert.ok(task1Row && task1Row.includes("1 call") && task1Row.includes("2 lines output"), "tarea completada debe resumirse colapsada: " + task1Row);
 assert.ok(!lines.some((l) => l.includes("gomemory-tasks.ts (offset=1")), "tarea completada colapsada no debe mostrar ramas");
 
 // Q1: tarea 2 (en curso) expandida por defecto con 5 llamadas visibles + pie "click to show more"
-const branchLines = lines.filter((l) => l.includes("├ "));
+const branchLines = lines.filter((l) => l.includes("├─ "));
 assert.equal(branchLines.length, 5, "debe mostrar tope de 5 llamadas visibles: " + JSON.stringify(branchLines));
-assert.ok(branchLines.some((l) => l.includes("⟳ Bash go test ./pkg/installer 50ms")), "llamada en curso debe mostrar ⟳ y duración en vivo: " + JSON.stringify(branchLines));
-assert.ok(lines.some((l) => l.includes("└ 7 calls · 18 lines output · click to show more")), "debe mostrar pie resumen con click to show more: " + JSON.stringify(lines));
+// Desde HCD-057 la llamada en curso lleva el spinner animado de /tdd en lugar de ⟳.
+assert.ok(branchLines.some((l) => /├─ [⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] Bash go test \.\/pkg\/installer 50ms/.test(l)), "llamada en curso debe mostrar spinner y duración en vivo: " + JSON.stringify(branchLines));
+assert.ok(lines.some((l) => l.includes("└─ 7 calls · 18 lines output · click to show more")), "debe mostrar pie resumen con click to show more: " + JSON.stringify(lines));
 
 // Al activar showMore en tarea 2 se muestran todas las llamadas (7) y cambia a "click to show less"
 tracker.toggleShowMore("2");
 const expandedLines = renderTasks(unit, tracker, 2050);
-assert.equal(expandedLines.filter((l) => l.includes("├ ")).length, 7);
+assert.equal(expandedLines.filter((l) => l.includes("├─ ")).length, 7);
 assert.ok(expandedLines.some((l) => l.includes("click to show less")));
 
 // Al expandir la tarea 1 completada aparecen sus ramas
 tracker.expandTask("1");
 const withTask1 = renderTasks(unit, tracker, 2050);
-assert.ok(withTask1.some((l) => l.includes("├ ✓ Read extensions/gomemory-tasks.ts (offset=1, limit=20) 10ms")));
+assert.ok(withTask1.some((l) => l.includes("├─ ✓ Read extensions/gomemory-tasks.ts (offset=1, limit=20) 10ms")));
 `)
 	t.Log(out)
 }
 
 func TestHCD054WidgetInteraction(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tasks.ts"}, `
 import assert from "node:assert/strict";
 import registerTasks from "./gomemory-tasks.ts";
@@ -199,24 +207,24 @@ for (let i = 1; i <= 6; i++) {
 const initialLines = mountedComponent.render(120);
 const moreIdx = initialLines.findIndex((l) => l.includes("click to show more"));
 assert.ok(moreIdx >= 0, "debe renderizar línea click to show more: " + JSON.stringify(initialLines));
-assert.equal(initialLines.filter((l) => l.includes("├ ")).length, 5);
+assert.equal(initialLines.filter((l) => l.includes("├─ ")).length, 5);
 
 // Clic izquierdo sobre "click to show more" expande las 6 llamadas
 const clickRes = mountedComponent.handleMouse({ type: "click", button: "left", y: moreIdx, x: 5 });
 assert.equal(clickRes?.handled, true, "el clic sobre click to show more debe ser manejado");
 const expandedLines = mountedComponent.render(120);
-assert.equal(expandedLines.filter((l) => l.includes("├ ")).length, 6, "tras clic debe mostrar las 6 llamadas");
+assert.equal(expandedLines.filter((l) => l.includes("├─ ")).length, 6, "tras clic debe mostrar las 6 llamadas");
 assert.ok(expandedLines.some((l) => l.includes("click to show less")));
 
 // Subcomando /tasks collapse 2 colapsa la tarea 2
 await commands.tasks.handler("collapse 2", ctx);
 const collapsedLines = mountedComponent.render(120);
-assert.equal(collapsedLines.filter((l) => l.includes("├ ")).length, 0, "collapse 2 debe ocultar las ramas");
+assert.equal(collapsedLines.filter((l) => l.includes("├─ ")).length, 0, "collapse 2 debe ocultar las ramas");
 assert.ok(collapsedLines.some((l) => l.includes("click to expand")));
 
 // Subcomando /tasks expand 2 vuelve a mostrar las ramas
 await commands.tasks.handler("expand 2", ctx);
-assert.ok(mountedComponent.render(120).some((l) => l.includes("├ ")));
+assert.ok(mountedComponent.render(120).some((l) => l.includes("├─ ")));
 
 // Subcomando /tasks focus 1 atribuye la siguiente llamada a la tarea 1
 await commands.tasks.handler("focus 1", ctx);
