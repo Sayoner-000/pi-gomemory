@@ -123,9 +123,29 @@ Mientras el modo plan está activo, Pi bloquea las modificaciones comunes del ag
 - `/plan` sin argumentos alterna el modo; `/plan <petición>` lo activa y envía la petición.
 
 ### Panel de tareas (`/tasks`)
-`/tasks` muestra u oculta las tareas de la unidad HCD activa encima del editor. El estado de verificación (`✓`, `○`, `◌`, `✗`) viene del motor. Debajo de cada tarea, el árbol muestra las llamadas de la sesión con su propio estado y duración.
+`/tasks` muestra u oculta las tareas de la unidad HCD activa encima del editor. La cabecera lleva una barra de progreso (`▰▰▰▰▱▱▱▱▱▱  5/13 · 38 %`). El estado de cada tarea viene del motor y se dibuja como un círculo que se llena:
+
+| Glifo | Estado |
+|---|---|
+| `○` | pendiente |
+| `◐` (gira) | en curso: la tarea activa, aunque no haya ninguna llamada en marcha |
+| `●` | verificada |
+| `◍` | estuvo verificada, pero el código cambió y hay que volver a verificarla |
+| `✗` | fallida |
+
+Cada estado tiene también su color; el glifo se mantiene para quien no distingue colores o usa un tema monocromo. Debajo de cada tarea, el árbol (`├─`, `└─`) muestra las llamadas de la sesión con su estado y duración; la que está en marcha usa el mismo spinner que `/tdd`.
 
 La tarea en curso muestra por defecto sus últimas cinco llamadas. Las tareas completadas quedan resumidas; usa `/tasks expand N` o haz clic en el resumen para abrirlas y `/tasks collapse N` para cerrarlas. Con `/tasks focus N` puedes decidir a qué tarea se asignan las próximas llamadas.
+
+Si la unidad tiene más de 8 tareas, se ven 8 alrededor de la que está en curso, con `↑ N más` y `↓ N más` en los bordes. Para ver el resto usa la rueda del ratón sobre el panel, `Alt+Shift+↑` / `Alt+Shift+↓` desde el input o un clic en esas líneas. `↑` y `↓` solos siguen recorriendo el historial, y `Alt+↑` sigue recuperando los mensajes en cola.
+
+### Sugerencia del siguiente comando
+Con el input vacío, Pi muestra en gris lo que probablemente quieras escribir a continuación. `Tab` lo copia al input sin enviarlo; si ya escribiste algo, `Tab` vuelve a ser el autocompletado de siempre.
+
+- Con una unidad HCD activa, la sugerencia es el siguiente paso que indica el motor (por ejemplo, `/hcd-implement`). Sale de `mem hcd show` y no consume tokens.
+- Sin unidad activa, al terminar cada turno se pide al modelo de la sesión una propuesta de una línea. La petición lleva el último mensaje tuyo y la última respuesta del agente, usa el razonamiento mínimo y un tope de 300 tokens; con Claude Opus cuesta unos 0,002-0,003 USD. Si empiezas a escribir o lanzas otro turno, se cancela.
+
+La extensión `gomemory-suggest.ts` envuelve el editor que haya instalado otra extensión (por ejemplo, el `❯` de pi-cc-extensions) en lugar de sustituirlo.
 
 ### Panel lateral estilo OpenCode (`/sidebar`)
 Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), cuotas de Google AI Pro, límites de Anthropic u OpenAI Codex y telemetría de Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
@@ -182,12 +202,16 @@ Las suites omitidas aparecen agrupadas al final, bajo «Omitidas (n)».
 
 **Subcomandos:**
 - `/tdd`: muestra u oculta el panel y lanza todas las suites.
-- `/tdd run [suite]`: ejecuta `all` o una suite (`backend`, `frontend`, `playwright`, `ci`, `data`). Si ya hay una ejecución en curso, avisa y la nueva queda en cola.
+- `/tdd run [suite]`: ejecuta `all` o una suite (`backend`, `frontend`, `playwright`, `ci`, `data`). Si ya hay una ejecución en curso, avisa y la nueva queda en cola; si lo que corre es watch, lo cancela en lugar de esperarlo.
 - `/tdd min` (o alias `/tdd m`, `/tdd -`), o clic en `[−]` / `[+]`: minimiza o restaura el panel.
 - `/tdd watch`: ejecuta las pruebas una vez cuando el agente termina el prompt (`agent_settled`), solo si cambió archivos con `edit`, `write` o `bash`. No bloquea al agente, no se dispara en prompts de solo lectura y no repite si el agente ya ejecutó `run_test_suite all` tras su último cambio. Los avisos que llegan durante una ejecución se agrupan en una sola pendiente.
 - `/tdd report`: publica en el chat el informe de la última ejecución (resultado por suite y cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia). Queda también en el contexto del modelo sin iniciar un turno, así que puedes pedir «corrige esos fallos» sin volver a ejecutar. Si aún no hubo ejecución, lo indica.
 
-**Herramienta del agente (`run_test_suite`).** Devuelve al modelo cada fallo con su suite, test, mensaje, ubicación, paso, diagnóstico y sugerencia, para que corrija y vuelva a ejecutar. Mientras corre, envía avances.
+**Herramienta del agente (`run_test_suite`).** Devuelve al modelo cada fallo con su suite, test, mensaje, ubicación, paso, diagnóstico y sugerencia, para que corrija y vuelva a ejecutar. Mientras corre, envía avances. Con `filter` ejecuta solo los tests que coinciden, para ver el rojo y luego el verde de un cambio sin esperar la suite entera; la suite queda marcada como «parcial». El filtro se traduce al ejecutor: `go test -run`, `pytest -k`, `vitest -t`, `playwright -g`, `phpunit --filter`, `mvn -Dtest` y `gradle --tests`. La suite completa queda para la regresión final.
+
+**Paralelismo.** Go, Vitest y Playwright ya reparten los tests entre núcleos. Si el proyecto tiene `pytest-xdist` (declarado o instalado en `.venv`), `/tdd` añade `-n auto`; si existe `vendor/bin/paratest`, lo usa en lugar de `phpunit`. No instala nada ni fuerza `mvn -T` o `gradle --parallel`.
+
+**Tests lanzados por el agente con Bash.** `/tdd` también muestra los tests que el agente ejecuta por su cuenta (`go test`, `pytest`, `vitest`, `phpunit`, `mvn`/`gradle test`, `playwright`), según van terminando y no solo al final. `go test` se lee test a test con `-json` o `-v`; sin ellos solo se conoce el resultado global. En `mem hcd verify`, el panel muestra los tests de la comprobación a partir de su evidencia, sin cambiar el veredicto del motor. Un Bash que ejecuta la suite completa deja a watch sin cambios pendientes.
 
 ### Barra de tokens (`/tokens`)
 Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens de entrada, salida, lecturas de caché y coste estimado.

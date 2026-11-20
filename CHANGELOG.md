@@ -4,6 +4,27 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.19.0] - 2026-11-20
+
+### Added
+- `run_test_suite` acepta `filter` para correr solo los tests de un cambio. Se traduce a `go test -run`, `pytest -k`, `vitest -t`, `playwright -g`, `phpunit --filter`, `mvn -Dtest` y `gradle --tests`, y la suite queda marcada como parcial.
+- `/tdd` muestra en vivo los tests que el agente lanza por Bash, incluido `go test -v`, y los de la comprobación de `mem hcd verify`.
+- `/tdd` aprovecha el paralelismo que el proyecto ya tenga: `pytest -n auto` con `pytest-xdist` y `paratest` en lugar de `phpunit`.
+- `/tasks` tiene barra de progreso en la cabecera y muestra 8 tareas alrededor de la activa. El resto se recorre con la rueda, con `Alt+Shift+↑/↓` o con un clic en `↑/↓ N más`.
+- Sugerencia del siguiente comando en el input (`gomemory-suggest.ts`). Con una unidad HCD activa es el siguiente paso del motor; sin ella, una propuesta breve del modelo al acabar el turno. `Tab` la acepta sin enviarla.
+
+### Changed
+- Los estados de `/tasks` se dibujan como un círculo que se llena: `○` pendiente, `◐` en curso (gira aunque no haya llamadas), `●` verificada, `◍` caducada y `✗` fallida. Las llamadas usan `├─`/`└─` y el spinner de `/tdd`.
+- Una ejecución pedida con `/tdd run` o `run_test_suite` cancela la de watch en vez de esperar a que termine.
+- `hcd-tasks` y `hcd-implement` piden una comprobación acotada por tarea, una única regresión completa al final y el rojo en toda tarea con un test automatizable.
+
+### Fixed
+- La sugerencia del input no desaparece cuando otra extensión, como pi-cc-extensions, instala su propio editor después.
+- Un Bash que ejecuta la suite completa ya no hace que watch la repita al terminar el turno.
+
+### Performance
+- La suite de `pkg/installer` baja de unos 100 s a menos de 50 s con `t.Parallel()`, y sigue estable con `-race -shuffle=on -count=3`.
+
 ## [v1.18.0] - 2026-11-19
 
 ### Added
