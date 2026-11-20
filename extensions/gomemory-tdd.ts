@@ -55,6 +55,8 @@ export interface TestSuite {
 	domain: SuiteDomain;
 	status: StepStatus;
 	durationMs?: number;
+	/** Indica si el último resultado proviene de una ejecución parcial/filtrada. */
+	partial?: boolean;
 	/** Motivo por el que la suite no se ejecutó (no aplica al proyecto o falta la herramienta). */
 	skipReason?: string;
 	tests: TestCase[];
@@ -102,7 +104,7 @@ export interface TDDStore {
 		evidence?: string,
 	): void;
 	finishTest(suiteId: string, testId: string, status: StepStatus, durationMs: number, failure?: TestFailure): void;
-	finishSuite(suiteId: string, status: StepStatus, durationMs?: number): void;
+	finishSuite(suiteId: string, status: StepStatus, durationMs?: number, partial?: boolean): void;
 	/** Vacía los tests de una suite antes de una nueva ejecución. */
 	clearSuite(suiteId: string): void;
 	/** Marca la suite como omitida con su motivo: ni éxito ni fallo. */
@@ -276,6 +278,7 @@ export function createTDDStore(): TDDStore {
 			if (!suite) return;
 			suite.tests = [];
 			suite.status = "pending";
+			suite.partial = undefined;
 			suite.skipReason = undefined;
 			suite.durationMs = undefined;
 			notify();
@@ -285,16 +288,18 @@ export function createTDDStore(): TDDStore {
 			const suite = state.suites.find((s) => s.id === suiteId);
 			if (!suite) return;
 			suite.status = "skipped";
+			suite.partial = undefined;
 			suite.skipReason = reason;
 			notify();
 		},
 
-		finishSuite(suiteId, status, durationMs) {
+		finishSuite(suiteId, status, durationMs, partial) {
 			const suite = state.suites.find((s) => s.id === suiteId);
 			if (!suite) return;
 
 			suite.status = status;
 			if (durationMs !== undefined) suite.durationMs = durationMs;
+			if (partial !== undefined) suite.partial = partial;
 			notify();
 		},
 
@@ -1317,35 +1322,322 @@ export interface BashTestMatch {
 	suiteId: SuiteDomain;
 	parser: CheckParser;
 	name: string;
+	hcdTasks?: readonly string[];
+	partial: boolean;
 }
 
-/** Clasifica un comando bash para saber si ejecuta tests o `mem hcd verify`. */
-export function classifyBashTestCommand(command: string): BashTestMatch | null {
-	const cmd = command.trim();
-	if (!cmd) return null;
-	if (/\bmem\s+hcd\s+verify\b/.test(cmd)) {
-		return { suiteId: "data", parser: "hcd", name: "mem hcd verify" };
+interface ShellToken {
+	text: string;
+	quoted: boolean;
+}
+
+interface ShellSegment {
+	tokens: ShellToken[];
+	nextOp?: string;
+}
+
+/** Divide una línea de shell en segmentos respetando comillas, escapes y comentarios. */
+function parseShellSegments(command: string): ShellSegment[] | null {
+	const segments: ShellSegment[] = [];
+	let tokens: ShellToken[] = [];
+	let cur = "";
+	let curQuoted = false;
+	let hasToken = false;
+	let quote: "'" | '"' | null = null;
+
+	const flushToken = () => {
+		if (!hasToken) return;
+		tokens.push({ text: cur, quoted: curQuoted });
+		cur = "";
+		curQuoted = false;
+		hasToken = false;
+	};
+	const flushSegment = (op?: string) => {
+		flushToken();
+		if (tokens.length > 0 || op) {
+			segments.push({ tokens, nextOp: op });
+			tokens = [];
+		}
+	};
+
+	for (let i = 0; i < command.length; i++) {
+		const ch = command[i];
+		if (quote === "'") {
+			if (ch === "'") {
+				quote = null;
+			} else {
+				cur += ch;
+			}
+			continue;
+		}
+		if (quote === '"') {
+			if (ch === "\\" && i + 1 < command.length) {
+				cur += command[++i];
+			} else if (ch === '"') {
+				quote = null;
+			} else {
+				cur += ch;
+			}
+			continue;
+		}
+		if (ch === "'" || ch === '"') {
+			quote = ch;
+			curQuoted = true;
+			hasToken = true;
+			continue;
+		}
+		if (ch === "\\" && i + 1 < command.length) {
+			cur += command[++i];
+			hasToken = true;
+			continue;
+		}
+		if (ch === "#" && !hasToken) {
+			while (i < command.length && command[i] !== "\n") i++;
+			flushSegment("\n");
+			continue;
+		}
+		if (ch === "<" && command[i + 1] === "<") {
+			// Heredoc: no se infiere resultado de tests de bloques compuestos.
+			return null;
+		}
+		if (ch === "\n" || ch === ";") {
+			flushSegment(ch);
+			continue;
+		}
+		if (ch === "&" || ch === "|") {
+			const op = command[i + 1] === ch ? ch + ch : ch;
+			if (op.length === 2) i++;
+			flushSegment(op);
+			continue;
+		}
+		if (/\s/.test(ch)) {
+			flushToken();
+			continue;
+		}
+		cur += ch;
+		hasToken = true;
 	}
-	if (/\bpytest\b/.test(cmd)) {
-		return { suiteId: "backend", parser: "pytest", name: "pytest (bash)" };
+	if (quote !== null) return null;
+	flushSegment();
+	return segments.filter((s) => s.tokens.length > 0 || s.nextOp);
+}
+
+function baseCommandName(token: string): string {
+	const slash = token.lastIndexOf("/");
+	return slash >= 0 ? token.slice(slash + 1) : token;
+}
+
+function stripCommandPrefixes(tokens: ShellToken[]): ShellToken[] {
+	let i = 0;
+	while (i < tokens.length) {
+		const t = tokens[i];
+		if (!t.quoted && /^[A-Za-z_][A-Za-z0-9_]*=/.test(t.text)) {
+			i++;
+			continue;
+		}
+		if (!t.quoted && (t.text === "env" || t.text === "time" || t.text === "command")) {
+			i++;
+			continue;
+		}
+		break;
 	}
-	if (/\bgo\s+test\b/.test(cmd)) {
-		return { suiteId: "backend", parser: /\s-json\b/.test(cmd) ? "go-test" : "exit-code", name: "go test (bash)" };
+	return tokens.slice(i);
+}
+
+function hasPositionalTarget(args: string[], valueFlags: Set<string>, ignored?: Set<string>): boolean {
+	for (let i = 0; i < args.length; i++) {
+		const a = args[i];
+		if (a === "--") return i + 1 < args.length;
+		if (a.startsWith("-")) {
+			if (valueFlags.has(a)) i++;
+			continue;
+		}
+		if (ignored?.has(a)) continue;
+		return true;
 	}
-	if (/\b(?:phpunit|composer\s+test)\b/.test(cmd)) {
-		return { suiteId: "backend", parser: "phpunit", name: "phpunit (bash)" };
+	return false;
+}
+
+function matchTestSegment(rawTokens: ShellToken[]): BashTestMatch | null {
+	const tokens = stripCommandPrefixes(rawTokens);
+	if (tokens.length === 0) return null;
+	const texts = tokens.map((t) => t.text);
+	const exe = baseCommandName(texts[0]);
+
+	// mem hcd verify
+	if (exe === "mem" && texts[1] === "hcd" && texts[2] === "verify") {
+		const separator = texts.indexOf("--", 3);
+		const flags = texts.slice(3, separator < 0 ? undefined : separator);
+		// El motor acepta --task N[,M] y --task=N[,M]. No leer flags de la comprobación.
+		let taskList: string | undefined;
+		for (let i = 0; i < flags.length; i++) {
+			if (flags[i] === "--manual" || flags[i] === "--client") i++;
+			else if (flags[i] === "--task") taskList = flags[++i];
+			else if (flags[i].startsWith("--task=")) taskList = flags[i].slice(7);
+		}
+		const hcdTasks = taskList && /^\d+(?:,\d+)*$/.test(taskList) ? [...new Set(taskList.split(","))] : [];
+		return { suiteId: "data", parser: "hcd", name: "mem hcd verify", partial: taskList !== undefined, hcdTasks };
 	}
-	if (/\b(?:\.\/)?(?:mvnw|mvn|gradlew|gradle)\s+test\b/.test(cmd)) {
-		return { suiteId: "backend", parser: "java-test", name: "java test (bash)" };
+
+	// pytest directo, uv run pytest, poetry run pytest o python -m pytest
+	let pytestArgs: string[] | null = null;
+	if (exe === "pytest") {
+		pytestArgs = texts.slice(1);
+	} else if ((exe === "uv" || exe === "poetry") && texts[1] === "run" && texts[2] && baseCommandName(texts[2]) === "pytest") {
+		pytestArgs = texts.slice(3);
+	} else if ((exe === "python" || exe === "python3") && texts[1] === "-m" && texts[2] === "pytest") {
+		pytestArgs = texts.slice(3);
 	}
-	if (/\bplaywright\s+test\b/.test(cmd)) {
-		return { suiteId: "playwright", parser: "playwright-line", name: "playwright (bash)" };
+	if (pytestArgs !== null) {
+		const partial =
+			pytestArgs.some((a) => a === "-k" || a.startsWith("-k") && a.length > 2 || a === "-m" || a.startsWith("-m") && a.length > 2) ||
+			hasPositionalTarget(pytestArgs, new Set(["-k", "-m", "-o", "-c", "-p", "-W", "-n", "--rootdir", "--maxfail", "--tb", "--junitxml"]));
+		return { suiteId: "backend", parser: "pytest", name: partial ? "pytest (parcial, bash)" : "pytest (bash)", partial };
 	}
-	if (/\b(?:vitest|npm\s+test|pnpm\s+test|node\s+--test)\b/.test(cmd)) {
-		return { suiteId: "frontend", parser: "vitest", name: "frontend test (bash)" };
+
+	// go test
+	if (exe === "go" && texts[1] === "test") {
+		const args = texts.slice(2);
+		const hasJson = args.includes("-json");
+		const hasRun = args.some((a) => a === "-run" || a.startsWith("-run="));
+		const targets: string[] = [];
+		const valueFlags = new Set(["-run", "-skip", "-count", "-timeout", "-tags", "-cpu", "-parallel", "-bench", "-benchtime", "-coverprofile", "-o", "-exec", "-fuzz", "-fuzztime"]);
+		for (let i = 0; i < args.length; i++) {
+			const a = args[i];
+			if (a === "--") break;
+			if (a.startsWith("-")) {
+				if (valueFlags.has(a)) i++;
+				continue;
+			}
+			targets.push(a);
+		}
+		const partial = hasRun || (targets.length > 0 && !(targets.length === 1 && targets[0] === "./..."));
+		return {
+			suiteId: "backend",
+			parser: hasJson ? "go-test" : "exit-code",
+			name: partial ? "go test (parcial, bash)" : "go test (bash)",
+			partial,
+		};
 	}
+
+	// phpunit / composer test
+	if (exe === "phpunit" || (exe === "composer" && texts[1] === "test")) {
+		const args = exe === "phpunit" ? texts.slice(1) : texts.slice(2);
+		const partial =
+			args.some((a) => a === "--filter" || a.startsWith("--filter=") || a === "--testsuite" || a.startsWith("--testsuite=")) ||
+			hasPositionalTarget(args, new Set(["-c", "--configuration", "--filter", "--testsuite", "--bootstrap"]));
+		return { suiteId: "backend", parser: "phpunit", name: partial ? "phpunit (parcial, bash)" : "phpunit (bash)", partial };
+	}
+
+	// Maven / Gradle test
+	if ((exe === "mvn" || exe === "mvnw" || exe === "gradle" || exe === "gradlew") && texts.slice(1).includes("test")) {
+		const args = texts.slice(1);
+		const partial = args.some((a) => a.startsWith("-Dtest=") || a === "--tests" || a.startsWith("--tests="));
+		return { suiteId: "backend", parser: "java-test", name: partial ? "java test (parcial, bash)" : "java test (bash)", partial };
+	}
+
+	// Playwright test
+	let pwArgs: string[] | null = null;
+	if (exe === "playwright" && texts[1] === "test") {
+		pwArgs = texts.slice(2);
+	} else if (exe === "npx" && texts[1] === "playwright" && texts[2] === "test") {
+		pwArgs = texts.slice(3);
+	} else if (exe === "pnpm" && texts[1] === "exec" && texts[2] === "playwright" && texts[3] === "test") {
+		pwArgs = texts.slice(4);
+	}
+	if (pwArgs !== null) {
+		const partial =
+			pwArgs.some((a) => a === "-g" || a === "--grep" || a.startsWith("--grep=")) ||
+			hasPositionalTarget(pwArgs, new Set(["-g", "--grep", "--reporter", "--project", "--config", "-c", "--workers", "-j"]));
+		return { suiteId: "playwright", parser: "playwright-line", name: partial ? "playwright (parcial, bash)" : "playwright (bash)", partial };
+	}
+
+	// Vitest / npm test / pnpm test / node --test
+	let vitestArgs: string[] | null = null;
+	if (exe === "vitest") {
+		vitestArgs = texts.slice(1);
+	} else if ((exe === "npx" || exe === "pnpm") && texts[1] === "vitest") {
+		vitestArgs = texts.slice(2);
+	} else if (exe === "pnpm" && texts[1] === "exec" && texts[2] === "vitest") {
+		vitestArgs = texts.slice(3);
+	}
+	if (vitestArgs !== null) {
+		const partial =
+			vitestArgs.some((a) => a === "-t" || a === "--testNamePattern" || a.startsWith("--testNamePattern=")) ||
+			hasPositionalTarget(vitestArgs, new Set(["-t", "--testNamePattern", "-c", "--config", "--reporter", "--pool", "--maxWorkers"]), new Set(["run"]));
+		return { suiteId: "frontend", parser: "vitest", name: partial ? "vitest (parcial, bash)" : "vitest (bash)", partial };
+	}
+	if ((exe === "npm" || exe === "pnpm") && texts[1] === "test") {
+		const args = texts.slice(2);
+		const partial = args.includes("--") && args.indexOf("--") < args.length - 1;
+		return { suiteId: "frontend", parser: "vitest", name: partial ? "frontend test (parcial, bash)" : "frontend test (bash)", partial };
+	}
+	if (exe === "node" && texts.includes("--test")) {
+		const args = texts.slice(1);
+		const partial =
+			args.some((a) => a.startsWith("--test-name-pattern")) ||
+			hasPositionalTarget(args, new Set(["--test-name-pattern", "--test-reporter", "--test-reporter-destination"]));
+		return { suiteId: "frontend", parser: "vitest", name: partial ? "node --test (parcial, bash)" : "node --test (bash)", partial };
+	}
+
 	return null;
 }
+
+/** Clasifica un comando bash para saber si invoca inequívocamente tests o `mem hcd verify`. */
+export function classifyBashTestCommand(command: string): BashTestMatch | null {
+	const segments = parseShellSegments(command.trim());
+	if (!segments || segments.length === 0) return null;
+
+	const nonEmpty = segments.filter((s) => s.tokens.length > 0);
+	if (nonEmpty.length === 0) return null;
+
+	// Solo se acepta si existe exactamente una invocación de tests, es el último
+	// comando ejecutado (sin pipe, `;`, `||` ni `&` posterior que enmascare el
+	// código de salida) y los comandos previos solo encadenan con `&&`.
+	let matchedIdx = -1;
+	let matched: BashTestMatch | null = null;
+	for (let i = 0; i < nonEmpty.length; i++) {
+		const m = matchTestSegment(nonEmpty[i].tokens);
+		if (m) {
+			if (matched) return null;
+			matched = m;
+			matchedIdx = i;
+		}
+	}
+	if (!matched || matchedIdx !== nonEmpty.length - 1) return null;
+
+	// Ningún operador posterior al comando de tests (p.ej. `pytest &` o `pytest | ...`)
+	if (nonEmpty[matchedIdx].nextOp && nonEmpty[matchedIdx].nextOp !== "\n") {
+		return null;
+	}
+	// Los segmentos previos solo pueden encadenarse con `&&`
+	for (let i = 0; i < matchedIdx; i++) {
+		if (nonEmpty[i].nextOp !== "&&") return null;
+	}
+
+	return matched;
+}
+
+function readHCDVerifyResult(output: string, isError: boolean) {
+	try {
+		const parsed = JSON.parse(output);
+		const evidence = parsed?.data?.evidence;
+		return {
+			passed: !isError && parsed?.ok !== false && evidence?.passed !== false,
+			unit: typeof parsed?.unit_id === "string" && /^HCD-\d+$/.test(parsed.unit_id) ? parsed.unit_id : undefined,
+			detail: typeof evidence?.excerpt === "string" ? evidence.excerpt : "",
+		};
+	} catch {
+		// Sin JSON, el resultado de Bash es la única evidencia disponible.
+		return { passed: !isError, unit: undefined, detail: "" };
+	}
+}
+
+type HCDProgressRow = {
+	task: string;
+	toolCallId: string;
+	status: "running" | "passed" | "failed";
+};
 
 /** Ingiere la salida de una ejecución `bash` de tests o `mem hcd verify` en el store de /tdd. */
 export function ingestBashTestResult(
@@ -1363,7 +1655,7 @@ export function ingestBashTestResult(
 	}
 
 	store.clearSuite(match.suiteId);
-	store.finishSuite(match.suiteId, "running");
+	store.finishSuite(match.suiteId, "running", undefined, match.partial);
 
 	const lines = outputText.split(/\r?\n/);
 	const res: StreamResult = {
@@ -1373,19 +1665,8 @@ export function ingestBashTestResult(
 	};
 
 	if (match.parser === "hcd") {
-		let passed = !isError;
-		let label = match.name;
-		let detail = "";
-		try {
-			const parsed = JSON.parse(outputText);
-			if (parsed?.unit_id) label = `${parsed.unit_id} verify`;
-			if (parsed?.data?.evidence && typeof parsed.data.evidence.passed === "boolean") {
-				passed = parsed.data.evidence.passed;
-			}
-			if (parsed?.data?.evidence?.excerpt) detail = String(parsed.data.evidence.excerpt);
-		} catch {
-			// Salida no JSON: se respeta isError
-		}
+		const { passed, unit, detail } = readHCDVerifyResult(outputText, isError);
+		const label = unit ? `${unit} verify` : match.name;
 		store.startTest(match.suiteId, "hcd-verify-bash", label);
 		if (passed) {
 			store.finishTest(match.suiteId, "hcd-verify-bash", "passed", 0);
@@ -1394,7 +1675,7 @@ export function ingestBashTestResult(
 				message: clip(detail || lines.slice(-8).join("\n") || "mem hcd verify falló"),
 			});
 		}
-		store.finishSuite(match.suiteId, passed ? "passed" : "failed");
+		store.finishSuite(match.suiteId, passed ? "passed" : "failed", undefined, match.partial);
 		return true;
 	}
 
@@ -1414,8 +1695,19 @@ export function ingestBashTestResult(
 	}
 
 	for (const line of lines) parser.onLine(line);
-	const failed = parser.finish(res);
-	store.finishSuite(match.suiteId, failed ? "failed" : "passed");
+	const failed = Boolean(isError) || parser.finish(res);
+	if (failed) {
+		const suite = store.getState().suites.find((s) => s.id === match.suiteId);
+		const hasFailedTest = suite?.tests.some((t) => t.status === "failed");
+		if (!hasFailedTest) {
+			const id = `bash-error::${match.name}`;
+			store.startTest(match.suiteId, id, `${match.name} (error de ejecución)`);
+			store.finishTest(match.suiteId, id, "failed", 0, {
+				message: clip(lines.filter((l) => l.trim()).slice(-8).join("\n") || "El comando terminó con error"),
+			});
+		}
+	}
+	store.finishSuite(match.suiteId, failed ? "failed" : "passed", undefined, match.partial);
 	return true;
 }
 
@@ -1499,7 +1791,7 @@ export function renderTDDMinimized(state: TDDState, width: number, theme: Theme)
 	return [truncateToWidth(row, innerW, "…", true)];
 }
 
-export function renderTDDOverlay(state: TDDState, width: number, theme: Theme): string[] {
+export function renderTDDOverlay(state: TDDState, width: number, theme: Theme, hcdRows: Iterable<HCDProgressRow> = []): string[] {
 	const innerW = Math.max(10, width - 2);
 	const border = (c: string) => theme.fg("border", c);
 	const padLine = (s: string) => truncateToWidth(s, innerW, "…", true);
@@ -1538,6 +1830,18 @@ export function renderTDDOverlay(state: TDDState, width: number, theme: Theme): 
 	const enabled = state.suites.filter((s) => s.status !== "skipped");
 	const skipped = state.suites.filter((s) => s.status === "skipped");
 
+	// Antes de las suites: en un panel corto, el detalle de Backend no debe ocultar el progreso HCD.
+	let firstHCD = true;
+	for (const task of hcdRows) {
+		if (firstHCD) {
+			lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
+			row(theme.fg("dim", " Verificaciones HCD · Bash"));
+			firstHCD = false;
+		}
+		const color = task.status === "running" ? "accent" : task.status === "passed" ? "success" : "error";
+		row(`   ${theme.fg(color, statusIcon(task.status, now))} Tarea ${task.task}`);
+	}
+
 	for (const suite of enabled) {
 		lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
 
@@ -1546,8 +1850,9 @@ export function renderTDDOverlay(state: TDDState, width: number, theme: Theme): 
 		const flakyCount = counted.filter((t) => t.status === "flaky").length;
 		const iconColor = suite.status === "passed" ? "success" : suite.status === "failed" ? "error" : suite.status === "flaky" ? "warning" : "accent";
 		const dur = suite.durationMs ? theme.fg("dim", ` · ${formatMs(suite.durationMs)}`) : "";
+		const partialInfo = suite.partial ? theme.fg("dim", " · parcial") : "";
 		const flakyInfo = flakyCount > 0 ? ` · ${flakyCount} flaky` : "";
-		row(` ${theme.fg(iconColor, statusIcon(suite.status, now))} ${suite.name} (${passedCount}/${counted.length}${flakyInfo})${dur}`);
+		row(` ${theme.fg(iconColor, statusIcon(suite.status, now))} ${suite.name} (${passedCount}/${counted.length}${flakyInfo})${partialInfo}${dur}`);
 
 		if (suite.tests.length === 0 && suite.status === "pending") {
 			row(theme.fg("dim", "   ○ sin ejecutar · /tdd run"));
@@ -1699,6 +2004,22 @@ function headerClickAction(event: any, minimized: boolean): "toggle" | "consume"
 
 export default function (pi: ExtensionAPI) {
 	const store = createTDDStore();
+	// Almacén de la sesión, independiente de las suites que limpia Watch.
+	const hcdRows = new Map<string, HCDProgressRow>();
+	let hcdUnit: string | undefined;
+	let hcdTicker: ReturnType<typeof setInterval> | undefined;
+
+	function renderHCDProgress() {
+		const running = [...hcdRows.values()].some((row) => row.status === "running");
+		if (running && !hcdTicker) {
+			hcdTicker = setInterval(() => requestOverlayRender?.(), SPINNER_INTERVAL_MS);
+			hcdTicker.unref?.();
+		} else if (!running && hcdTicker) {
+			clearInterval(hcdTicker);
+			hcdTicker = undefined;
+		}
+		requestOverlayRender?.();
+	}
 	let overlayVisible = false;
 	let closeOverlay: (() => void) | null = null;
 	let requestOverlayRender: ((force?: boolean) => void) | null = null;
@@ -1745,7 +2066,7 @@ export default function (pi: ExtensionAPI) {
 						render(width: number): string[] {
 							return overlayMinimized
 								? renderTDDMinimized(store.getState(), width, theme)
-								: renderTDDOverlay(store.getState(), width, theme);
+								: renderTDDOverlay(store.getState(), width, theme, hcdRows.values());
 						},
 						handleMouse(event: any) {
 							const action = headerClickAction(event, overlayMinimized);
@@ -2063,9 +2384,21 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	// ── Escucha de tests ejecutados por el agente en bash ──────────────────
+	pi.on("tool_execution_start", (event) => {
+		if (event.toolName !== "bash") return;
+		const args = event.args as { command?: unknown } | undefined;
+		if (typeof args?.command !== "string") return;
+		const tasks = classifyBashTestCommand(args.command)?.hcdTasks;
+		if (!tasks?.length) return;
+		for (const task of tasks) {
+			hcdRows.set(task, { task, toolCallId: event.toolCallId, status: "running" });
+		}
+		renderHCDProgress();
+	});
 	pi.on("tool_result", async (event: any, ctx: any) => {
 		if (event?.toolName !== "bash") return;
 		const cmd = String(event.input?.command ?? "");
+		if (classifyBashTestCommand(cmd)?.parser === "hcd") return;
 		const text = Array.isArray(event.content)
 			? event.content.map((c: any) => (typeof c?.text === "string" ? c.text : "")).join("\n")
 			: String(event.content ?? "");
@@ -2077,8 +2410,23 @@ export default function (pi: ExtensionAPI) {
 	// ── Reactividad en vivo (Watch mode al asentarse el agente) ─────────────
 	// No en turn_end: pi lo dispara y lo espera en cada turno, así que la suite
 	// se relanzaba entre cada tool call y bloqueaba al agente.
-	pi.on("tool_execution_end", async (event: any) => {
-		if (!event?.isError && WATCH_TOOLS.has(event?.toolName)) watchDirty = true;
+	pi.on("tool_execution_end", (event) => {
+		if (!event.isError && WATCH_TOOLS.has(event.toolName)) watchDirty = true;
+		if (event.toolName !== "bash") return;
+		const rows = [...hcdRows.values()].filter((row) => row.toolCallId === event.toolCallId && row.status === "running");
+		if (!rows.length) return;
+		// También llega si el tool fue bloqueado o abortado antes de emitir tool_result.
+		const result = event.result as { content?: { type: string; text?: string }[] } | undefined;
+		const output = result?.content?.map((entry) => entry.type === "text" ? entry.text : "").join("\n") ?? "";
+		const { passed, unit } = readHCDVerifyResult(output, event.isError || event.durationMs === undefined);
+		if (unit && hcdUnit && unit !== hcdUnit) {
+			for (const [task, row] of hcdRows) {
+				if (row.status !== "running") hcdRows.delete(task);
+			}
+		}
+		if (unit) hcdUnit = unit;
+		for (const row of rows) row.status = passed ? "passed" : "failed";
+		renderHCDProgress();
 	});
 	pi.on("agent_settled", async (event: any, ctx) => {
 		if (!store.getState().watchMode || !watchDirty || event?.aborted) return;
@@ -2086,6 +2434,10 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("session_shutdown", async () => {
+		hcdRows.clear();
+		hcdUnit = undefined;
+		if (hcdTicker) clearInterval(hcdTicker);
+		hcdTicker = undefined;
 		if (closeOverlay) {
 			closeOverlay();
 			closeOverlay = null;
