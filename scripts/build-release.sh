@@ -4,7 +4,7 @@
 # ==============================================================================
 set -euo pipefail
 
-VERSION="${1:-v1.15.4}"
+VERSION="${1:-v1.16.0}"
 DIST_DIR="dist"
 
 echo "==> Ejecutando go vet y go test -race antes de empaquetar..."

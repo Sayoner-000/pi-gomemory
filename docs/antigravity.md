@@ -1,8 +1,8 @@
 # Antigravity: HTTP 429 y mitigación local
 
-## Alcance de v1.15.3
+## Alcance vigente (v1.16.0+)
 
-Esta release publica una referencia opt-in y su regresión offline. **El guard no está embebido ni se instala con `install`, `update` o `plugin`. Actualizar pi-gomemory no activa la mitigación.** Los pins siguen en `pi-antigravity@0.14.0` y `pi-cc-extensions@1.0.21`.
+Desde `v1.16.0`, `extensions/antigravity-prompt-guard.js` se embebe e instala por defecto como **workaround temporal** hasta que upstream publique la corrección de [pi-antigravity#152](https://github.com/Rahularya01/pi-antigravity/issues/152). Puede desactivarse por proceso con `ANTIGRAVITY_PROMPT_GUARD=off` y se retira limpiamente con `uninstall`. En `v1.15.3`–`v1.15.4` permanecía únicamente como referencia opt-in.
 
 ## Qué se reprodujo
 

@@ -16,8 +16,11 @@ Instrucciones paso a paso para instalar con el script de una línea, compilar de
 [Guía de uso y comandos](usage.md)
 Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
-[Antigravity: HTTP 429 y mitigación local](antigravity.md)
-Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación manual y reversión. La mitigación no se instala por defecto.
+[Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
+Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
+
+[Notas de v1.16.0](releases/v1.16.0.md)
+Soporte multi-lenguaje y escucha en `bash` en `/tdd`, refresco vivo y guardrail en `/tasks`, modo liviano (`lite on|off`) y guard temporal de Antigravity (HCD-051).
 
 [Notas de v1.15.4](releases/v1.15.4.md)
 Modo MCP directo (`codemode off`) por defecto en `install` y `update`, con `codemode on` opt-in persistente y transición limpia desde v1.15.x (HCD-050).

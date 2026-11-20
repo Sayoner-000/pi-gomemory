@@ -4,6 +4,22 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.16.0] - 2026-11-19
+
+### Added
+- Soporte multi-lenguaje en `extensions/gomemory-tdd.ts` (`detectSuites()` y parsers de salida): **Python** (`pytest` vía `.venv/bin/pytest` o `uv run pytest`, más `ruff` y `mypy`), **PHP** (`phpunit`/`composer test` y `php -l`), **Java** (`mvnw`/`mvn test` y `gradlew`/`gradle test`), **JavaScript/Vitest** (`vitest.config.*`) y checks estáticos de **HTML/CSS/JS** (`htmlhint`, `stylelint`, `eslint`).
+- Escucha de ejecuciones `bash` en `extensions/gomemory-tdd.ts`: `tool_result` de comandos de prueba (`pytest`, `vitest`, `npm test`, `go test`, `phpunit`, `mvn`/`gradle test`, `playwright`, `mem hcd verify`) actualiza el `TDDStore` y el panel `/tdd` en vivo.
+- Refresco periódico cada 1.5 s en `extensions/gomemory-tasks.ts` mientras hay una llamada `bash` con `mem hcd` en curso (`tool_execution_start` → `tool_execution_end`), además de bloqueo en `tool_call` si una llamada `bash` agrupa múltiples `mem hcd verify` o los envuelve en funciones/bucles.
+- Subcomando `pi-gomemory-setup lite [on|off|status]` (`pkg/installer/lite.go`) para dejar solo `gomemory` en `mcp.json` (sin `codegraph` ni `codebase-memory`) y reducir el consumo de RAM cuando corren múltiples sesiones de Pi en entornos acotados.
+- Integración temporal de `extensions/antigravity-prompt-guard.js` en `tuiResources` (`pkg/installer/extension.go`) hasta que upstream resuelva [pi-antigravity#152](https://github.com/Rahularya01/pi-antigravity/issues/152) (desactivable por proceso con `ANTIGRAVITY_PROMPT_GUARD=off` y cubierto por `TestEmbeddedAntigravityPromptGuardRegression`).
+
+### Changed
+- Regla explícita en `skills/hcd-verify/SKILL.md` para ejecutar un único `mem hcd verify` por llamada `bash` y permitir la entrega de *steering* en Pi entre verificaciones.
+- Las versiones predeterminadas de `install.sh` y `scripts/build-release.sh` apuntan a v1.16.0.
+
+### Documentation
+- Notas de [v1.16.0](docs/releases/v1.16.0.md), actualización de [Antigravity](docs/antigravity.md), badge, `README.md` e índices de documentación.
+
 ## [v1.15.4] - 2026-11-19
 
 ### Changed
