@@ -1887,6 +1887,18 @@ function finishBashRun(store: TDDStore, match: BashTestMatch, parser: LineParser
 }
 
 type BashTruncation = { truncated?: boolean; totalLines?: number };
+
+/**
+ * Quita lo que Pi añade al texto final de Bash y no traen los updates en vivo:
+ * el estado de salida («Command exited with code N», aborto, timeout) y el aviso
+ * de truncado («[Showing lines a-b of N. …]»). Si se contaran, la primera línea
+ * absoluta se correría y la reconciliación saltaría líneas reales (ADM H-01).
+ */
+function stripPiBashSuffix(text: string): string {
+	return text
+		.replace(/(?:^|\n\n)(?:Command exited with code \d+|Command aborted|Command timed out after [^\n]*|Command terminated without an exit code)$/, "")
+		.replace(/\n\n\[Showing (?:lines \d+-\d+ of \d+|last [^\]\n]*)[^\n]*\]$/, "");
+}
 type BashPartial = { content?: Array<{ type?: string; text?: string }>; details?: { truncation?: BashTruncation } };
 
 /**
@@ -1943,7 +1955,7 @@ export function createBashLiveIngest(store: TDDStore, cwd: string) {
 			if (!run) return false;
 			runs.delete(id);
 			if (finalText) {
-				const finalLines = finalText.split(/\r?\n/);
+				const finalLines = stripPiBashSuffix(finalText).split(/\r?\n/);
 				const finalFirst = truncation?.truncated && typeof truncation.totalLines === "number" ? Math.max(0, truncation.totalLines - finalLines.length) : 0;
 				if (finalFirst + finalLines.length >= run.firstAbs + run.lines.length) {
 					if (finalFirst > run.processed) run.gap = true;
