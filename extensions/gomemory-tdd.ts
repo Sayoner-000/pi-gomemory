@@ -1803,13 +1803,16 @@ export function goTextParser(store: TDDStore, suiteId: SuiteDomain): LineParser 
 
 /** Comando de la comprobación de `mem hcd verify … -- '<comprobación>'`, o null. */
 function hcdVerifyCheckCommand(command: string): string | null {
-	const segments = parseShellSegments(command.trim());
-	const tokens = segments?.find((s) => s.tokens.length)?.tokens;
-	if (!tokens) return null;
-	const texts = stripCommandPrefixes(tokens).map((t) => t.text);
-	const sep = texts.indexOf("--");
-	if (sep < 0 || sep === texts.length - 1) return null;
-	return texts.slice(sep + 1).join(" ");
+	// Se recorren todos los segmentos, como classifyBashTestCommand: el verify
+	// puede ir tras `cd sub &&` u otros comandos encadenados (HCD-058, C-003).
+	for (const segment of parseShellSegments(command.trim()) ?? []) {
+		const texts = stripCommandPrefixes(segment.tokens).map((t) => t.text);
+		if (baseCommandName(texts[0] ?? "") !== "mem" || texts[1] !== "hcd" || texts[2] !== "verify") continue;
+		const sep = texts.indexOf("--");
+		if (sep < 0 || sep === texts.length - 1) return null;
+		return texts.slice(sep + 1).join(" ");
+	}
+	return null;
 }
 
 /**
@@ -1883,7 +1886,8 @@ function finishBashRun(store: TDDStore, match: BashTestMatch, parser: LineParser
 	store.finishSuite(match.suiteId, failed ? "failed" : "passed", undefined, partial);
 }
 
-type BashPartial = { content?: Array<{ type?: string; text?: string }>; details?: { truncation?: { truncated?: boolean; totalLines?: number } } };
+type BashTruncation = { truncated?: boolean; totalLines?: number };
+type BashPartial = { content?: Array<{ type?: string; text?: string }>; details?: { truncation?: BashTruncation } };
 
 /**
  * Ingesta en vivo de un Bash de tests a partir de tool_execution_update (HCD-056).
@@ -1930,15 +1934,22 @@ export function createBashLiveIngest(store: TDDStore, cwd: string) {
 		},
 		/**
 		 * Termina la ejecución seguida; false si no se siguió (se usa la ingesta final).
-		 * Sin ninguna entrega con contenido, se ingiere el texto final del resultado.
+		 * El texto final del resultado trae lo que llegó después del último update:
+		 * se reconcilia por línea absoluta siempre que cubra al menos lo ya visto
+		 * (HCD-058, C-001). Si es más corto, se conserva lo ingerido en vivo.
 		 */
-		end(id: string, isError: boolean, finalText?: string): boolean {
+		end(id: string, isError: boolean, finalText?: string, truncation?: BashTruncation): boolean {
 			const run = runs.get(id);
 			if (!run) return false;
 			runs.delete(id);
-			if (!run.lines.some((l) => l) && finalText) {
-				run.lines = finalText.split(/\r?\n/);
-				run.firstAbs = 0;
+			if (finalText) {
+				const finalLines = finalText.split(/\r?\n/);
+				const finalFirst = truncation?.truncated && typeof truncation.totalLines === "number" ? Math.max(0, truncation.totalLines - finalLines.length) : 0;
+				if (finalFirst + finalLines.length >= run.firstAbs + run.lines.length) {
+					if (finalFirst > run.processed) run.gap = true;
+					run.lines = finalLines;
+					run.firstAbs = finalFirst;
+				}
 			}
 			const last = run.lines.length - 1;
 			feed(run, run.firstAbs + (run.lines[last] ? run.lines.length : last));
@@ -2665,13 +2676,20 @@ export default function (pi: ExtensionAPI) {
 	// ── Escucha de tests ejecutados por el agente en bash ──────────────────
 	const bashLive = createBashLiveIngest(store, process.cwd());
 	/** Llamadas Bash que ejecutan una suite completa: cubren los cambios previos (HCD-056). */
-	const fullTestCalls = new Set<string>();
+	const fullTestCalls = new Map<string, { suiteId: SuiteDomain; cwd: string }>();
+	/** Suites que ejecutan tests; CI & Static y Data & Graph no cuentan (HCD-058, Q1). */
+	const TEST_SUITES = new Set<SuiteDomain>(["backend", "frontend", "playwright"]);
+	/** Un Bash completo solo cubre los cambios si su suite es la única suite de tests activa (C-005). */
+	const coversAllTests = (call: { suiteId: SuiteDomain; cwd: string }) =>
+		!detectSuites(call.cwd).some((s) => !s.skipReason && TEST_SUITES.has(s.id) && s.id !== call.suiteId);
 	pi.on("tool_execution_start", (event, ctx: any) => {
 		if (event.toolName !== "bash") return;
 		const args = event.args as { command?: unknown } | undefined;
 		if (typeof args?.command !== "string") return;
 		const match = classifyBashTestCommand(args.command);
-		if (match && match.parser !== "hcd" && !match.partial) fullTestCalls.add(event.toolCallId);
+		if (match && match.parser !== "hcd" && !match.partial) {
+			fullTestCalls.set(event.toolCallId, { suiteId: match.suiteId, cwd: ctx?.cwd || process.cwd() });
+		}
 		if (bashLive.start(event.toolCallId, args.command, ctx?.cwd || process.cwd())) requestOverlayRender?.();
 		const tasks = classifyBashTestCommand(args.command)?.hcdTasks;
 		if (!tasks?.length) return;
@@ -2689,8 +2707,8 @@ export default function (pi: ExtensionAPI) {
 		const text = Array.isArray(event.content)
 			? event.content.map((c: any) => (typeof c?.text === "string" ? c.text : "")).join("\n")
 			: String(event.content ?? "");
-		// Seguido en vivo: se cierra con lo ya ingerido, sin volver a parsear la cola.
-		if (bashLive.end(event.toolCallId, Boolean(event.isError), text)) {
+		// Seguido en vivo: el texto final completa lo que no trajo el último update.
+		if (bashLive.end(event.toolCallId, Boolean(event.isError), text, event.details?.truncation)) {
 			requestOverlayRender?.();
 			return;
 		}
@@ -2709,9 +2727,11 @@ export default function (pi: ExtensionAPI) {
 	// No en turn_end: pi lo dispara y lo espera en cada turno, así que la suite
 	// se relanzaba entre cada tool call y bloqueaba al agente.
 	pi.on("tool_execution_end", (event) => {
-		const fullTests = fullTestCalls.delete(event.toolCallId);
-		// Un Bash de tests completo cubre los cambios previos, como run_test_suite all.
-		if (fullTests && event.durationMs !== undefined) watchDirty = false;
+		const fullTests = fullTestCalls.get(event.toolCallId);
+		fullTestCalls.delete(event.toolCallId);
+		// Un Bash de tests completo cubre los cambios previos, como run_test_suite all,
+		// solo si no hay otra suite de tests activa que no haya corrido (C-005).
+		if (fullTests && event.durationMs !== undefined && coversAllTests(fullTests)) watchDirty = false;
 		else if (!event.isError && WATCH_TOOLS.has(event.toolName)) watchDirty = true;
 		if (event.toolName !== "bash") return;
 		// Bloqueado o abortado sin tool_result: la suite seguida no queda «en curso».

@@ -84,6 +84,18 @@ export default function (pi: ExtensionAPI) {
 	let pending: AbortController | null = null;
 	let dim = (s: string) => `\x1b[2m${s}\x1b[22m`;
 	let requestRender: () => void = () => {};
+	/**
+	 * Turno vigente (HCD-058, C-002): cada inicio de sesión o de turno, fin de turno y
+	 * cierre lo incrementa; el trabajo asíncrono que vuelve con otro valor ya no aplica.
+	 */
+	let epoch = 0;
+	/** Reintentos de ensureEditor programados en session_start; se cancelan al cerrar (C-004). */
+	let timers: ReturnType<typeof setTimeout>[] = [];
+
+	function clearTimers() {
+		for (const t of timers) clearTimeout(t);
+		timers = [];
+	}
 
 	function abortPending() {
 		pending?.abort();
@@ -160,9 +172,9 @@ export default function (pi: ExtensionAPI) {
 		}
 	}
 
-	async function modelNext(ctx: any): Promise<void> {
+	async function modelNext(ctx: any, turn: number): Promise<void> {
 		const registry = ctx?.modelRegistry;
-		if (!ctx?.model || typeof registry?.streamSimple !== "function") return;
+		if (turn !== epoch || !ctx?.model || typeof registry?.streamSimple !== "function") return;
 		const { user, assistant } = lastExchange(ctx);
 		if (!user && !assistant) return;
 		const ac = new AbortController();
@@ -186,7 +198,7 @@ export default function (pi: ExtensionAPI) {
 				{ signal: ac.signal, maxTokens: SUGGEST_MAX_TOKENS, reasoning: "minimal", disableContinuation: true },
 			);
 			const res = await stream.result();
-			if (ac.signal.aborted || pending !== ac || res?.stopReason === "aborted" || res?.stopReason === "error") return;
+			if (turn !== epoch || ac.signal.aborted || pending !== ac || res?.stopReason === "aborted" || res?.stopReason === "error") return;
 			const text = cleanSuggestion(
 				(Array.isArray(res?.content) ? res.content : [])
 					.filter((c: any) => c?.type === "text")
@@ -202,35 +214,50 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	pi.on("session_start", async (_event: any, ctx: any) => {
+		const turn = ++epoch;
 		ensureEditor(ctx);
 		if (!ctx?.hasUI) return;
 		// Las demás extensiones terminan su session_start después: se comprueba de nuevo.
-		for (const ms of [0, 100, 1000]) (setTimeout(() => ensureEditor(ctx), ms) as any)?.unref?.();
+		clearTimers();
+		for (const ms of [0, 100, 1000]) {
+			const t = setTimeout(() => ensureEditor(ctx), ms);
+			(t as any)?.unref?.();
+			timers.push(t);
+		}
 		// Al arrancar solo el motor: sin turno previo no hay nada que pedir al modelo.
-		setSuggestion(await hcdNext(ctx));
+		const fromHCD = await hcdNext(ctx);
+		if (turn !== epoch) return;
+		setSuggestion(fromHCD);
 		ensureEditor(ctx);
 	});
 
 	pi.on("before_agent_start", async (_event: any, ctx: any) => {
+		epoch++;
 		abortPending();
 		setSuggestion("");
 		ensureEditor(ctx);
 	});
 
 	pi.on("agent_end", async (_event: any, ctx: any) => {
+		const turn = ++epoch;
 		ensureEditor(ctx);
 		abortPending();
 		suggestion = "";
 		const fromHCD = await hcdNext(ctx);
+		// Otro turno empezó o la sesión se cerró mientras se consultaba el motor (C-002).
+		if (turn !== epoch) return;
 		if (fromHCD) {
 			setSuggestion(fromHCD);
 			return;
 		}
 		requestRender();
-		await modelNext(ctx);
+		// Sin esperar: agent_end no debe quedar abierto durante la petición al modelo.
+		void modelNext(ctx, turn);
 	});
 
 	pi.on("session_shutdown", async () => {
+		epoch++;
+		clearTimers();
 		abortPending();
 		suggestion = "";
 	});

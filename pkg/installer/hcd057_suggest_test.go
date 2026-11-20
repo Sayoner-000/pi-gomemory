@@ -214,6 +214,8 @@ if (completeCalls.length) fails.push("al arrancar la sesión no se llama al mode
 
 completeImpl = async () => ({ stopReason: "stop", content: [{ type: "text", text: "\"Ejecuta los tests del login\"\notra línea" }] });
 await h.agent_end({}, ctx);
+// Desde HCD-058 (C-002) agent_end no espera a la petición: se espera a que llegue.
+await new Promise((r) => setTimeout(r, 20));
 const call = completeCalls[0];
 if (!call) fails.push("sin unidad, al terminar el turno debe pedirse una sugerencia");
 if (call && call.m !== ctx.model) fails.push("debe usar el modelo activo de la sesión");
@@ -243,11 +245,13 @@ if (ghostOf(ed)) fails.push("el resultado tardío no se muestra: " + ghostOf(ed)
 // Respuesta cortada por el tope con solo razonamiento: no hay sugerencia.
 completeImpl = async () => ({ stopReason: "length", content: [{ type: "thinking", thinking: "pensando…" }] });
 await h.agent_end({}, ctx);
+await new Promise((r) => setTimeout(r, 20));
 if (ghostOf(ed)) fails.push("solo razonamiento no deja sugerencia: " + ghostOf(ed));
 
 // Un fallo del modelo no rompe nada ni muestra sugerencia.
 completeImpl = async () => { throw new Error("sin red"); };
 await h.agent_end({}, ctx);
+await new Promise((r) => setTimeout(r, 20));
 if (ghostOf(ed)) fails.push("un error del modelo no deja sugerencia");
 
 // Sin modelo no se pide nada.
