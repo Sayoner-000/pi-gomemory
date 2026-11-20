@@ -114,7 +114,13 @@ Al abrir Pi con `pi-gomemory`, la cabecera muestra la versión de pi-gomemory y 
 Pi solo admite una cabecera. Si pi-cc-extensions tiene `showStartupHeader: true`, su cabecera sustituye al banner; por eso `pi-gomemory-setup install` (y `update`) fija esa clave en `false` en cada instalación, y `pi-gomemory-setup doctor` avisa en «Banner gomemory» si vuelve a activarse (por ejemplo desde `/ccstyle`).
 
 ### Modo plan (`/plan`)
-`/plan` activa o desactiva el modo plan, que bloquea las modificaciones; `/plan run` lo desactiva. `/plan <petición>` activa el modo y envía la petición en el mismo paso.
+Mientras el modo plan está activo, Pi bloquea las modificaciones comunes del agente.
+
+- `/plan on` activa el modo sin enviar una petición.
+- `/plan off` lo desactiva sin iniciar un turno. El siguiente turno ya no recibe las instrucciones de modo plan.
+- `/plan status` muestra si está activo, sin cambiar el estado.
+- `/plan run` conserva el comportamiento anterior: desactiva el modo, pero no ejecuta el plan automáticamente.
+- `/plan` sin argumentos alterna el modo; `/plan <petición>` lo activa y envía la petición.
 
 ### Panel de tareas (`/tasks`)
 `/tasks` muestra u oculta las tareas de la unidad HCD activa encima del editor. El estado de verificación (`✓`, `○`, `◌`, `✗`) viene del motor. Debajo de cada tarea, el árbol muestra las llamadas de la sesión con su propio estado y duración.

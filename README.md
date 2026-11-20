@@ -165,7 +165,9 @@ La extensión de contexto ejecuta `mem context` una vez por sesión con un timeo
 
 | Comando | Qué hace |
 |---|---|
-| `/plan [petición]` | Modo plan: bloquea las modificaciones; `/plan` otra vez o `/plan run` lo desactivan |
+| `/plan [petición]` | Sin argumentos alterna el modo plan; con una petición lo activa y envía el texto |
+| `/plan on`, `/plan off`, `/plan status` | Activa, desactiva o consulta el modo plan sin iniciar un turno |
+| `/plan run` | Desactiva el modo plan; no ejecuta el plan automáticamente |
 | `/tasks` | Muestra u oculta las tareas HCD y su árbol de actividad |
 | `/tasks expand [N]`, `/tasks collapse [N]`, `/tasks focus N` | Abre o cierra el detalle y elige la tarea que recibe las próximas llamadas |
 | `/sidebar` | Panel lateral: sesión/HCD, contexto, coste, cuotas (Google AI Pro, límites de Anthropic y OpenAI Codex) y servidores MCP |
@@ -183,7 +185,7 @@ El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo c
 ### Banner, modo /plan y repositorio de skills
 
 - **Banner:** al abrir Pi, la cabecera muestra el logo de pi-gomemory en caracteres de color de alta resolución, «HCD · pi - gomemory», la versión de pi-gomemory (`PI_GOMEMORY_RUNNING_VERSION`) y la de gomemory instalada (`GOMEMORY_INSTALLED_VERSION`, leída de `mem --version`), junto con el lema HCD. Con `NO_COLOR` se dibuja sin colores.
-- **`/plan`:** activa el modo plan. Bloquea `edit`, `write` y los comandos de consola que modifican archivos (lista en `~/.pi/agent/extensions/gomemory-plan-patterns.json`), añade al contexto el método de `mem plan-context` y muestra «PLAN» en la barra. `/plan` otra vez o `/plan run` lo desactivan. Con `/plan <petición>` activa el modo y envía la petición en el mismo paso. Es un bloqueo de las modificaciones comunes, no un aislamiento completo.
+- **`/plan`:** activa el modo plan. Bloquea `edit`, `write` y los comandos de consola que modifican archivos (lista en `~/.pi/agent/extensions/gomemory-plan-patterns.json`), añade al contexto el método de `mem plan-context` y muestra «PLAN» en la barra. Usa `/plan on` para activarlo, `/plan off` para salir y `/plan status` para consultar el estado. `/plan` sin argumentos lo alterna y `/plan run` sigue desactivándolo sin ejecutar el plan. Con `/plan <petición>` activa el modo y envía la petición en el mismo paso. Es un bloqueo de las modificaciones comunes, no un aislamiento completo.
 - **Panel de tareas (`/tasks`):** encima del editor muestra las tareas de la unidad HCD activa, leídas de `mem hcd show --json`: `✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo. El árbol de actividad muestra el estado y la duración de las llamadas de esta sesión. En `/tdd`, las verificaciones Bash tienen sus propias filas y Watch no las borra.
 - **Repositorio de skills:** `~/.pi-gomemory/skills` reúne las 21 skills de gomemory (copias adaptadas para Pi, que siempre ganan) y enlaces a las skills de los demás agentes, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. Pi carga solo ese repositorio, así que no hay avisos de colisión. Se sincroniza al instalar y en cada arranque de `pi-gomemory`. Nunca modifica las carpetas de otros agentes ni las skills tuyas.
 

@@ -3,8 +3,9 @@
  *
  * /plan alterna un modo que bloquea las modificaciones comunes (edit, write y
  * comandos bash de gomemory-plan-patterns.json) e inyecta como sección del system
- * prompt (`gomemory-plan`) el método de descomposición atómica de `mem plan-context`. /plan <texto> activa el
- * modo y envía el texto como solicitud. /plan run solo desactiva.
+ * prompt (`gomemory-plan`) el método de descomposición atómica de `mem plan-context`.
+ * /plan on y /plan off fijan el estado; /plan status lo consulta. /plan run
+ * solo desactiva. /plan <texto> activa el modo y envía el texto como solicitud.
  */
 
 import { readFileSync } from "node:fs";
@@ -32,15 +33,16 @@ const FALLBACK = `[gomemory-plan:fallback]
 Estás en MODO PLAN (solo planificación). No modifiques archivos ni ejecutes comandos que cambien estado.
 Descompón la solicitud en un árbol de tareas atómicas: cada hoja con un verbo, un objeto, un único
 resultado inspeccionable y la comprobación que la demuestra. Explora con herramientas de lectura,
-entrega el árbol y pregunta si se ejecuta. La persona sale del modo con /plan o /plan run.`;
+entrega el árbol y pregunta si se ejecuta. La persona sale del modo con /plan off.`;
 
 export const PLAN_SECTION = "gomemory-plan";
 
-const REASON ="Modo plan activo: no se permiten modificaciones. Usa /plan o /plan run para salir.";
+const REASON = "Modo plan activo: no se permiten modificaciones. Usa /plan off para salir.";
+const INACTIVE = "El modo plan no está activo";
 
 export default function (pi: ExtensionAPI) {
-	let active = false;
-	let method = "";
+	// La promesa existe solo mientras el modo está activo. Su resolución no cambia el estado.
+	let method: Promise<string> | undefined;
 
 	async function loadMethod(cwd: string): Promise<string> {
 		try {
@@ -55,51 +57,45 @@ export default function (pi: ExtensionAPI) {
 		return FALLBACK;
 	}
 
-	function setActive(ctx: any, on: boolean) {
-		active = on;
-		ctx.ui?.setStatus?.("gomemory-plan", on ? "PLAN" : undefined);
-	}
-
 	pi.registerCommand("plan", {
-		description: "Modo plan de gomemory: bloquea modificaciones hasta /plan o /plan run",
+		description: "Modo plan de gomemory: on | off | status | run | <petición>",
 		handler: async (args, ctx) => {
 			const arg = String(args ?? "").trim();
-			if (arg === "run") {
-				if (!active) {
-					ctx.ui.notify("El modo plan no está activo", "info");
+			if (arg === "status") {
+				ctx.ui.notify(method ? "Modo plan activo" : INACTIVE, "info");
+				return;
+			}
+			if (arg === "off" || arg === "run" || (arg === "" && method)) {
+				if (!method) {
+					ctx.ui.notify(INACTIVE, "info");
 					return;
 				}
-				setActive(ctx, false);
-				ctx.ui.notify("Modo plan desactivado: ya se permiten modificaciones", "info");
+				method = undefined;
+				ctx.ui.setStatus("gomemory-plan", undefined);
+				ctx.ui.notify(arg === "run"
+					? "Modo plan desactivado: ya se permiten modificaciones"
+					: "Modo plan desactivado", "info");
 				return;
 			}
-			if (arg !== "") {
-				// /plan <texto>: activa el modo (si hace falta) y envía la solicitud.
-				if (!active) {
-					method = await loadMethod(ctx.cwd);
-					setActive(ctx, true);
-					ctx.ui.notify("Modo plan activo: edit, write y comandos que modifican están bloqueados", "info");
-				}
-				if (ctx.isIdle?.() === false) {
-					pi.sendUserMessage(arg, { deliverAs: "followUp" });
-				} else {
-					pi.sendUserMessage(arg);
-				}
-				return;
+			if (!method) {
+				method = loadMethod(ctx.cwd);
+				ctx.ui.setStatus("gomemory-plan", "PLAN");
+				ctx.ui.notify("Modo plan activo: edit, write y comandos que modifican están bloqueados", "info");
+			} else if (arg === "on") {
+				ctx.ui.notify("Modo plan activo", "info");
 			}
-			if (active) {
-				setActive(ctx, false);
-				ctx.ui.notify("Modo plan desactivado", "info");
-				return;
+			if (arg === "" || arg === "on") return;
+			// /plan <texto>: activa el modo y envía la solicitud.
+			if (ctx.isIdle?.() === false) {
+				pi.sendUserMessage(arg, { deliverAs: "followUp" });
+			} else {
+				pi.sendUserMessage(arg);
 			}
-			method = await loadMethod(ctx.cwd);
-			setActive(ctx, true);
-			ctx.ui.notify("Modo plan activo: edit, write y comandos que modifican están bloqueados", "info");
 		},
 	});
 
 	pi.on("tool_call", async (event: any) => {
-		if (!active) return;
+		if (!method) return;
 		if (patterns.tools.includes(event.toolName)) {
 			return { block: true, reason: REASON };
 		}
@@ -114,7 +110,14 @@ export default function (pi: ExtensionAPI) {
 		const opts = event?.systemPromptOptions;
 		if (!opts) return;
 		opts.sections ??= {};
-		if (active) opts.sections[PLAN_SECTION] = method || FALLBACK;
-		else delete opts.sections[PLAN_SECTION];
+		while (method) {
+			const pending = method;
+			const text = await pending;
+			// El modo pudo cambiar mientras mem cargaba el método.
+			if (method !== pending) continue;
+			opts.sections[PLAN_SECTION] = text;
+			return;
+		}
+		delete opts.sections[PLAN_SECTION];
 	});
 }
