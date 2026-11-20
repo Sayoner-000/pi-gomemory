@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.16.0"><img src="https://img.shields.io/badge/version-1.16.0-blue" alt="Version 1.16.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.17.0"><img src="https://img.shields.io/badge/version-1.17.0-blue" alt="Version 1.17.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -166,7 +166,8 @@ La extensión de contexto ejecuta `mem context` una vez por sesión con un timeo
 | Comando | Qué hace |
 |---|---|
 | `/plan [petición]` | Modo plan: bloquea las modificaciones; `/plan` otra vez o `/plan run` lo desactivan |
-| `/tasks` | Muestra u oculta las tareas de la unidad HCD activa |
+| `/tasks` | Muestra u oculta las tareas HCD y su árbol de actividad |
+| `/tasks expand [N]`, `/tasks collapse [N]`, `/tasks focus N` | Abre o cierra el detalle y elige la tarea que recibe las próximas llamadas |
 | `/sidebar` | Panel lateral: sesión/HCD, contexto, coste, cuotas (Google AI Pro, límites de Anthropic y OpenAI Codex) y servidores MCP |
 | `/sidebar min` | Minimiza o restaura el panel lateral a una fila (también con clic en `[−]` / `[+]`) |
 | `/min` | Minimiza o restaura a la vez `/sidebar` y `/tdd` |
@@ -183,7 +184,7 @@ El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo c
 
 - **Banner:** al abrir Pi, la cabecera muestra el logo de pi-gomemory en caracteres de color de alta resolución, «HCD · pi - gomemory», la versión de pi-gomemory (`PI_GOMEMORY_RUNNING_VERSION`) y la de gomemory instalada (`GOMEMORY_INSTALLED_VERSION`, leída de `mem --version`), junto con el lema HCD. Con `NO_COLOR` se dibuja sin colores.
 - **`/plan`:** activa el modo plan. Bloquea `edit`, `write` y los comandos de consola que modifican archivos (lista en `~/.pi/agent/extensions/gomemory-plan-patterns.json`), añade al contexto el método de `mem plan-context` y muestra «PLAN» en la barra. `/plan` otra vez o `/plan run` lo desactivan. Con `/plan <petición>` activa el modo y envía la petición en el mismo paso. Es un bloqueo de las modificaciones comunes, no un aislamiento completo.
-- **Panel de tareas (`/tasks`):** encima del editor muestra las tareas de la unidad HCD activa, leídas de `mem hcd show --json`: `✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo. Se actualiza al abrir la sesión, tras cada `mem hcd` y al terminar cada respuesta. `/tasks` lo muestra u oculta.
+- **Panel de tareas (`/tasks`):** encima del editor muestra las tareas de la unidad HCD activa, leídas de `mem hcd show --json`: `✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo. El árbol de actividad muestra el estado y la duración de las llamadas de esta sesión. En `/tdd`, las verificaciones Bash tienen sus propias filas y Watch no las borra.
 - **Repositorio de skills:** `~/.pi-gomemory/skills` reúne las 21 skills de gomemory (copias adaptadas para Pi, que siempre ganan) y enlaces a las skills de los demás agentes, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. Pi carga solo ese repositorio, así que no hay avisos de colisión. Se sincroniza al instalar y en cada arranque de `pi-gomemory`. Nunca modifica las carpetas de otros agentes ni las skills tuyas.
 
 ### Actualizaciones del meta-harness

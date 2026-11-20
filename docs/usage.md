@@ -88,6 +88,8 @@ pi-gomemory-setup codemode status
 
 La preferencia y la propiedad de `+codemode` se guardan en `~/.pi-gomemory/codemode.json`. Las herramientas MCP declaradas se llaman directamente; el resto se consulta desde `codemode` con `tools.<nombre>(args)`. `mcp` regenera los servidores y conserva un perfil híbrido ya activo.
 
+`pi-gomemory-setup lite on` retira los servidores de grafo gestionados por pi-gomemory y conserva los personalizados. El modo se mantiene al ejecutar `install`, `update`, `mcp` o cambiar codemode. Usa `lite status` para consultarlo y `lite off` para restaurar los servidores gestionados que falten.
+
 Al abrir o cambiar una sesión, `gomemory-context.ts` carga `mem context` una vez con el directorio del proyecto y un timeout de 3000 ms. Inyecta hasta 24 576 bytes de texto UTF-8 más el aviso de recorte, si hace falta, y el bloque de protocolo de Pi. Si falla o no devuelve contexto, muestra una advertencia por sesión y mantiene solo ese bloque. `/plan` añade su método en otra sección del prompt.
 
 `AGENTS.md` queda para tus instrucciones. `install` retira el protocolo antiguo de pi-gomemory, conservando el texto propio. Abre una sesión nueva o ejecuta `/reload` después de actualizar las extensiones. Consulta las [limitaciones](known-issues.md) de cambios parciales de configuración y del bloqueo de `/plan`.
@@ -115,7 +117,9 @@ Pi solo admite una cabecera. Si pi-cc-extensions tiene `showStartupHeader: true`
 `/plan` activa o desactiva el modo plan, que bloquea las modificaciones; `/plan run` lo desactiva. `/plan <petición>` activa el modo y envía la petición en el mismo paso.
 
 ### Panel de tareas (`/tasks`)
-Muestra u oculta, encima del editor, las tareas de la unidad HCD activa (`✓` verificada, `○` pendiente, `◌` verificación caducada, `✗` con fallo). Se actualiza solo tras cada `mem hcd` y al terminar cada respuesta.
+`/tasks` muestra u oculta las tareas de la unidad HCD activa encima del editor. El estado de verificación (`✓`, `○`, `◌`, `✗`) viene del motor. Debajo de cada tarea, el árbol muestra las llamadas de la sesión con su propio estado y duración.
+
+La tarea en curso muestra por defecto sus últimas cinco llamadas. Las tareas completadas quedan resumidas; usa `/tasks expand N` o haz clic en el resumen para abrirlas y `/tasks collapse N` para cerrarlas. Con `/tasks focus N` puedes decidir a qué tarea se asignan las próximas llamadas.
 
 ### Panel lateral estilo OpenCode (`/sidebar`)
 Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), cuotas de Google AI Pro, límites de Anthropic u OpenAI Codex y telemetría de Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
@@ -147,6 +151,8 @@ El panel consulta al abrirse, al seleccionar modelo, al iniciar sesión, al term
 ### Inspector de pruebas en tiempo real (`/tdd`)
 
 Desde v1.12.1, las interrupciones y los timeouts se informan como fallos con su causa, cada prueba Playwright se identifica por proyecto y las recuperadas en un reintento se cuentan como `flaky` (véase [problemas conocidos](known-issues.md)).
+La sección «Verificaciones HCD · Bash» muestra una fila por tarea desde que empieza `mem hcd verify`. El glifo animado cambia a `✓` o `✗` al terminar. Watch conserva esas filas separadas de los resultados de las suites.
+
 Abre el overlay **TDD Live Inspector**. Se coloca debajo del panel lateral, en la misma columna derecha, sin solaparse, y ejecuta las pruebas **reales** del proyecto abierto.
 
 **Suites según el proyecto.** Cada suite se activa solo si el proyecto tiene lo que necesita; si no, aparece como «omitida» con su motivo, nunca como éxito ni como fallo:

@@ -40,30 +40,30 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.15.3_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.15.3_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.15.3_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.15.3_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.17.0_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.17.0_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.17.0_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.17.0_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.15.3_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.17.0_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar v1.15.3, comprueba que `pi-gomemory-setup version` devuelve `v1.15.3` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas (entre ellas, el aviso de actualizaciones del pie). La cuota Codex requiere una sesión OAuth `openai-codex` en Pi, no solo tener instalada la aplicación Codex.
+Después de instalar, comprueba que `pi-gomemory-setup version` devuelve `v1.17.0` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas.
 
 Si vienes de v1.12.0 o anterior, revisa los permisos de `~/.pi/agent` y los [problemas conocidos](known-issues.md). Desde v1.15.0, `install` no crea un protocolo en `AGENTS.md`: retira el bloque heredado sin modificar el texto propio. Conserva los permisos y los enlaces; si solo había protocolo, borra el archivo normal o vacía el destino enlazado. Desde v1.15.1, lo retira solo después de instalar `gomemory-context.ts`, quita a la vez el bloque marcado y las copias históricas sin marcas, y si los marcadores de pi-gomemory son ambiguos (huérfanos, repetidos o invertidos) conserva el archivo completo y avisa.
 
 **Configuración enlazada (dotfiles):** desde v1.13.6, si `~/.pi/agent/mcp.json`, `settings.json`, `AGENTS.md` o `pi-cc-extensions.json` son enlaces simbólicos, `install`, `update`, `uninstall` y los subcomandos escriben en el archivo de destino y conservan el enlace y sus permisos. Un enlace roto, un bucle o un enlace a un directorio hacen fallar el paso con «el enlace no apunta a un archivo», sin tocar nada. Si una versión anterior ya sustituyó alguno de tus enlaces, vuelve a crearlo a mano.
 
-## Mitigación opcional de Antigravity
+## Mitigación temporal de Antigravity
 
-v1.15.3 no instala automáticamente el guard ni modifica la prioridad de las instrucciones de Pi. Si aparece HTTP 429 pese a tener OAuth y cuota disponibles, revisa el [diagnóstico y la activación manual](antigravity.md). La referencia se publica en `tests/`, no dentro del binario ni de los paquetes de instalación.
+Desde v1.16.0, el instalador incluye el guard de Antigravity. Este cambia la prioridad de las instrucciones y se puede desactivar con `ANTIGRAVITY_PROMPT_GUARD=off` al iniciar Pi. Consulta el [diagnóstico y los límites](antigravity.md).
 
 ## Codemode y contexto
 

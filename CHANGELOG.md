@@ -4,6 +4,16 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.17.0] - 2026-11-19
+
+### Added
+- `/tasks` muestra un árbol de llamadas por tarea HCD, con estado, duración y un resumen de actividad de la sesión. Puedes abrir o cerrar el detalle y elegir la tarea que recibe las próximas llamadas (HCD-054).
+- `/tdd` muestra una fila por tarea de `mem hcd verify` desde que arranca la llamada de Bash. Watch conserva esas filas al actualizar las suites (HCD-053).
+
+### Fixed
+- El modo `lite` conserva las definiciones MCP personalizadas y permanece activo al reinstalar, actualizar o cambiar codemode. Un fallo al aplicar el perfil no deja `lite status` desincronizado (HCD-052).
+- `/tdd` distingue las invocaciones de prueba de las menciones en texto, y `/tasks` ya no bloquea una llamada por encontrar `mem hcd verify` dentro de un argumento citado (HCD-052).
+
 ## [v1.16.0] - 2026-11-19
 
 ### Added
