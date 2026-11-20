@@ -77,12 +77,14 @@ function spinner(now: number): string {
 /** Color del tema de cada línea; el glifo se conserva para no depender solo del color. */
 export type LineTone = "accent" | "success" | "error" | "warning" | "dim";
 
-/** Círculo que gira para la tarea en curso (Q5); más lento que el spinner de llamadas. */
-export const TASK_FRAMES = ["◐", "◓", "◑", "◒"];
-const TASK_FRAME_MS = 250;
+/** La tarea en curso parpadea ●/○ (HCD-060); más lento que el spinner de llamadas. */
+export const TASK_FRAMES = ["●", "○"];
+const TASK_FRAME_MS = 500;
+/** Cada cuánto vuelve a consultar el motor un panel visible (HCD-061). */
+const HEARTBEAT_MS = 10_000;
 
 /**
- * Círculo que se llena (HCD-057, Q5): ○ pendiente → gira ◐◓◑◒ en curso → ● verificada;
+ * Círculo que se llena (HCD-057, Q5): ○ pendiente → parpadea ●/○ en curso (HCD-060) → ● verificada;
  * ◍ verificada pero caducada (hay que volver a verificar); ✗ fallida.
  */
 function taskVisual(status: string, active: boolean, now: number): { glyph: string; tone: LineTone } {
@@ -772,6 +774,29 @@ export default function (pi: ExtensionAPI) {
 	let seqCounter = 0;
 	let spinTimer: ReturnType<typeof setInterval> | null = null;
 	let spinEvery = 0;
+	let heartbeat: ReturnType<typeof setInterval> | null = null;
+	let heartbeatCtx: any = null;
+
+	/**
+	 * Latido del panel (HCD-061): mientras está visible, vuelve a consultar el motor
+	 * cada HEARTBEAT_MS para ocultarse si la unidad se cerró o canceló desde otra
+	 * sesión de Pi. Sin panel no hay consultas.
+	 */
+	function syncHeartbeat(ctx: any) {
+		if (visible && mounted) {
+			if (ctx) heartbeatCtx = ctx;
+			if (!heartbeat) {
+				heartbeat = setInterval(() => {
+					if (heartbeatCtx) void refresh(heartbeatCtx);
+				}, HEARTBEAT_MS);
+				(heartbeat as any)?.unref?.();
+			}
+		} else if (heartbeat) {
+			clearInterval(heartbeat);
+			heartbeat = null;
+			heartbeatCtx = null;
+		}
+	}
 
 	/**
 	 * Anima el panel (HCD-057): al ritmo del spinner si hay una llamada en curso, al
@@ -816,11 +841,13 @@ export default function (pi: ExtensionAPI) {
 			mounted = false;
 			requestWidgetRender = null;
 			syncSpinner();
+			syncHeartbeat(ctx);
 			ctx?.ui?.setWidget?.(WIDGET, undefined);
 			return;
 		}
 		if (mounted && requestWidgetRender) {
 			syncSpinner();
+			syncHeartbeat(ctx);
 			requestWidgetRender();
 			return;
 		}
@@ -874,6 +901,7 @@ export default function (pi: ExtensionAPI) {
 			};
 		});
 		syncSpinner();
+		syncHeartbeat(ctx);
 	}
 
 	async function refresh(ctx: any) {
@@ -1037,5 +1065,6 @@ export default function (pi: ExtensionAPI) {
 		mounted = false;
 		requestWidgetRender = null;
 		syncSpinner();
+		syncHeartbeat(null);
 	});
 }

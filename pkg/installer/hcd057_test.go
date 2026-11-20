@@ -28,13 +28,14 @@ func TestHCD057Glyphs(t *testing.T) {
 import registerTasks, { createTaskActivityTracker, renderTasksTree, SPINNER_FRAMES, TASK_FRAMES } from "./gomemory-tasks.ts";
 `+hcd057Unit+`
 const fails = [];
-// Q5: círculo que se llena; la tarea activa gira aunque no haya llamada en curso.
-if (!Array.isArray(TASK_FRAMES) || TASK_FRAMES.join("") !== "◐◓◑◒") fails.push("TASK_FRAMES debe ser ◐◓◑◒: " + TASK_FRAMES);
+// Q5: círculo que se llena; la tarea activa se anima aunque no haya llamada en curso.
+// Desde HCD-060 parpadea ●/○ cada 500 ms en lugar de girar ◐◓◑◒.
+if (!Array.isArray(TASK_FRAMES) || TASK_FRAMES.join("") !== "●○") fails.push("TASK_FRAMES debe ser ●○: " + TASK_FRAMES);
 {
 	const tr = createTaskActivityTracker();
 	tr.syncUnit(unit);
 	const a = renderTasksTree(unit, tr, 0)?.find((l) => / 2\. /.test(l.text))?.text ?? "";
-	const b = renderTasksTree(unit, tr, 250)?.find((l) => / 2\. /.test(l.text))?.text ?? "";
+	const b = renderTasksTree(unit, tr, 500)?.find((l) => / 2\. /.test(l.text))?.text ?? "";
 	if (!(TASK_FRAMES ?? []).some((f) => a.includes(f + " 2."))) fails.push("la tarea activa sin llamadas debe girar: " + a);
 	if (a === b) fails.push("el giro de la tarea activa debe avanzar con el reloj");
 }
@@ -48,7 +49,7 @@ tracker.recordStart("c2", "bash", { command: "go test ./..." }, unit, 1020);
 
 const at = (now) => renderTasksTree(unit, tracker, now) ?? [];
 const row = (tree, id) => tree.find((l) => new RegExp("^\\s+\\S+ " + id + "\\. ").test(l.text));
-const t0 = at(0), t1 = at(250);
+const t0 = at(0), t1 = at(500);
 
 // Tarea en curso: círculo que gira con el reloj; la llamada, spinner de /tdd. Nunca ⟳ fijo.
 const r0 = row(t0, "2")?.text ?? "", r1 = row(t1, "2")?.text ?? "";
@@ -84,7 +85,7 @@ if (renders - before < 2) fails.push("con algo en curso el widget debe repintar 
 await fakePi.h.tool_execution_end({ toolCallId: "w1", toolName: "bash", isError: false, result: {} }, ctx);
 // Sin llamadas en curso, la tarea activa sigue girando: el widget sigue repintando.
 const idle = renders;
-await new Promise((r) => setTimeout(r, 600));
+await new Promise((r) => setTimeout(r, 1100));
 if (renders - idle < 2) fails.push("con una tarea activa el widget debe seguir animando sin llamadas: " + (renders - idle));
 await fakePi.h.session_shutdown?.({}, ctx);
 console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");

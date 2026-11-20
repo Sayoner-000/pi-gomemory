@@ -128,12 +128,14 @@ Mientras el modo plan está activo, Pi bloquea las modificaciones comunes del ag
 | Glifo | Estado |
 |---|---|
 | `○` | pendiente |
-| `◐` (gira) | en curso: la tarea activa, aunque no haya ninguna llamada en marcha |
+| `●` (parpadea) | en curso: la tarea activa, aunque no haya ninguna llamada en marcha; alterna `●` y `○` cada medio segundo |
 | `●` | verificada |
 | `◍` | estuvo verificada, pero el código cambió y hay que volver a verificarla |
 | `✗` | fallida |
 
 Cada estado tiene también su color; el glifo se mantiene para quien no distingue colores o usa un tema monocromo. Debajo de cada tarea, el árbol (`├─`, `└─`) muestra las llamadas de la sesión con su estado y duración; la que está en marcha usa el mismo spinner que `/tdd`.
+
+Mientras está visible, el panel vuelve a consultar el motor cada 10 segundos. Si la unidad se cierra o se cancela, también desde otra sesión de Pi, el panel desaparece en ese plazo. Con todas las tareas verificadas pero la unidad aún abierta, sigue visible hasta el cierre.
 
 La tarea en curso muestra por defecto sus últimas cinco llamadas. Las tareas completadas quedan resumidas; usa `/tasks expand N` o haz clic en el resumen para abrirlas y `/tasks collapse N` para cerrarlas. Con `/tasks focus N` puedes decidir a qué tarea se asignan las próximas llamadas.
 
