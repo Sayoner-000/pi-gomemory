@@ -8,6 +8,8 @@ import (
 )
 
 func TestSidebarExtension(t *testing.T) {
+	t.Parallel()
+
 	s := readAsset(t, "extensions/gomemory-sidebar.ts")
 	for _, want := range []string{
 		"gomemory-sidebar", `registerCommand("sidebar"`,

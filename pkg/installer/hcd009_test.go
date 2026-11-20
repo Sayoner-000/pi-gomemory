@@ -10,6 +10,8 @@ import (
 )
 
 func TestLatestTagFromRedirect(t *testing.T) {
+	t.Parallel()
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/releases/latest":
@@ -37,6 +39,8 @@ func TestLatestTagFromRedirect(t *testing.T) {
 }
 
 func TestNoGitHubAPI(t *testing.T) {
+	t.Parallel()
+
 	if strings.Contains(DefaultReleasesAPI, "api.github.com") {
 		t.Fatalf("DefaultReleasesAPI = %s", DefaultReleasesAPI)
 	}

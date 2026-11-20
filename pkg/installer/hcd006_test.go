@@ -151,6 +151,8 @@ func TestSkillRepoPiSettingsLegacyWithoutMarker(t *testing.T) {
 }
 
 func TestHarnessSyncsSkills(t *testing.T) {
+	t.Parallel()
+
 	s := GenerateHarnessScript()
 	if !strings.Contains(s, "pi-gomemory-setup skills-sync") {
 		t.Fatal("el launcher debe sincronizar el repositorio de skills")

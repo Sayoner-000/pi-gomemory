@@ -6,6 +6,8 @@ import (
 )
 
 func TestHCD051DetectBackendSuites(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -85,6 +87,8 @@ const makeDir = () => mkdtempSync(join(tmpdir(), "hcd051-backend-"));
 }
 
 func TestHCD051DetectFrontendAndStaticSuites(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -126,6 +130,8 @@ const makeDir = () => mkdtempSync(join(tmpdir(), "hcd051-fe-"));
 }
 
 func TestHCD051OutputParsers(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import { createTDDStore, pytestParser, vitestParser, phpunitParser, javaTestParser } from "./gomemory-tdd.ts";
@@ -197,6 +203,8 @@ import { createTDDStore, pytestParser, vitestParser, phpunitParser, javaTestPars
 }
 
 func TestHCD051BashTestListener(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import registerTDD, { classifyBashTestCommand, createTDDStore, ingestBashTestResult } from "./gomemory-tdd.ts";
@@ -254,6 +262,8 @@ await onToolResult({
 }
 
 func TestHCD051TasksLivePolling(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tasks.ts"}, `
 import assert from "node:assert/strict";
 import registerTasks from "./gomemory-tasks.ts";
@@ -286,6 +296,8 @@ assert.ok(execCalls >= 1, "debe haber refrescado durante la ejecución bash: exe
 }
 
 func TestHCD051VerifySingleCallGuard(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tasks.ts"}, `
 import assert from "node:assert/strict";
 import registerTasks, { isBundledHcdVerifyCommand } from "./gomemory-tasks.ts";

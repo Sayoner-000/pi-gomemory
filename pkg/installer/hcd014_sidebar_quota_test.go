@@ -5,6 +5,8 @@ import (
 )
 
 func TestHCD014SidebarQuotaRendering(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import { renderSidebar, formatProgressBar } from "./gomemory-sidebar.ts";
 

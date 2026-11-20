@@ -5,6 +5,8 @@ import "testing"
 // C-03/C-04: splash_review no lee fuera de ctx.cwd (.., absoluta, enlace) y
 // acepta nombres internos que empiezan por "..".
 func TestHCD012Splash(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-splash.ts"}, `
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";

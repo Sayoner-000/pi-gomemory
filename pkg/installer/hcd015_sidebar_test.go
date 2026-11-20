@@ -5,6 +5,8 @@ import (
 )
 
 func TestHCD015SidebarUnicodeBars(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import { renderSidebar, formatProgressBar, compactBucketName } from "./gomemory-sidebar.ts";
 

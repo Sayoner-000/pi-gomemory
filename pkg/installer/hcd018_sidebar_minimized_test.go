@@ -8,6 +8,8 @@ import (
 // TestHCD018SidebarMinimized verifica que el sidebar minimizado ocupa una sola fila
 // con indicador [+] y que /sidebar min está registrado.
 func TestHCD018SidebarMinimized(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import sidebarExtensionFactory, { renderSidebarMinimized } from "./gomemory-sidebar.ts";
 

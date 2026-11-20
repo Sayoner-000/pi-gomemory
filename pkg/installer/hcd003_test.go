@@ -54,6 +54,8 @@ func TestBinDirOverride(t *testing.T) {
 }
 
 func TestWriteJSONObjectAtomic(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	path := filepath.Join(dir, "settings.json")
 	writeFile(t, path, `{"a":1}`)

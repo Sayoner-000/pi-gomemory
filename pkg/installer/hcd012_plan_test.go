@@ -4,6 +4,8 @@ import "testing"
 
 // C-08: con el modo plan activo, el manejador tool_call bloquea powershell.
 func TestHCD012PlanPowershell(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-plan.ts", "extensions/gomemory-plan-patterns.json"}, `
 import ext from "./gomemory-plan.ts";
 const handlers = {}; let cmd;

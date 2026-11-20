@@ -5,6 +5,8 @@ import (
 )
 
 func TestHCD027ProcessTerminationCauses(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import { streamLines } from "./gomemory-tdd.ts";
@@ -65,6 +67,8 @@ console.log("PASS TestHCD027ProcessTerminationCauses");
 }
 
 func TestHCD027ProcessGroupCleanup(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import { streamLines } from "./gomemory-tdd.ts";

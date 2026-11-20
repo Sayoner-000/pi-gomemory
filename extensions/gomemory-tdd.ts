@@ -11,7 +11,7 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative } from "node:path";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
@@ -410,7 +410,7 @@ export function classifyFailure(errorMessage: string): FailureDiagnostic {
 
 // ── 3b. Detección de suites y ejecución real con streaming ─────────────────
 
-export type CheckParser = "go-test" | "exit-code" | "playwright-line" | "hcd" | "pytest" | "vitest" | "phpunit" | "java-test";
+export type CheckParser = "go-test" | "go-text" | "exit-code" | "playwright-line" | "hcd" | "pytest" | "vitest" | "phpunit" | "java-test";
 
 /** Un comando real que verifica algo del proyecto. */
 export interface CheckSpec {
@@ -462,6 +462,20 @@ function composerHasTestScript(cwd: string): boolean {
 	}
 }
 
+/**
+ * pytest-xdist instalado (no solo declarado) en la .venv o fijado en uv.lock:
+ * `-n auto` con xdist ausente rompería pytest y cambiaría el veredicto (HCD-056, Q1).
+ */
+function hasPytestXdist(cwd: string): boolean {
+	if (/name\s*=\s*"pytest-xdist"/.test(readTextSafe(join(cwd, "uv.lock")))) return true;
+	try {
+		const lib = join(cwd, ".venv", "lib");
+		return readdirSync(lib).some((py) => existsSync(join(lib, py, "site-packages", "xdist")));
+	} catch {
+		return false;
+	}
+}
+
 /** Decide las suites según los archivos del proyecto; lo que no aplica queda omitido con su motivo. */
 export function detectSuites(cwd: string): SuitePlan[] {
 	const has = (f: string) => existsSync(join(cwd, f));
@@ -483,18 +497,24 @@ export function detectSuites(cwd: string): SuitePlan[] {
 		backend.push({ id: "go-test", name: "go test", cmd: "go", args: ["test", "-json", "./..."], parser: "go-test" });
 	}
 	if (pythonProject) {
+		// Paralelismo nativo solo si ya está instalado (HCD-056, Q1).
+		const xdist = hasPytestXdist(cwd) ? ["-n", "auto"] : [];
 		const venvPytest = join(cwd, ".venv", "bin", "pytest");
 		if (existsSync(venvPytest)) {
-			backend.push({ id: "pytest", name: "pytest", cmd: venvPytest, args: ["-q"], parser: "pytest" });
+			backend.push({ id: "pytest", name: "pytest", cmd: venvPytest, args: ["-q", ...xdist], parser: "pytest" });
 		} else if (has("uv.lock")) {
-			backend.push({ id: "pytest", name: "uv run pytest", cmd: "uv", args: ["run", "pytest", "-q"], parser: "pytest" });
+			backend.push({ id: "pytest", name: "uv run pytest", cmd: "uv", args: ["run", "pytest", "-q", ...xdist], parser: "pytest" });
 		} else {
-			backend.push({ id: "pytest", name: "pytest", cmd: "pytest", args: ["-q"], parser: "pytest" });
+			backend.push({ id: "pytest", name: "pytest", cmd: "pytest", args: ["-q", ...xdist], parser: "pytest" });
 		}
 	}
 	if (phpProject) {
 		const vendorPhpunit = join(cwd, "vendor", "bin", "phpunit");
-		if (existsSync(vendorPhpunit)) {
+		const vendorParatest = join(cwd, "vendor", "bin", "paratest");
+		if (existsSync(vendorParatest)) {
+			// paratest ejecuta phpunit en procesos paralelos con la misma salida.
+			backend.push({ id: "phpunit", name: "paratest", cmd: vendorParatest, args: [], parser: "phpunit" });
+		} else if (existsSync(vendorPhpunit)) {
 			backend.push({ id: "phpunit", name: "phpunit", cmd: vendorPhpunit, args: [], parser: "phpunit" });
 		} else if (composerHasTestScript(cwd)) {
 			backend.push({ id: "phpunit", name: "composer test", cmd: "composer", args: ["test"], parser: "phpunit" });
@@ -544,6 +564,36 @@ export function detectSuites(cwd: string): SuitePlan[] {
 		plan("ci", "CI & Static", ci, "sin checks estáticos configurados"),
 		{ id: "data", name: "Data & Graph", checks: [{ id: "hcd-show", name: "Unidad HCD activa", cmd: "mem", args: ["hcd", "show", "--json"], parser: "hcd" }] },
 	];
+}
+
+/**
+ * Traduce un filtro de nombre de test a la sintaxis del ejecutor (HCD-056).
+ * Los checks sin filtro traducible (estáticos, `npm test`, HCD) se omiten con su
+ * motivo: ejecutarlos completos rompería el ciclo rojo→verde acotado.
+ */
+export function filterCheck(check: CheckSpec, filter: string): CheckSpec | { skip: string } {
+	const withArgs = (args: string[]): CheckSpec => ({ ...check, name: `${check.name} (${filter})`, args });
+	switch (check.parser) {
+		case "go-test": {
+			const pkgs = check.args.indexOf("./...");
+			const at = pkgs >= 0 ? pkgs : check.args.length;
+			return withArgs([...check.args.slice(0, at), "-run", filter, ...check.args.slice(at)]);
+		}
+		case "pytest":
+			return withArgs([...check.args, "-k", filter]);
+		case "vitest":
+			return withArgs([...check.args, "-t", filter]);
+		case "playwright-line":
+			return withArgs([...check.args, "-g", filter]);
+		case "phpunit":
+			return withArgs(check.cmd === "composer" ? [...check.args, "--", "--filter", filter] : [...check.args, "--filter", filter]);
+		case "java-test":
+			return check.id === "mvn-test"
+				? withArgs([`-Dtest=${filter}`, "-Dsurefire.failIfNoSpecifiedTests=false", ...check.args])
+				: withArgs([...check.args, "--tests", filter]);
+		default:
+			return { skip: `${check.name}: no admite filtro` };
+	}
 }
 
 export interface StreamResult {
@@ -1499,6 +1549,9 @@ function matchTestSegment(rawTokens: ShellToken[]): BashTestMatch | null {
 	if (exe === "go" && texts[1] === "test") {
 		const args = texts.slice(2);
 		const hasJson = args.includes("-json");
+		// Con -v (sin -json) cada test imprime «=== RUN» y «--- PASS/FAIL»: se lee test
+		// a test. Sin -v go test no lista los que pasan y vale el código de salida.
+		const hasVerbose = args.includes("-v") || args.includes("-test.v");
 		const hasRun = args.some((a) => a === "-run" || a.startsWith("-run="));
 		const targets: string[] = [];
 		const valueFlags = new Set(["-run", "-skip", "-count", "-timeout", "-tags", "-cpu", "-parallel", "-bench", "-benchtime", "-coverprofile", "-o", "-exec", "-fuzz", "-fuzztime"]);
@@ -1514,7 +1567,7 @@ function matchTestSegment(rawTokens: ShellToken[]): BashTestMatch | null {
 		const partial = hasRun || (targets.length > 0 && !(targets.length === 1 && targets[0] === "./..."));
 		return {
 			suiteId: "backend",
-			parser: hasJson ? "go-test" : "exit-code",
+			parser: hasJson ? "go-test" : hasVerbose ? "go-text" : "exit-code",
 			name: partial ? "go test (parcial, bash)" : "go test (bash)",
 			partial,
 		};
@@ -1658,11 +1711,6 @@ export function ingestBashTestResult(
 	store.finishSuite(match.suiteId, "running", undefined, match.partial);
 
 	const lines = outputText.split(/\r?\n/);
-	const res: StreamResult = {
-		code: isError ? 1 : 0,
-		missing: false,
-		tail: lines.slice(-MAX_TAIL_LINES),
-	};
 
 	if (match.parser === "hcd") {
 		const { passed, unit, detail } = readHCDVerifyResult(outputText, isError);
@@ -1679,22 +1727,147 @@ export function ingestBashTestResult(
 		return true;
 	}
 
-	let parser: LineParser;
-	if (match.parser === "go-test") {
-		parser = goTestParser(store, match.suiteId);
-	} else if (match.parser === "pytest") {
-		parser = pytestParser(store, match.suiteId, match.name);
-	} else if (match.parser === "vitest") {
-		parser = vitestParser(store, match.suiteId, match.name);
-	} else if (match.parser === "phpunit") {
-		parser = phpunitParser(store, match.suiteId, match.name);
-	} else if (match.parser === "java-test") {
-		parser = javaTestParser(store, match.suiteId, match.name);
-	} else {
-		parser = exitCodeParser(store, match.suiteId, { id: "bash-test", name: match.name, cmd: "bash", args: [], parser: "exit-code" }, Date.now());
-	}
-
+	const parser = bashLineParser(store, match);
 	for (const line of lines) parser.onLine(line);
+	finishBashRun(store, match, parser, lines, isError, match.partial);
+	return true;
+}
+
+/**
+ * Parser de `go test -v` en texto (HCD-056): «--- PASS/FAIL/SKIP: Nombre (t)».
+ * El mensaje de un fallo sale de las líneas del test, antes o después de su
+ * «--- FAIL», como las imprime go test con -v.
+ */
+export function goTextParser(store: TDDStore, suiteId: SuiteDomain): LineParser {
+	const RESULT = /^\s*--- (PASS|FAIL|SKIP): (\S+) \(([\d.]+)s\)/;
+	const RUN = /^=== (?:RUN|CONT|PAUSE)\s+(\S+)/;
+	const output = new Map<string, string[]>();
+	let current: string | undefined;
+	let lastFailed: string | undefined;
+	let failed = false;
+	let recorded = 0;
+	const failWith = (name: string) => {
+		store.finishTest(suiteId, name, "failed", 0, goFailureFromOutput(output.get(name) ?? []));
+	};
+	return {
+		onLine(raw) {
+			const line = clean(raw).replace(/\r$/, "");
+			const run = line.match(RUN);
+			if (run) {
+				current = run[1];
+				lastFailed = undefined;
+				if (!output.has(current)) {
+					output.set(current, []);
+					store.startTest(suiteId, current, current);
+				}
+				return;
+			}
+			const res = line.match(RESULT);
+			if (res) {
+				const [, word, name, secs] = res;
+				recorded++;
+				if (!output.has(name)) {
+					output.set(name, []);
+					store.startTest(suiteId, name, name);
+				}
+				const ms = Math.round(Number(secs) * 1000);
+				if (word === "FAIL") {
+					failed = true;
+					lastFailed = name;
+					failWith(name);
+				} else {
+					lastFailed = undefined;
+					store.finishTest(suiteId, name, word === "PASS" ? "passed" : "skipped", ms);
+				}
+				current = undefined;
+				return;
+			}
+			// Salida indentada: pertenece al test en curso o al último que falló.
+			const owner = lastFailed ?? current;
+			if (owner && /^\s+\S/.test(line)) {
+				output.get(owner)?.push(line);
+				if (owner === lastFailed) failWith(owner);
+			}
+		},
+		finish(res) {
+			if (res.code !== 0 && !failed && recorded === 0) {
+				const id = "go-test::(proceso)";
+				store.startTest(suiteId, id, "go test");
+				store.finishTest(suiteId, id, "failed", 0, { message: clip(res.tail.join("\n") || `go test salió con código ${res.code}`) });
+				failed = true;
+			}
+			return failed || res.code !== 0;
+		},
+	};
+}
+
+/** Comando de la comprobación de `mem hcd verify … -- '<comprobación>'`, o null. */
+function hcdVerifyCheckCommand(command: string): string | null {
+	const segments = parseShellSegments(command.trim());
+	const tokens = segments?.find((s) => s.tokens.length)?.tokens;
+	if (!tokens) return null;
+	const texts = stripCommandPrefixes(tokens).map((t) => t.text);
+	const sep = texts.indexOf("--");
+	if (sep < 0 || sep === texts.length - 1) return null;
+	return texts.slice(sep + 1).join(" ");
+}
+
+/**
+ * Muestra en /tdd los tests de la comprobación de `mem hcd verify` a partir del
+ * extracto de su evidencia (HCD-056). La suite queda parcial (el extracto es la
+ * cola de la salida) y su estado sigue el veredicto de verify, no lo cambia.
+ */
+export function ingestHCDVerifyTests(store: TDDStore, command: string, outputText: string, isError: boolean, cwd: string): boolean {
+	if (classifyBashTestCommand(command)?.parser !== "hcd") return false;
+	const check = hcdVerifyCheckCommand(command);
+	const inner = check ? classifyBashTestCommand(check) : null;
+	if (!inner || inner.parser === "hcd") return false;
+	let parsed: any;
+	try {
+		parsed = JSON.parse(outputText);
+	} catch {
+		return false;
+	}
+	const evidence = parsed?.data?.evidence;
+	if (typeof evidence?.excerpt !== "string") return false;
+	const { passed } = readHCDVerifyResult(outputText, isError);
+
+	if (store.getState().suites.length === 0) {
+		store.initSuites(detectSuites(cwd).map((s) => ({ id: s.id, name: s.name, domain: s.id })));
+	}
+	store.clearSuite(inner.suiteId);
+	store.finishSuite(inner.suiteId, "running", undefined, true);
+	const isGoText = inner.parser === "exit-code" && /^go test\b/.test(inner.name);
+	const parser = isGoText ? goTextParser(store, inner.suiteId) : bashLineParser(store, inner);
+	const lines = evidence.excerpt.split(/\r?\n/);
+	for (const line of lines) parser.onLine(line);
+	finishBashRun(store, inner, parser, lines, !passed, true);
+	return true;
+}
+
+/** Parser de líneas del ejecutor que invoca el Bash clasificado. */
+function bashLineParser(store: TDDStore, match: BashTestMatch): LineParser {
+	switch (match.parser) {
+		case "go-test":
+			return goTestParser(store, match.suiteId);
+		case "go-text":
+			return goTextParser(store, match.suiteId);
+		case "pytest":
+			return pytestParser(store, match.suiteId, match.name);
+		case "vitest":
+			return vitestParser(store, match.suiteId, match.name);
+		case "phpunit":
+			return phpunitParser(store, match.suiteId, match.name);
+		case "java-test":
+			return javaTestParser(store, match.suiteId, match.name);
+		default:
+			return exitCodeParser(store, match.suiteId, { id: "bash-test", name: match.name, cmd: "bash", args: [], parser: "exit-code" }, Date.now());
+	}
+}
+
+/** Cierra la suite de un Bash de tests: código real, fila de error si no hubo test fallido. */
+function finishBashRun(store: TDDStore, match: BashTestMatch, parser: LineParser, lines: string[], isError: boolean, partial: boolean) {
+	const res: StreamResult = { code: isError ? 1 : 0, missing: false, tail: lines.slice(-MAX_TAIL_LINES) };
 	const failed = Boolean(isError) || parser.finish(res);
 	if (failed) {
 		const suite = store.getState().suites.find((s) => s.id === match.suiteId);
@@ -1707,8 +1880,72 @@ export function ingestBashTestResult(
 			});
 		}
 	}
-	store.finishSuite(match.suiteId, failed ? "failed" : "passed", undefined, match.partial);
-	return true;
+	store.finishSuite(match.suiteId, failed ? "failed" : "passed", undefined, partial);
+}
+
+type BashPartial = { content?: Array<{ type?: string; text?: string }>; details?: { truncation?: { truncated?: boolean; totalLines?: number } } };
+
+/**
+ * Ingesta en vivo de un Bash de tests a partir de tool_execution_update (HCD-056).
+ * Pi entrega la salida acumulada con la cola truncada: sin truncado empieza en la
+ * línea 0; con truncado, la primera línea visible es totalLines - visibles. La
+ * última línea puede estar abierta, así que se retiene hasta la siguiente entrega
+ * o el final. Si la cola truncada salta líneas no vistas, la suite queda parcial.
+ */
+export function createBashLiveIngest(store: TDDStore, cwd: string) {
+	type Run = { match: BashTestMatch; parser: LineParser; processed: number; gap: boolean; lines: string[]; firstAbs: number };
+	const runs = new Map<string, Run>();
+	const feed = (run: Run, upTo: number) => {
+		for (let abs = Math.max(run.processed, run.firstAbs); abs < upTo; abs++) {
+			run.parser.onLine(run.lines[abs - run.firstAbs] ?? "");
+		}
+		run.processed = Math.max(run.processed, upTo);
+	};
+	return {
+		/** Empieza a seguir un Bash si invoca tests (mem hcd verify va por su propia vía). */
+		start(id: string, command: string, runCwd: string = cwd): boolean {
+			const match = classifyBashTestCommand(command);
+			if (!match || match.parser === "hcd") return false;
+			if (store.getState().suites.length === 0) {
+				store.initSuites(detectSuites(runCwd).map((s) => ({ id: s.id, name: s.name, domain: s.id })));
+			}
+			store.clearSuite(match.suiteId);
+			store.finishSuite(match.suiteId, "running", undefined, match.partial);
+			runs.set(id, { match, parser: bashLineParser(store, match), processed: 0, gap: false, lines: [], firstAbs: 0 });
+			return true;
+		},
+		/** Procesa las líneas completas nuevas de una entrega parcial. */
+		update(id: string, partial: BashPartial | undefined): boolean {
+			const run = runs.get(id);
+			if (!run) return false;
+			const text = (partial?.content ?? []).map((c) => (typeof c?.text === "string" ? c.text : "")).join("\n");
+			const lines = text.split(/\r?\n/);
+			const trunc = partial?.details?.truncation;
+			const firstAbs = trunc?.truncated && typeof trunc.totalLines === "number" ? Math.max(0, trunc.totalLines - lines.length) : 0;
+			if (firstAbs > run.processed) run.gap = true;
+			run.lines = lines;
+			run.firstAbs = firstAbs;
+			feed(run, firstAbs + lines.length - 1);
+			return true;
+		},
+		/**
+		 * Termina la ejecución seguida; false si no se siguió (se usa la ingesta final).
+		 * Sin ninguna entrega con contenido, se ingiere el texto final del resultado.
+		 */
+		end(id: string, isError: boolean, finalText?: string): boolean {
+			const run = runs.get(id);
+			if (!run) return false;
+			runs.delete(id);
+			if (!run.lines.some((l) => l) && finalText) {
+				run.lines = finalText.split(/\r?\n/);
+				run.firstAbs = 0;
+			}
+			const last = run.lines.length - 1;
+			feed(run, run.firstAbs + (run.lines[last] ? run.lines.length : last));
+			finishBashRun(store, run.match, run.parser, run.lines, isError, run.match.partial || run.gap);
+			return true;
+		},
+	};
 }
 
 /** Un comando = un test; el resultado es su código de salida y el fallo, sus últimas líneas. */
@@ -2111,6 +2348,10 @@ export default function (pi: ExtensionAPI) {
 		onProgress?: () => void;
 		/** Se llama cuando la ejecución sale de la cola y empieza. */
 		onStart?: () => void;
+		/** Nombre de test para el ciclo rojo→verde acotado; la suite queda parcial (HCD-056). */
+		filter?: string;
+		/** Ejecución de watch: informativa, se aborta ante una ejecución pedida (HCD-056). */
+		watch?: boolean;
 	}
 
 	type CheckOutcome = { failed: boolean } | { skip: string };
@@ -2212,11 +2453,22 @@ export default function (pi: ExtensionAPI) {
 	/** Suites de la última ejecución terminada (para /tdd report); null si aún no hubo ninguna. */
 	let lastRunSuites: SuiteDomain[] | null = null;
 
+	/** Cancela la ejecución de watch en curso o en cola (HCD-056). */
+	let watchAbort: AbortController | null = null;
+
 	function runTestSuite(domainOrAll?: string, ctx?: any, opts: RunOptions = {}): Promise<SuiteDomain[]> {
+		// Una ejecución pedida no espera detrás de watch, que solo es informativo.
+		if (!opts.watch) watchAbort?.abort();
 		runsPending++;
-		const next = runChain.then(() => {
+		const next = runChain.then(async () => {
+			// Watch abortado mientras esperaba turno: no corre y sus cambios siguen sin comprobar.
+			if (opts.watch && opts.signal?.aborted) {
+				watchDirty = true;
+				return [] as SuiteDomain[];
+			}
 			// Una ejecución completa cubre los cambios previos: watch no la repite.
-			if (!domainOrAll || domainOrAll === "all") watchDirty = false;
+			// Una filtrada no: solo comprobó parte de la suite.
+			if ((!domainOrAll || domainOrAll === "all") && !opts.filter) watchDirty = false;
 			opts.onStart?.();
 			return doRunTestSuite(domainOrAll, ctx, opts);
 		});
@@ -2229,11 +2481,14 @@ export default function (pi: ExtensionAPI) {
 	async function runWatch(ctx: any) {
 		if (watchPending) return;
 		watchPending = true;
+		const abort = new AbortController();
+		watchAbort = abort;
 		try {
 			// Se libera al empezar: un cambio durante esta ejecución merece otra.
-			await runTestSuite("all", ctx, { onStart: () => (watchPending = false) });
+			await runTestSuite("all", ctx, { onStart: () => (watchPending = false), signal: abort.signal, watch: true });
 		} finally {
 			watchPending = false;
+			if (watchAbort === abort) watchAbort = null;
 		}
 	}
 
@@ -2252,29 +2507,48 @@ export default function (pi: ExtensionAPI) {
 		const ticker = setInterval(() => requestOverlayRender?.(), SPINNER_INTERVAL_MS * 2);
 		try {
 			for (const plan of plans) {
+				// Watch abortado a mitad: lo que falta no se toca y lo comprobará otra ejecución.
+				if (opts.watch && opts.signal?.aborted) {
+					watchDirty = true;
+					break;
+				}
 				store.clearSuite(plan.id);
 				if (plan.skipReason) {
 					store.skipSuite(plan.id, plan.skipReason);
 					continue;
 				}
-				store.finishSuite(plan.id, "running");
+				const partial = Boolean(opts.filter);
+				store.finishSuite(plan.id, "running", undefined, partial);
 				const started = Date.now();
 				let failed = false;
 				const skips: string[] = [];
 				let ran = 0;
-				for (const check of plan.checks) {
+				for (const original of plan.checks) {
+					const check = opts.filter ? filterCheck(original, opts.filter) : original;
+					if ("skip" in check) {
+						skips.push(check.skip);
+						continue;
+					}
 					const outcome = await runCheck(plan.id, check, cwd, opts);
 					if ("skip" in outcome) skips.push(outcome.skip);
 					else {
 						ran++;
 						failed ||= outcome.failed;
 					}
+					if (opts.watch && opts.signal?.aborted) break;
+				}
+				if (opts.watch && opts.signal?.aborted) {
+					// Interrumpido, no fallido: los tests cortados no son un veredicto.
+					store.clearSuite(plan.id);
+					store.skipSuite(plan.id, "watch cancelado por una ejecución pedida");
+					watchDirty = true;
+					break;
 				}
 				if (ran === 0) store.skipSuite(plan.id, skips.join(" · ") || "no aplica");
 				else {
 					const suite = store.getState().suites.find((s) => s.id === plan.id);
 					const status = suite?.status && suite.status !== "running" ? suite.status : (failed ? "failed" : "passed");
-					store.finishSuite(plan.id, status, Date.now() - started);
+					store.finishSuite(plan.id, status, Date.now() - started, partial);
 				}
 			}
 		} finally {
@@ -2357,13 +2631,17 @@ export default function (pi: ExtensionAPI) {
 		name: "run_test_suite",
 		label: "Run Test Suite",
 		description:
-			"Ejecuta las pruebas reales del proyecto (detectadas por go.mod, package.json, tsconfig.json y playwright.config) y devuelve cada fallo con mensaje, archivo:línea y diagnóstico para corregir y volver a ejecutar",
+			"Ejecuta las pruebas reales del proyecto (Go, Python, PHP, Java, JS/TS y Playwright, según sus archivos) y devuelve cada fallo con mensaje, archivo:línea y diagnóstico. Para el ciclo rojo→verde usa `filter` con el nombre del test de la tarea: se ejecuta solo ese test y en segundos. Ejecuta la suite completa (sin filter, suite all) solo como regresión final.",
 		parameters: {
 			type: "object",
 			properties: {
 				suite: {
 					type: "string",
 					description: "Suite a ejecutar: all, backend, frontend, playwright, ci, data",
+				},
+				filter: {
+					type: "string",
+					description: "Nombre (o patrón) del test a ejecutar; se traduce a cada ejecutor: go -run, pytest -k, vitest -t, playwright -g, phpunit --filter, mvn -Dtest, gradle --tests",
 				},
 			},
 		} as any,
@@ -2377,17 +2655,24 @@ export default function (pi: ExtensionAPI) {
 				const st = structuredClone(store.getState());
 				onUpdate({ content: [{ type: "text", text: `TDD en curso: ${st.stats.passed}/${st.stats.total} pasados, ${st.stats.failed} fallidos, ${st.stats.running} en ejecución` }], details: st });
 			};
-			const ran = await runTestSuite(params?.suite, ctx, { signal, onProgress: progress });
+			const filter = typeof params?.filter === "string" && params.filter.trim() ? params.filter.trim() : undefined;
+			const ran = await runTestSuite(params?.suite, ctx, { signal, onProgress: progress, filter });
 			const st = structuredClone(store.getState());
 			return { content: [{ type: "text", text: formatAgentReport(st, ran) }], details: st };
 		},
 	});
 
 	// ── Escucha de tests ejecutados por el agente en bash ──────────────────
-	pi.on("tool_execution_start", (event) => {
+	const bashLive = createBashLiveIngest(store, process.cwd());
+	/** Llamadas Bash que ejecutan una suite completa: cubren los cambios previos (HCD-056). */
+	const fullTestCalls = new Set<string>();
+	pi.on("tool_execution_start", (event, ctx: any) => {
 		if (event.toolName !== "bash") return;
 		const args = event.args as { command?: unknown } | undefined;
 		if (typeof args?.command !== "string") return;
+		const match = classifyBashTestCommand(args.command);
+		if (match && match.parser !== "hcd" && !match.partial) fullTestCalls.add(event.toolCallId);
+		if (bashLive.start(event.toolCallId, args.command, ctx?.cwd || process.cwd())) requestOverlayRender?.();
 		const tasks = classifyBashTestCommand(args.command)?.hcdTasks;
 		if (!tasks?.length) return;
 		for (const task of tasks) {
@@ -2395,13 +2680,26 @@ export default function (pi: ExtensionAPI) {
 		}
 		renderHCDProgress();
 	});
+	pi.on("tool_execution_update", (event: any) => {
+		if (event?.toolName !== "bash") return;
+		if (bashLive.update(event.toolCallId, event.partialResult)) requestOverlayRender?.();
+	});
 	pi.on("tool_result", async (event: any, ctx: any) => {
 		if (event?.toolName !== "bash") return;
-		const cmd = String(event.input?.command ?? "");
-		if (classifyBashTestCommand(cmd)?.parser === "hcd") return;
 		const text = Array.isArray(event.content)
 			? event.content.map((c: any) => (typeof c?.text === "string" ? c.text : "")).join("\n")
 			: String(event.content ?? "");
+		// Seguido en vivo: se cierra con lo ya ingerido, sin volver a parsear la cola.
+		if (bashLive.end(event.toolCallId, Boolean(event.isError), text)) {
+			requestOverlayRender?.();
+			return;
+		}
+		const cmd = String(event.input?.command ?? "");
+		if (classifyBashTestCommand(cmd)?.parser === "hcd") {
+			// La fila por tarea la lleva tool_execution_end (HCD-053); aquí, los tests de la comprobación.
+			if (ingestHCDVerifyTests(store, cmd, text, Boolean(event.isError), ctx?.cwd || process.cwd())) requestOverlayRender?.();
+			return;
+		}
 		if (ingestBashTestResult(store, cmd, text, Boolean(event.isError), ctx?.cwd || process.cwd())) {
 			requestOverlayRender?.();
 		}
@@ -2411,8 +2709,13 @@ export default function (pi: ExtensionAPI) {
 	// No en turn_end: pi lo dispara y lo espera en cada turno, así que la suite
 	// se relanzaba entre cada tool call y bloqueaba al agente.
 	pi.on("tool_execution_end", (event) => {
-		if (!event.isError && WATCH_TOOLS.has(event.toolName)) watchDirty = true;
+		const fullTests = fullTestCalls.delete(event.toolCallId);
+		// Un Bash de tests completo cubre los cambios previos, como run_test_suite all.
+		if (fullTests && event.durationMs !== undefined) watchDirty = false;
+		else if (!event.isError && WATCH_TOOLS.has(event.toolName)) watchDirty = true;
 		if (event.toolName !== "bash") return;
+		// Bloqueado o abortado sin tool_result: la suite seguida no queda «en curso».
+		if (bashLive.end(event.toolCallId, event.isError || event.durationMs === undefined)) requestOverlayRender?.();
 		const rows = [...hcdRows.values()].filter((row) => row.toolCallId === event.toolCallId && row.status === "running");
 		if (!rows.length) return;
 		// También llega si el tool fue bloqueado o abortado antes de emitir tool_result.

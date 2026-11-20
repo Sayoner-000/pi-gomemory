@@ -6,6 +6,8 @@ import (
 )
 
 func TestHCD027PlaywrightIdentity(t *testing.T) {
+	t.Parallel()
+
 	project, bin := t.TempDir(), t.TempDir()
 	writeFile(t, filepath.Join(project, "playwright.config.ts"), "export default {}")
 
@@ -125,6 +127,8 @@ console.log("PASS TestHCD027PlaywrightIdentity");
 }
 
 func TestHCD027PlaywrightTerminalResults(t *testing.T) {
+	t.Parallel()
+
 	// Case 1: Valid JSON report determines terminal states and cleans up temp file
 	{
 		project, bin := t.TempDir(), t.TempDir()
@@ -168,8 +172,11 @@ EOF
 fi
 exit 1`)
 
+		// TMPDIR propio: os.tmpdir() es compartido y otros tests en paralelo dejan
+		// sus .pw-report- vigentes (Constitución §10, sin datos compartidos).
 		out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"},
 			`process.env.PATH = `+jsStr(bin)+` + ":" + process.env.PATH;
+process.env.TMPDIR = `+jsStr(t.TempDir())+`;
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -230,6 +237,8 @@ console.log("PASS TestHCD027PlaywrightTerminalResults case 2");
 }
 
 func TestHCD027FlakyContract(t *testing.T) {
+	t.Parallel()
+
 	// Case 1: Pure flaky test - counts in total and flaky, NOT in passed, failed, or queued
 	// Initial diagnostic preserved, suite and global status is flaky
 	{

@@ -15,6 +15,8 @@ import (
 //
 // Sin PINS_CANDIDATE se omite. No escribe en ~/.pi/agent.
 func TestPinsValidate(t *testing.T) {
+	t.Parallel()
+
 	spec := os.Getenv("PINS_CANDIDATE")
 	if spec == "" {
 		t.Skip("define PINS_CANDIDATE=<paquete>@<versión> para validar un candidato")

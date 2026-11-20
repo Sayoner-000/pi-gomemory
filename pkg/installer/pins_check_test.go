@@ -15,6 +15,8 @@ import (
 //
 // Con PI_GOMEMORY_ALLOW_STALE_PINS=1 informa el desfase o el error y pasa.
 func TestPinsCheck(t *testing.T) {
+	t.Parallel()
+
 	lines, fail := FormatPinChecks(CheckPins(context.Background()), os.Getenv("PI_GOMEMORY_ALLOW_STALE_PINS") == "1")
 	for _, l := range lines {
 		t.Log(l)

@@ -55,6 +55,8 @@ func (h hcd047Home) tools(path string) []string {
 }
 
 func TestHCD047Binary(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("compila el binario")
 	}

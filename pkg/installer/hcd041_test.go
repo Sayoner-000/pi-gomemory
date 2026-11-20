@@ -21,6 +21,8 @@ import (
 // el 05 era un testigo y se invierte: más entradas que el límite se rechazan.
 
 func TestACRADM02PreserveSymlinkAfterPlan(t *testing.T) {
+	t.Parallel()
+
 	d := t.TempDir()
 	defaults := []byte(`{"showStartupHeader":false}`)
 	cfg := filepath.Join(d, "pi-cc-extensions.json")
@@ -49,6 +51,8 @@ func TestACRADM02PreserveSymlinkAfterPlan(t *testing.T) {
 }
 
 func TestACRADM03FailedCommandIsNotVersion(t *testing.T) {
+	t.Parallel()
+
 	v, err := versionFromCmd("sh", "-c", "printf '9.0.0\\n'; exit 7")(context.Background())
 	if err == nil {
 		t.Fatalf("failed command accepted: version=%q error=nil", v)
@@ -56,6 +60,8 @@ func TestACRADM03FailedCommandIsNotVersion(t *testing.T) {
 }
 
 func TestACRADM04MissingCacheIsNotHealthy(t *testing.T) {
+	t.Parallel()
+
 	var out, errs bytes.Buffer
 	rc := RunDepsUpdate(filepath.Join(t.TempDir(), "absent.json"), nil, &out, &errs)
 	if rc == 0 && bytes.Contains(out.Bytes(), []byte("están al día")) {
@@ -164,6 +170,8 @@ func TestHCD041DepsUpdateUnknown(t *testing.T) {
 // Tarea 3 (H-03, Q1): un comando que termina con error o se cancela nunca da
 // versión, aunque imprima una en stdout o stderr; el éxito se conserva.
 func TestHCD041FailedCommand(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	for name, script := range map[string]string{
 		"semver en stdout": "printf '9.0.0\\n'; exit 7",
@@ -196,6 +204,8 @@ func TestHCD041FailedCommand(t *testing.T) {
 // el plan y la acción, se conserva como «cambió después del plan»; un archivo
 // normal con los valores por defecto se sigue retirando.
 func TestHCD041CCExtensionsAfterPlan(t *testing.T) {
+	t.Parallel()
+
 	defaults := []byte(`{"showStartupHeader":false}`)
 	assets := fstest.MapFS{"config/pi-cc-extensions.json": &fstest.MapFile{Data: defaults}}
 	plan := func(t *testing.T) (string, string, *UninstallAction) {

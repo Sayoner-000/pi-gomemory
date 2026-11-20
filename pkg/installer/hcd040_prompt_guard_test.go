@@ -13,6 +13,8 @@ import (
 // TestHCD040PromptGuardRegression runs the archived reference, never the
 // installed extension. It performs no network or credential access.
 func TestHCD040PromptGuardRegression(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", "--test",

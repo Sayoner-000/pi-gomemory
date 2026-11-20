@@ -10,6 +10,8 @@ import (
 // HCD-032 · C-001: install, update y uninstall conservan el modo de
 // ~/.pi/agent/AGENTS.md; uno nuevo se crea con 0644 como hasta ahora.
 func TestHCD032AgentsModePreserved(t *testing.T) {
+	t.Parallel()
+
 	modeOf := func(t *testing.T, path string) os.FileMode {
 		t.Helper()
 		info, err := os.Stat(path)

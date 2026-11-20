@@ -126,6 +126,8 @@ func TestHCD023AnthropicUsageErrors(t *testing.T) {
 }
 
 func TestHCD023CommandRegistered(t *testing.T) {
+	t.Parallel()
+
 	data, err := os.ReadFile(filepath.Join("..", "..", "main.go"))
 	if err != nil {
 		t.Fatal(err)
@@ -140,6 +142,8 @@ func TestHCD023CommandRegistered(t *testing.T) {
 }
 
 func TestHCD023SidebarPlanLimits(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import { renderSidebar, anthropicPlanErrorMessage } from "./gomemory-sidebar.ts";
 const theme = { fg: (_c, s) => s, style: (s) => s };

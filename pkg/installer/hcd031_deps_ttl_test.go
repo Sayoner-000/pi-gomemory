@@ -9,6 +9,8 @@ import (
 // HCD-031: una release publicada después de la última consulta se descubre
 // como mucho una hora más tarde. Con menos de una hora se reutiliza la caché.
 func TestHCD031DepsCacheTTL(t *testing.T) {
+	t.Parallel()
+
 	checked := time.Date(2026, 11, 13, 6, 5, 0, 0, time.UTC)
 	calls := 0
 	probes := []DepProbe{{

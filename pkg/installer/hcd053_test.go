@@ -3,6 +3,8 @@ package installer
 import "testing"
 
 func TestHCD053LiveHCDRows(t *testing.T) {
+	t.Parallel()
+
 	runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import { chmodSync, readFileSync, writeFileSync } from "node:fs";
@@ -67,6 +69,9 @@ writeFileSync(mem, '#!/bin/sh\nprintf x >> watch-runs\nprintf \'%s\\n\' \'{"ok":
 chmodSync(mem, 0o700);
 process.env.PATH = ctx.cwd + ":" + process.env.PATH;
 await handlers.get("agent_settled")({}, ctx);
+// Desde HCD-056 una ejecución pedida aborta watch en cola: se espera a que watch termine.
+for (let i = 0; i < 200 && !/Data & Graph \(1\/1\)/.test(screen()); i++) await new Promise((r) => setTimeout(r, 25));
+assert.equal(readFileSync(join(ctx.cwd, "watch-runs"), "utf8"), "x", "Watch debe correr el flujo real");
 await tool.execute("after-watch", { suite: "data" }, undefined, undefined, ctx);
 assert.equal(readFileSync(join(ctx.cwd, "watch-runs"), "utf8"), "xx", "Watch y la ejecución encolada deben correr");
 assert.match(screen(), /Data & Graph \(1\/1\)/);

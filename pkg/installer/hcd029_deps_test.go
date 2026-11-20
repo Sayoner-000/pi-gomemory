@@ -9,6 +9,8 @@ import (
 // HCD-029: el estado no anuncia una actualización que ya está instalada. La
 // versión instalada se relee del probe; la caché solo aporta la última publicada.
 func TestHCD029DepsStatusUsesLiveVersion(t *testing.T) {
+	t.Parallel()
+
 	cache := writeDepsCache(t, `{"deps":[
  {"name":"pi-gomemory","current":"v1.6.2","latest":"v1.9.0"},
  {"name":"mem","current":"2.54.0","latest":"2.54.1"},

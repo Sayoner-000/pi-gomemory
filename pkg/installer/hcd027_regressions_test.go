@@ -10,6 +10,8 @@ import (
 // Each subtest asserts the corrected behavior against a synthetic reproduction.
 // Missing executables and setup errors must not be mistaken for reproduced defects.
 func TestHCD027Reproductions(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name string
 		run  func(*testing.T)
@@ -188,6 +190,8 @@ console.log("C006: no approval without a terminal result");
 }
 
 func TestHCD027SkillCleanupCompatibility(t *testing.T) {
+	t.Parallel()
+
 	home := t.TempDir()
 	piDir := filepath.Join(home, ".pi", "agent")
 	skillsDir := filepath.Join(piDir, "skills")

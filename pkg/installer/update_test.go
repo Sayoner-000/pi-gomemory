@@ -18,6 +18,8 @@ import (
 )
 
 func TestIsNewer(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		latest, current string
 		want            bool
@@ -156,6 +158,8 @@ func newDownloadServer(t *testing.T, tag string, tarball []byte, sum string) *ht
 }
 
 func TestUpdateReplacesBinary(t *testing.T) {
+	t.Parallel()
+
 	tarball := makeTarball(t, []byte("NEW-BINARY"))
 	h := sha256.Sum256(tarball)
 	srv := newDownloadServer(t, "v1.3.0", tarball, hex.EncodeToString(h[:]))
@@ -178,6 +182,8 @@ func TestUpdateReplacesBinary(t *testing.T) {
 }
 
 func TestUpdateRejectsBadChecksum(t *testing.T) {
+	t.Parallel()
+
 	tarball := makeTarball(t, []byte("EVIL"))
 	srv := newDownloadServer(t, "v1.3.0", tarball, strings.Repeat("0", 64))
 	defer srv.Close()
@@ -197,6 +203,8 @@ func TestUpdateRejectsBadChecksum(t *testing.T) {
 
 // HCD-004 sustituye check-update por deps-status/deps-refresh, que incluyen pi-gomemory.
 func TestHarnessCallsCheckUpdate(t *testing.T) {
+	t.Parallel()
+
 	s := GenerateHarnessScript()
 	if !strings.Contains(s, "pi-gomemory-setup deps-status") {
 		t.Fatalf("el launcher debe llamar a deps-status")

@@ -54,6 +54,8 @@ const realHeaders = {
 `
 
 func TestHCD024PlanFromHeaders(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, hcd024Sidebar+`
 if (!handlers.after_provider_response) { console.log("FAIL el sidebar no escucha after_provider_response"); process.exit(0); }
 await handlers.after_provider_response({ status: 200, headers: realHeaders }, ctx);
@@ -82,6 +84,8 @@ process.exit(0);
 }
 
 func TestHCD024NoPolling(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, hcd024Sidebar+`
 await commands.sidebar.handler("", ctx);
 await settle();

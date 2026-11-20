@@ -13,6 +13,8 @@ import (
 // HCD-020: antes simulaba pi.exec con un JSON inventado sobre cwd "/dummy"; ese
 // contrato ocultaba que /tdd no ejecutaba nada real. Ahora corre un módulo Go real.
 func TestHCD018TDDLiveExecutionMultiTest(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "go.mod"), "module multi\n\ngo 1.22\n")
 	writeFile(t, filepath.Join(dir, "shop", "shop_test.go"), `package shop

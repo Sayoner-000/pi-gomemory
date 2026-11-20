@@ -7,6 +7,8 @@ import (
 )
 
 func TestClipboardDiagnostic(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct{ name, platform, display, wayland, bins, status, detail string }{
 		{"mac", "darwin", "", "", "pbcopy pbpaste", "INFO", "pbcopy"},
 		{"mac missing paste", "darwin", "", "", "pbcopy", "WARN", "pbpaste"},

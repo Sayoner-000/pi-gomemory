@@ -32,6 +32,8 @@ func TestPinnedPackages(t *testing.T) {
 }
 
 func TestPinnedDepProbes(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-antigravity", "package.json"), `{"version":"0.11.0"}`)
 	for _, p := range DefaultDepProbes("v1.0.0", dir) {

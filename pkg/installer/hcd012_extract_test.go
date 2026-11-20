@@ -7,6 +7,8 @@ import (
 
 // C-07: extractBinary no copia el tarball a string.
 func TestHCD012Extract(t *testing.T) {
+	t.Parallel()
+
 	if strings.Contains(readFile(t, "update.go"), "string(tarball)") {
 		t.Fatal("extractBinary todavía convierte el tarball a string")
 	}

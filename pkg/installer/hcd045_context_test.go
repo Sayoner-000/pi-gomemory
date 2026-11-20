@@ -47,6 +47,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 // C-01: session_start lanza mem context con el cwd de la sesión y el timeout,
 // sin bloquear el arranque; before_agent_start espera la carga y añade la sección.
 func TestHCD045ContextLoad(t *testing.T) {
+	t.Parallel()
+
 	runHCD045(t, `
 let release;
 execImpl = () => new Promise((r) => { release = r; });
@@ -71,6 +73,8 @@ if (result && result.systemPrompt !== undefined) fails.push("no debe reemplazar 
 // C-01 (Q2): la sección es idéntica entre ejecuciones de la misma sesión y
 // mem context se ejecuta una sola vez por sesión.
 func TestHCD045ContextStable(t *testing.T) {
+	t.Parallel()
+
 	runHCD045(t, `
 let n = 0;
 execImpl = async () => ({ code: 0, stdout: "contexto " + (++n), stderr: "" });
@@ -84,6 +88,8 @@ if (execCalls.length !== 1) fails.push("mem context se ejecutó " + execCalls.le
 
 // C-03: cada session_start (cualquier reason) recarga el contexto.
 func TestHCD045ContextNewSession(t *testing.T) {
+	t.Parallel()
+
 	runHCD045(t, `
 let text = "regla antigua";
 execImpl = async () => ({ code: 0, stdout: text, stderr: "" });
@@ -102,6 +108,8 @@ if (!a.includes("regla antigua")) fails.push("primera sesión sin contexto");
 
 // C-08: más de 24 KB se recorta por el final sin partir UTF-8 y con la línea de recorte.
 func TestHCD045ContextTruncate(t *testing.T) {
+	t.Parallel()
+
 	runHCD045(t, `
 if (MAX_CONTEXT_BYTES !== 24576) fails.push("MAX_CONTEXT_BYTES debe ser 24576");
 if (!TRUNCATION_LINE.includes("get_context()")) fails.push("la línea de recorte no remite a get_context()");
@@ -124,6 +132,8 @@ if ((await run()).section.includes(TRUNCATION_LINE)) fails.push("recorta un cont
 // before_agent_start las tools MCP aún no están en selectedTools: conectan en
 // segundo plano); remite a las declaradas y dice si codemode está activo.
 func TestHCD045PiBlock(t *testing.T) {
+	t.Parallel()
+
 	runHCD045(t, `
 const src = (await import("node:fs")).readFileSync(new URL("./gomemory-context.ts", import.meta.url), "utf8");
 if (/from\s+["']node:fs|require\(["']node:fs|readFile/.test(src)) fails.push("la extensión no debe leer archivos (mcp.json)");
@@ -144,6 +154,8 @@ if (direct.includes("tools.<nombre>(args)")) fails.push("sin codemode no debe ha
 // C-09 (Q5): con /plan activo, sections contiene la sección de gomemory y la del
 // método de plan; gomemory-plan.ts ya no reemplaza systemPrompt.
 func TestHCD045PlanSections(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-context.ts", "extensions/gomemory-plan.ts", "extensions/gomemory-plan-patterns.json"}, `
 import contextExt, { SECTION } from "./gomemory-context.ts";
 import planExt from "./gomemory-plan.ts";
@@ -187,6 +199,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 // C-02 (Q6): mem ausente, con error, vacío o con timeout → solo bloque Pi y un
 // único aviso warning por sesión; nunca texto que imite mem context.
 func TestHCD045ContextMemFailure(t *testing.T) {
+	t.Parallel()
+
 	runHCD045(t, `
 const cases = {
 	ausente: async () => { throw new Error("spawn mem ENOENT"); },

@@ -7,6 +7,8 @@ import (
 
 // TestHCD017SidebarTurnEndRefresh verifica que el sidebar se suscribe a turn_end y refresca con fuerza
 func TestHCD017SidebarTurnEndRefresh(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import sidebarFactory from "./gomemory-sidebar.ts";
 
@@ -37,6 +39,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 
 // TestHCD017SidebarHeartbeatTimer verifica que el heartbeat y TTL no bloquean la actualizacion
 func TestHCD017SidebarHeartbeatTimer(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import { shouldRefreshQuota } from "./gomemory-sidebar.ts";
 
@@ -65,6 +69,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 
 // TestHCD017SidebarProviderDetection verifica la deteccion robusta de proveedores
 func TestHCD017SidebarProviderDetection(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import { detectProvider } from "./gomemory-sidebar.ts";
 

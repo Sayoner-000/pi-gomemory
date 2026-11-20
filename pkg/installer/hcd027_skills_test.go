@@ -8,6 +8,8 @@ import (
 )
 
 func TestHCD027SkillExtras(t *testing.T) {
+	t.Parallel()
+
 	home := t.TempDir()
 	piDir := filepath.Join(home, ".pi", "agent")
 	skillsDir := filepath.Join(piDir, "skills")

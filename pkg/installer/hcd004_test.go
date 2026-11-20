@@ -18,6 +18,8 @@ func failing(msg string) func(context.Context) (string, error) {
 }
 
 func TestRefreshDeps(t *testing.T) {
+	t.Parallel()
+
 	cache := filepath.Join(t.TempDir(), "deps.json")
 	probes := []DepProbe{
 		{Name: "a", Current: fixed("1.0.0"), Latest: fixed("v1.1.0"), Update: []string{"a", "up"}},
@@ -34,6 +36,8 @@ func TestRefreshDeps(t *testing.T) {
 }
 
 func TestDepsStatus(t *testing.T) {
+	t.Parallel()
+
 	cache := filepath.Join(t.TempDir(), "deps.json")
 	RefreshDeps([]DepProbe{
 		{Name: "a", Current: fixed("1.0.0"), Latest: fixed("1.0.0")},
@@ -54,6 +58,8 @@ func TestDepsStatus(t *testing.T) {
 }
 
 func TestHarnessDepsCheck(t *testing.T) {
+	t.Parallel()
+
 	s := GenerateHarnessScript()
 	for _, want := range []string{
 		"pi-gomemory-setup deps-refresh",

@@ -13,6 +13,8 @@ import (
 // sin cambios de contenido.
 
 func TestADM20261117StreamOutputBound(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import { streamLines } from "./gomemory-tdd.ts";
@@ -60,6 +62,8 @@ func TestADM20261117QuotaRejectsMissingData(t *testing.T) {
 // deja el aviso en el diagnóstico y devuelve código 1; una de 64 Ki exactos se
 // acepta entera. Vale tanto si la línea nunca termina como si termina tarde.
 func TestHCD038LongLineFails(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import { streamLines } from "./gomemory-tdd.ts";
 const fails = [];
@@ -95,6 +99,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 // en bytes UTF-8, con muchas líneas grandes multibyte en stdout y stderr a la vez;
 // el parser sigue recibiendo cada línea completa y tail conserva la última.
 func TestHCD038TailBudget(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import { streamLines } from "./gomemory-tdd.ts";
 const fails = [];
@@ -107,11 +113,15 @@ const res = await streamLines(process.execPath, ["-e", script], { timeoutMs: 200
 const bytes = res.tail.reduce((n, s) => n + Buffer.byteLength(s), 0);
 if (res.code !== 0) fails.push("código " + res.code + ", se esperaba 0");
 if (lines.length !== 201) fails.push("el parser recibió " + lines.length + " líneas, se esperaban 201");
-if (lines.slice(0, 200).some((l) => l.length !== 5000)) fails.push("el parser debe recibir cada línea completa");
+// stdout y stderr son tuberías distintas: FIN puede llegar antes que las últimas
+// líneas de stderr (Constitución §10, sin depender del orden). Se comprueba el
+// contenido recibido y que tail conserve la última línea que llegó.
+if (lines.filter((l) => l.length === 5000).length !== 200 || lines.filter((l) => l === "FIN").length !== 1) fails.push("el parser debe recibir cada línea completa");
 if (res.tail.length > 40) fails.push("tail tiene " + res.tail.length + " líneas, máximo 40");
 if (res.tail.some((l) => l.length > 1024)) fails.push("tail guarda extractos de más de 1 Ki caracteres");
 if (bytes > 65536) fails.push("tail retiene " + bytes + " bytes, máximo 65536");
-if (res.tail[res.tail.length - 1] !== "FIN") fails.push("tail debe conservar la última línea, termina en " + JSON.stringify(res.tail.at(-1)?.slice(0, 20)));
+const last = lines.at(-1) ?? "";
+if (res.tail.at(-1) !== last.slice(-1024)) fails.push("tail debe conservar la última línea recibida, termina en " + JSON.stringify(res.tail.at(-1)?.slice(0, 20)));
 console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 `)
 	if !strings.Contains(out, "PASS") {
@@ -122,6 +132,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 // Tarea 4: el check hcd lee la unidad del JSON completo de una línea de
 // `mem hcd show --json`, aunque supere el extracto de 1 Ki que guarda tail.
 func TestHCD038HcdCheckLongJSON(t *testing.T) {
+	t.Parallel()
+
 	proj := t.TempDir()
 	bin := t.TempDir()
 	writeExec(t, filepath.Join(bin, "mem"), `printf '{"ok":true,"unit_id":"HCD-999","pad":"%s"}\n' "$(printf 'x%.0s' $(seq 1 3000))"`)
@@ -140,6 +152,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 // Tarea 5: parseQuotaResponse solo acepta respuestas con al menos un bucket y
 // fracciones en [0,1]; 0 y 1 son valores legítimos.
 func TestHCD038QuotaParse(t *testing.T) {
+	t.Parallel()
+
 	bucket := func(frac string) string {
 		return `{"groups":[{"displayName":"G","buckets":[{"displayName":"B","remainingFraction":` + frac + `}]}]}`
 	}

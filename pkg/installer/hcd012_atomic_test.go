@@ -13,6 +13,8 @@ import (
 
 // C-05: el instalador no usa os.WriteFile fuera de tests y uninstall.go.
 func TestHCD012AtomicNoWriteFile(t *testing.T) {
+	t.Parallel()
+
 	files, _ := filepath.Glob("*.go")
 	for _, f := range files {
 		if strings.HasSuffix(f, "_test.go") || f == "uninstall.go" {

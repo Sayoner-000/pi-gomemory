@@ -9,6 +9,8 @@ import (
 // se suscriben a session_shutdown para limpiar timers y overlays, y que los lectores de ctx
 // (detectProvider, collectContextMetrics) no arrojan si ctx.model lanza un error de ctx obsoleto (stale).
 func TestHCD018StaleCtxAndSessionShutdown(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts", "extensions/gomemory-tdd.ts"}, `
 import sidebarFactory, { detectProvider, collectContextMetrics } from "./gomemory-sidebar.ts";
 import tddFactory from "./gomemory-tdd.ts";

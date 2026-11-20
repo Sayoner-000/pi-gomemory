@@ -51,6 +51,8 @@ const fails = [];
 // el minimizado ocupa 1 fila y un clic sobre ella restaura. El sidebar publica
 // su altura en el dock compartido.
 func TestHCD019SidebarClickToggle(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import factory from "./gomemory-sidebar.ts";
 `+hcd019Harness+`
@@ -89,6 +91,8 @@ process.exit(0);
 // TestHCD019TDDClickToggleAndDock: el panel TDD alterna una vez por clic, se
 // minimiza a 1 fila y se coloca debajo del sidebar sin solaparse.
 func TestHCD019TDDClickToggleAndDock(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import factory from "./gomemory-tdd.ts";
 `+hcd019Harness+`

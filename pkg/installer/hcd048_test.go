@@ -9,6 +9,8 @@ import (
 )
 
 func TestHCD048H01SidebarReentrancy(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import factory from "./gomemory-sidebar.ts";
 const commands = {};
@@ -132,6 +134,8 @@ process.exit(0);
 }
 
 func TestHCD048H03UninstallMarkerOnFail(t *testing.T) {
+	t.Parallel()
+
 	home := t.TempDir()
 	opts := &Options{
 		HomeDir:     home,
@@ -161,6 +165,8 @@ func TestHCD048H03UninstallMarkerOnFail(t *testing.T) {
 }
 
 func TestHCD048H04SanitizeFrontmatterLongLine(t *testing.T) {
+	t.Parallel()
+
 	longLine := strings.Repeat("a", 80*1024)
 	input := "---\nname: demo\ndescription: a: b\n---\n" + longLine + "\nTAIL\n"
 	got := string(SanitizeFrontmatter([]byte(input)))
@@ -173,6 +179,8 @@ func TestHCD048H04SanitizeFrontmatterLongLine(t *testing.T) {
 }
 
 func TestHCD048H05TasksConcurrentToggle(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tasks.ts"}, `
 import factory from "./gomemory-tasks.ts";
 const commands = {};

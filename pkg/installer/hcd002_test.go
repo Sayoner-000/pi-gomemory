@@ -73,6 +73,8 @@ func TestDoctorHostSkills(t *testing.T) {
 }
 
 func TestHarnessExportsRunningVersion(t *testing.T) {
+	t.Parallel()
+
 	s := GenerateHarnessScript()
 	if !strings.Contains(s, `export PI_GOMEMORY_RUNNING_VERSION="$(pi-gomemory-setup version`) {
 		t.Fatal("el launcher debe exportar PI_GOMEMORY_RUNNING_VERSION")
@@ -131,6 +133,8 @@ func planBlocks(p planPatterns, cmd string) bool {
 }
 
 func TestPlanPatterns(t *testing.T) {
+	t.Parallel()
+
 	var p planPatterns
 	if err := json.Unmarshal([]byte(readAsset(t, "extensions/gomemory-plan-patterns.json")), &p); err != nil {
 		t.Fatal(err)
@@ -174,6 +178,8 @@ func TestPlanExtensionEmbedded(t *testing.T) {
 }
 
 func TestPlanWithPrompt(t *testing.T) {
+	t.Parallel()
+
 	s := readAsset(t, "extensions/gomemory-plan.ts")
 	for _, want := range []string{"sendUserMessage(arg", `deliverAs: "followUp"`, "isIdle"} {
 		if !strings.Contains(s, want) {
@@ -186,6 +192,8 @@ func TestPlanWithPrompt(t *testing.T) {
 }
 
 func TestPlanExtensionFallbackMarker(t *testing.T) {
+	t.Parallel()
+
 	s := readAsset(t, "extensions/gomemory-plan.ts")
 	for _, want := range []string{"before_agent_start", `"plan-context"`, "timeout: 5000", "[gomemory-plan:fallback]", ".trim()"} {
 		if !strings.Contains(s, want) {

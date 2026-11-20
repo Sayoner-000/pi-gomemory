@@ -17,6 +17,8 @@ func hcd045Block() string {
 // con el bloque en medio, al final o en el formato antiguo sin marcadores,
 // conservando permisos y enlace; y nunca vuelve a escribir el protocolo.
 func TestHCD045InstallStrips(t *testing.T) {
+	t.Parallel()
+
 	cases := map[string]string{
 		"bloque al final":    "# Mis reglas\n\nNo tocar.\n\n" + hcd045Block(),
 		"bloque en medio":    "# Mis reglas\n\n" + hcd045Block() + "\nPie propio.\n",
@@ -90,6 +92,8 @@ func TestHCD045InstallStrips(t *testing.T) {
 // protocolo (extraídas de git a legacy/), no solo en la última. Caso real de
 // la verificación con Pi: la versión de 2026-11-09 seguida de bloques ajenos.
 func TestHCD045InstallStripsHistoricVersions(t *testing.T) {
+	t.Parallel()
+
 	foreign := "<!-- codebase-memory-mcp:start -->\n# Codebase Memory\n<!-- codebase-memory-mcp:end -->\n"
 	for _, v := range []string{"protocol-1.txt", "protocol-2.txt"} {
 		t.Run(v, func(t *testing.T) {
@@ -113,6 +117,8 @@ func TestHCD045InstallStripsHistoricVersions(t *testing.T) {
 // C-06 (Q4): si AGENTS.md solo tenía el bloque, install hace lo mismo que
 // uninstall: borra el archivo normal y vacía el destino de un enlace.
 func TestHCD045InstallOnlyBlock(t *testing.T) {
+	t.Parallel()
+
 	t.Run("archivo normal se borra", func(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "AGENTS.md")
@@ -142,6 +148,8 @@ func TestHCD045InstallOnlyBlock(t *testing.T) {
 // C-07: si no se puede escribir AGENTS.md, el paso de install informa y no
 // aborta la instalación.
 func TestHCD045InstallReadOnly(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AGENTS.md")
 	writeFile(t, path, "mías\n\n"+hcd045Block())
@@ -184,6 +192,8 @@ func TestHCD045ContextExtensionInstalled(t *testing.T) {
 // C-07: doctor avisa del bloque heredado con la orden que lo retira, y calla
 // cuando no está.
 func TestHCD045DoctorLegacyBlock(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AGENTS.md")
 	if item := legacyAgentsItem(dir); item != nil {

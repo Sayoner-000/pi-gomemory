@@ -10,6 +10,8 @@ import (
 // y sin bloquearlo. En pi 1.5 turn_end se dispara (y se espera) en cada turno: si
 // watch corre ahí, la suite se relanza entre cada tool call y el agente queda en bucle.
 func TestTDDWatchRunsOncePerSettledChange(t *testing.T) {
+	t.Parallel()
+
 	proj := t.TempDir()
 	bin := t.TempDir()
 	count := filepath.Join(bin, "count.log")

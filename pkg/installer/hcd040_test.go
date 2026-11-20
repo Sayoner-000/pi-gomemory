@@ -11,6 +11,8 @@ import (
 
 // Reproductor de H-01 de la ACR/ADM 2026-11-17 (docs/audits/2026-11-17-acr-adm-repro_test.go.txt).
 func TestACRADM01NewPinOverridesOldCache(t *testing.T) {
+	t.Parallel()
+
 	p := filepath.Join(t.TempDir(), "cache.json")
 	b, _ := json.Marshal(depsCache{CheckedAt: time.Now(), Deps: []DepState{{Name: "pi-antigravity", Current: "0.12.0", Latest: "0.12.0"}}})
 	if err := os.WriteFile(p, b, 0600); err != nil {
@@ -27,6 +29,8 @@ func TestACRADM01NewPinOverridesOldCache(t *testing.T) {
 // ofrece exactamente el pin compilado, no lo que diga la caché, y los demás
 // componentes siguen usando la latest guardada.
 func TestHCD040StaleCacheOffersNewPin(t *testing.T) {
+	t.Parallel()
+
 	probe := func(name, current, source string) DepProbe {
 		return DepProbe{Name: name, Current: fixedVersion(current), Update: []string{"pi", "install", source}}
 	}
@@ -131,6 +135,8 @@ func TestHCD040HistoricPins(t *testing.T) {
 
 // Tarea 1: los pins y sus fuentes apuntan a las versiones validadas.
 func TestHCD040PinsBumped(t *testing.T) {
+	t.Parallel()
+
 	if AntigravityVersion != "0.14.0" || AntigravityPackageSource != "npm:pi-antigravity@0.14.0" {
 		t.Errorf("pi-antigravity: %s / %s, se espera 0.14.0", AntigravityVersion, AntigravityPackageSource)
 	}

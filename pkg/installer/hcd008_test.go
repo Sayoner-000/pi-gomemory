@@ -8,6 +8,8 @@ import (
 )
 
 func TestTasksExtension(t *testing.T) {
+	t.Parallel()
+
 	s := readAsset(t, "extensions/gomemory-tasks.ts")
 	for _, want := range []string{
 		`"hcd", "show", "--json"`, "timeout: 5000", "setWidget", `"gomemory-tasks"`,

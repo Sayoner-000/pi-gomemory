@@ -37,6 +37,8 @@ func TestHCD037GoRule(t *testing.T) {
 
 // C-01, C-04: el launcher aplica la misma regla con update_check_disabled.
 func TestHCD037Launcher(t *testing.T) {
+	t.Parallel()
+
 	s := GenerateHarnessScript()
 	if strings.Contains(s, `[ -z "${PI_GOMEMORY_NO_UPDATE_CHECK:-}" ]`) {
 		t.Fatal("C-04: el launcher conserva la condición [ -z ], que desactiva con =0")
@@ -70,6 +72,8 @@ func TestHCD037Launcher(t *testing.T) {
 
 // C-01, C-02: el pie aplica la misma regla y, con =0, consulta deps-status.
 func TestHCD037Footer(t *testing.T) {
+	t.Parallel()
+
 	table := make([]map[string]any, 0, len(hcd037Cases))
 	for _, c := range hcd037Cases {
 		table = append(table, map[string]any{"Value": c.value, "Disabled": c.disabled})

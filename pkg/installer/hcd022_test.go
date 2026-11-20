@@ -39,6 +39,8 @@ const fails = [];
 `
 
 func TestHCD022MinBothPanels(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts", "extensions/gomemory-tdd.ts"}, hcd022Panels+`
 if (rows("sidebar", 36) < 3 || rows("tdd", 44) < 3) fails.push("al empezar ambos paneles deben estar expandidos");
 
@@ -62,6 +64,8 @@ process.exit(0);
 }
 
 func TestHCD022TddReport(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "go.mod"), "module rep\n\ngo 1.22\n")
 	writeFile(t, filepath.Join(dir, "calc", "calc_test.go"), `package calc
@@ -105,6 +109,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 }
 
 func TestHCD022StatusNoEmoji(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-status.ts"}, `
 import statusExt from "./gomemory-status.ts";
 const handlers = {};

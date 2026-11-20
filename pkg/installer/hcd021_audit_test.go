@@ -10,6 +10,8 @@ import (
 
 // C-004: con un título largo, renderSidebar debe conservar el control [−].
 func TestHCD021SidebarLongTitle(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import { renderSidebar } from "./gomemory-sidebar.ts";
 const theme = { fg: (_c, s) => s, style: (s) => s };
@@ -35,6 +37,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 
 // C-005: fetchQuota no carga en memoria respuestas de más de 1 MiB.
 func TestHCD021QuotaBodyLimit(t *testing.T) {
+	t.Parallel()
+
 	big := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		chunk := strings.Repeat("x", 64<<10)
@@ -61,8 +65,11 @@ func TestHCD021QuotaBodyLimit(t *testing.T) {
 }
 
 // C-003: durante una ejecución, N turnos en modo watch dejan una sola ejecución
-// pendiente (no N), y un /tdd run que queda en cola lo avisa.
+// pendiente (no N), y un /tdd run que queda en cola lo avisa. Desde HCD-056 el
+// /tdd run cancela esa ejecución de watch en lugar de esperar a que termine.
 func TestHCD021WatchCoalesces(t *testing.T) {
+	t.Parallel()
+
 	proj := t.TempDir()
 	bin := t.TempDir()
 	count := filepath.Join(bin, "count.log")
@@ -96,13 +103,23 @@ for (let i = 0; i < 5; i++) {
 	await emit("tool_execution_end", { toolName: "edit", isError: false });
 	turns.push(emit("agent_settled", { aborted: false }));
 }
-const manual = commands.tdd.handler("run", ctx);
-await Promise.all([first, ...turns, manual]);
+await first;
+await Promise.all(turns);
+// Se espera a que la única ejecución de watch agrupada esté dentro de go test (0,4 s);
+// una espera fija no basta bajo la carga de la suite paralela (HCD-056).
+const testRuns = () => { try { return readFileSync(`+jsStr(count)+`, "utf8").split("\n").filter((l) => l === "test").length; } catch { return 0; } };
+for (let i = 0; i < 200 && testRuns() < 2; i++) await new Promise((r) => setTimeout(r, 10));
+const t0 = Date.now();
+await commands.tdd.handler("run", ctx);
+const manualMs = Date.now() - t0;
+await new Promise((r) => setTimeout(r, 600));
 const runs = readFileSync(`+jsStr(count)+`, "utf8").split("\n").filter((l) => l === "test").length;
 const fails = [];
-// tool + una sola ejecución de watch agrupada + /tdd run manual
+// tool + una sola ejecución de watch agrupada (cancelada por /tdd run) + /tdd run manual
 if (runs !== 3) fails.push("go test se ejecutó " + runs + " veces; se esperaban 3 (tool, watch agrupado, /tdd run)");
 if (!notes.some((m) => /cola/i.test(m))) fails.push("un /tdd run en cola debe avisarlo: " + JSON.stringify(notes));
+// /tdd run no espera los ~0,25 s que le quedaban a watch: solo su propia ejecución.
+if (manualMs > 1500) fails.push("/tdd run esperó a watch: " + manualMs + " ms");
 console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 `)
 	if !strings.Contains(out, "PASS") {
@@ -112,6 +129,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 
 // C-006: en un repositorio Go externo (sin pkg/installer) /tdd ejecuta go test ./...
 func TestHCD021ExternalGoRepo(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "go.mod"), "module github.com/ejemplo/servicio\n\ngo 1.22\n")
 	writeFile(t, filepath.Join(dir, "internal", "orders", "orders_test.go"), `package orders

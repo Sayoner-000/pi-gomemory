@@ -143,6 +143,8 @@ func TestHCD026CodexUsageErrors(t *testing.T) {
 }
 
 func TestHCD026CommandRegistered(t *testing.T) {
+	t.Parallel()
+
 	// Verifica que main.go acepte "codex-usage"
 	mainSrc, err := os.ReadFile(filepath.Join("..", "..", "main.go"))
 	if err != nil {
@@ -158,6 +160,8 @@ func TestHCD026CommandRegistered(t *testing.T) {
 }
 
 func TestHCD026SidebarCodexQuota(t *testing.T) {
+	t.Parallel()
+
 	sidebarSrc, err := os.ReadFile(filepath.Join("..", "..", "extensions", "gomemory-sidebar.ts"))
 	if err != nil {
 		t.Fatalf("leer extensions/gomemory-sidebar.ts: %v", err)

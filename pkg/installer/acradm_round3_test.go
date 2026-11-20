@@ -15,6 +15,8 @@ import (
 )
 
 func TestRound3PrereleaseThroughCommand(t *testing.T) {
+	t.Parallel()
+
 	current := versionFromCmd("sh", "-c", "printf 'tool 1.0.0-rc.1\\n'")
 	v, err := current(context.Background())
 	if err != nil || v != "1.0.0-rc.1" {
@@ -97,6 +99,8 @@ func TestRound3SelfReplacement(t *testing.T) {
 
 // Cada bloqueo se ejecuta en un proceso/grupo aislado, terminado por el padre.
 func TestRound3ProbeChild(t *testing.T) {
+	t.Parallel()
+
 	mode := os.Getenv("ROUND3_CASE")
 	if mode == "" {
 		t.Skip("helper subprocess only")
@@ -123,6 +127,8 @@ func TestRound3ProbeChild(t *testing.T) {
 }
 
 func TestRound3ManifestFIFO(t *testing.T) {
+	t.Parallel()
+
 	home := t.TempDir()
 	path := ManifestPath(home)
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
@@ -135,6 +141,8 @@ func TestRound3ManifestFIFO(t *testing.T) {
 }
 
 func TestRound3DoctorDescendant(t *testing.T) {
+	t.Parallel()
+
 	home := t.TempDir()
 	bin := t.TempDir()
 	// El shell directo muere a los 10s de doctor, el sleep conserva las tuberías.

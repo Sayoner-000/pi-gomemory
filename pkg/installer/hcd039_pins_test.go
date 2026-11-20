@@ -53,6 +53,8 @@ func hcd039Doc(versions ...string) string {
 // caché y con -v después de go test -race, y si falla se detiene antes de
 // borrar dist/ explicando cómo seguir. Se ejecuta el script real con un go falso.
 func TestHCD039BuildReleaseGate(t *testing.T) {
+	t.Parallel()
+
 	script := readAsset(t, "scripts/build-release.sh")
 	run := func(t *testing.T, allowStale bool) (string, string, error) {
 		dir, bin := t.TempDir(), t.TempDir()
@@ -165,6 +167,8 @@ func TestHCD039PinsCheckReport(t *testing.T) {
 // Tarea 3 (C-07): sin la etiqueta pins, NPMRegistryURL apunta a una dirección
 // inválida, así que una prueba sin servidor local falla en vez de salir a npm.
 func TestHCD039NoNetworkByDefault(t *testing.T) {
+	t.Parallel()
+
 	if pinsLive {
 		t.Skip("con la etiqueta pins se consulta el registro real")
 	}
@@ -180,6 +184,8 @@ func TestHCD039NoNetworkByDefault(t *testing.T) {
 // revisar, y si todo lo que hay por encima del pin está rechazado se informa
 // con su motivo. La lista compilada en el binario solo nombra paquetes fijados.
 func TestHCD039Rejected(t *testing.T) {
+	t.Parallel()
+
 	rejected := []RejectedVersion{{"pi-antigravity", "0.14.0", "rompe A1"}}
 	got, err := publishedVersion("pi-antigravity", []string{"0.12.0", "0.13.0", "0.14.0"}, "0.12.0", rejected)
 	if err != nil || got != "0.13.0" {

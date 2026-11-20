@@ -11,6 +11,8 @@ import (
 // de la última consulta aparece en la misma apertura. Con /tokens el pie propio
 // se apaga y el aviso pasa a setStatus para el pie por defecto de Pi.
 func TestHCD029StatusExtensionUpdateIndicator(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-status.ts"}, `
 import ext from "./gomemory-status.ts";
 

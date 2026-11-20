@@ -14,6 +14,8 @@ import (
 
 // Reproductores F-01/F-02 del seguimiento ACR/ADM 2026-11-17.
 func TestFollowupInvalidVersionNotHealthy(t *testing.T) {
+	t.Parallel()
+
 	for _, versions := range [][2]string{{"1.0.0", "desconocida"}, {"dev", "1.0.0"}} {
 		cache := hcd042Cache(t, DepState{Name: "x", Current: versions[0], Latest: versions[1]})
 		probes := []DepProbe{{Name: "x", Current: fixedVersion(versions[0])}}
@@ -26,6 +28,8 @@ func TestFollowupInvalidVersionNotHealthy(t *testing.T) {
 }
 
 func TestFollowupLateEntryPreserved(t *testing.T) {
+	t.Parallel()
+
 	for _, kind := range []string{"cache", "manifest"} {
 		for _, replacement := range []string{"symlink", "directory"} {
 			t.Run(kind+"/"+replacement, func(t *testing.T) {
@@ -144,6 +148,8 @@ func TestHCD042DepsComparable(t *testing.T) {
 }
 
 func TestHCD042Removal(t *testing.T) {
+	t.Parallel()
+
 	for _, kind := range []string{"cache", "manifest"} {
 		for _, typ := range []string{"symlink", "broken symlink", "directory"} {
 			t.Run(kind+"/preexisting/"+typ, func(t *testing.T) {

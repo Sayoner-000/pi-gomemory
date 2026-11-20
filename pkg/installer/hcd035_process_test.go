@@ -19,6 +19,8 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 // C-07: cancelar mata al descendiente resistente 1500 ms después de la
 // cancelación y el anfitrión sigue vivo más de 800 ms después del close.
 func TestHCD035C07(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, hcd035ResistantFixture+`
 const ac = new AbortController();
 let pid, abortedAt;
@@ -43,6 +45,8 @@ console.log("PASS TestHCD035C07");
 // C-08: al agotar el tiempo, el descendiente resistente tampoco sobrevive y el
 // anfitrión sigue vivo más de 800 ms después del close.
 func TestHCD035C08(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, hcd035ResistantFixture+`
 const timeoutMs = 1500;
 let pid;

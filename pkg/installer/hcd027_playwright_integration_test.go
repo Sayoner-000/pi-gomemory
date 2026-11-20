@@ -9,6 +9,8 @@ import (
 )
 
 func TestHCD027PlaywrightIntegration(t *testing.T) {
+	t.Parallel()
+
 	cliPath := os.Getenv("PLAYWRIGHT_TEST_CLI")
 	if strings.TrimSpace(cliPath) == "" {
 		// Integración opt-in: sin ejecutor declarado se omite (no falla la suite por defecto,

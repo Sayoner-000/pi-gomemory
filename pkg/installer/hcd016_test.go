@@ -98,6 +98,8 @@ func TestH03DoctorTimeoutAndWarn(t *testing.T) {
 
 // H-04: gomemory-plan debe bloquear evasiones de intérpretes y comandos mutables
 func TestH04PlanEvasionsBlocked(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-plan.ts", "extensions/gomemory-plan-patterns.json"}, `
 import { bashBlocked } from "./gomemory-plan.ts";
 
@@ -145,6 +147,8 @@ console.log(unblocked.length ? "FAIL " + unblocked.join(" | ") : "PASS");
 
 // H-08: gomemory-sidebar debe limpiar errores JSON de stderr y validar estructura defensivamente
 func TestH08SidebarErrorAndInflight(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import { parseCleanQuotaError, validateQuotaSummary } from "./gomemory-sidebar.ts";
 

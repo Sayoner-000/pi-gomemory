@@ -7,6 +7,8 @@ import (
 
 // C-06: el sidebar muestra "Configured" y no inventa servidores.
 func TestHCD012Sidebar(t *testing.T) {
+	t.Parallel()
+
 	if strings.Contains(readAsset(t, "extensions/gomemory-sidebar.ts"), "Connected") {
 		t.Error("gomemory-sidebar.ts todavía contiene Connected")
 	}

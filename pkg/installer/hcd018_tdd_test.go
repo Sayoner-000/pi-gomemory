@@ -9,6 +9,8 @@ import (
 
 // TestHCD018TDDTypesAndStore verifica que TDDStore gestiona el estado, suites, tests, pasos y emite eventos
 func TestHCD018TDDTypesAndStore(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import { createTDDStore } from "./gomemory-tdd.ts";
 
@@ -62,6 +64,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 
 // TestHCD018TDDAdapters verifica la deteccion y adaptadores para backend, playwright, frontend, ci y data
 func TestHCD018TDDAdapters(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import { 
 	getAvailableDomains, 
@@ -117,6 +121,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 
 // TestHCD018TDDUIRenderers verifica renderizado de overlay lateral flotante, widget y vista modal
 func TestHCD018TDDUIRenderers(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import { 
 	renderTDDOverlay, 
@@ -208,6 +214,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 
 // TestHCD018TDDCommandRegistration verifica registro de /tdd y tool run_test_suite
 func TestHCD018TDDCommandRegistration(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import tddExtensionFactory from "./gomemory-tdd.ts";
 
@@ -269,6 +277,8 @@ func TestHCD018TDDInstallerIntegration(t *testing.T) {
 // TestHCD018TDDMinimizedPanel verifica que el panel TDD minimizado ocupa una sola fila
 // y que /tdd min está registrado, para no solapar el sidebar en la esquina superior derecha.
 func TestHCD018TDDMinimizedPanel(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import tddExtensionFactory, { renderTDDMinimized, createTDDStore } from "./gomemory-tdd.ts";
 

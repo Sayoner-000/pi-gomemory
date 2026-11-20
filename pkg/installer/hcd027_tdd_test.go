@@ -6,6 +6,8 @@ import (
 )
 
 func TestHCD027GoPendingResults(t *testing.T) {
+	t.Parallel()
+
 	// Part 1: direct goTestParser check
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
@@ -96,6 +98,8 @@ console.log("PASS TestHCD027GoPendingResults e2e");
 }
 
 func TestHCD027GoPreservesResults(t *testing.T) {
+	t.Parallel()
+
 	// Part 1: direct parser check with mixed test lifecycle
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";

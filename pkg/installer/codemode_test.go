@@ -12,6 +12,8 @@ import (
 // que la coherencia que blindaba HCD-044 la garantiza la propia derivación.
 
 func TestCodemodeMCP(t *testing.T) {
+	t.Parallel()
+
 	direct := DefaultMCPServers()
 	if direct["gomemory"].Exposure != "direct" {
 		t.Fatalf("DefaultMCPServers gomemory exposure = %q, want direct", direct["gomemory"].Exposure)
@@ -66,6 +68,8 @@ func TestCodemodeMCP(t *testing.T) {
 }
 
 func TestCodemodeSettings(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	settingsPath := filepath.Join(dir, "settings.json")
 	initial := `{
@@ -148,6 +152,8 @@ func TestCodemodeSettings(t *testing.T) {
 }
 
 func TestInstallMCPServersPreservesCodemode(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	// Pre-popular otro servidor MCP para comprobar que tampoco se pierde.
 	customMCP := `{

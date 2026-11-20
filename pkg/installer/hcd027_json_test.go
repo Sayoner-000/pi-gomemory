@@ -123,6 +123,8 @@ func TestHCD027MCPModes(t *testing.T) {
 }
 
 func TestHCD027JSONAtomicErrors(t *testing.T) {
+	t.Parallel()
+
 	t.Run("stat_permission_denied", func(t *testing.T) {
 		if os.Geteuid() == 0 {
 			t.Skip("skipping permission test under root")

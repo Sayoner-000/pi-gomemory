@@ -101,6 +101,8 @@ const suiteOf = (st, id) => st.suites.find((s) => s.id === id);
 `
 
 func TestHCD020SuiteDetection(t *testing.T) {
+	t.Parallel()
+
 	empty := t.TempDir()
 	full := t.TempDir()
 	writeFile(t, filepath.Join(full, "go.mod"), "module x\n")
@@ -135,6 +137,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 }
 
 func TestHCD020LineStreaming(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import { streamLines } from "./gomemory-tdd.ts";
 const fails = [];
@@ -155,6 +159,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 }
 
 func TestHCD020GoFailureDetail(t *testing.T) {
+	t.Parallel()
+
 	dir := goFailProject(t)
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, tddToolHarness+`
 const res = await run("backend", `+jsStr(dir)+`);
@@ -177,6 +183,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 }
 
 func TestHCD020PlaywrightLine(t *testing.T) {
+	t.Parallel()
+
 	proj := t.TempDir()
 	bin := t.TempDir()
 	writeFile(t, filepath.Join(proj, "playwright.config.mjs"), "export default {}\n")
@@ -243,6 +251,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 }
 
 func TestHCD020NoFakeResults(t *testing.T) {
+	t.Parallel()
+
 	empty := t.TempDir()
 	bin := t.TempDir()
 	writeExec(t, filepath.Join(bin, "mem"), `echo '{"ok":false,"error":{"code":"not_found"}}'; exit 3`)
@@ -288,6 +298,8 @@ const state = {
 `
 
 func TestHCD020PanelShowsEnabled(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import { renderTDDOverlay } from "./gomemory-tdd.ts";
 `+panelState+`
@@ -313,6 +325,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 }
 
 func TestHCD020PanelIcons(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import { renderTDDOverlay, renderTDDMinimized } from "./gomemory-tdd.ts";
 `+panelState+`
@@ -333,6 +347,8 @@ console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 }
 
 func TestHCD020AgentLoop(t *testing.T) {
+	t.Parallel()
+
 	dir := goFailProject(t)
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, tddToolHarness+`
 const res = await run("backend", `+jsStr(dir)+`);

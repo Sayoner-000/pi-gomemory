@@ -385,6 +385,8 @@ func TestHCD052LiteAndMCP(t *testing.T) {
 }
 
 func TestHCD052TDDBashIngest(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
 import assert from "node:assert/strict";
 import { classifyBashTestCommand, createTDDStore, ingestBashTestResult } from "./gomemory-tdd.ts";
@@ -472,6 +474,8 @@ for (const benign of [
 }
 
 func TestHCD052TasksVerifyGuard(t *testing.T) {
+	t.Parallel()
+
 	out := runNodeExt(t, []string{"extensions/gomemory-tasks.ts"}, `
 import assert from "node:assert/strict";
 import { isBundledHcdVerifyCommand } from "./gomemory-tasks.ts";

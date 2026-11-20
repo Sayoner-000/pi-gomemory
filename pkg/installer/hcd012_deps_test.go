@@ -10,6 +10,8 @@ import (
 
 // C-02: ningún probe ejecuta un script descargado por tubería.
 func TestHCD012DepsNoPipe(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range DefaultDepProbes("v1.0.0", t.TempDir()) {
 		cmd := strings.Join(p.Update, " ")
 		for _, bad := range []string{"curl", "| bash", "| sh", "|bash", "|sh"} {
@@ -34,6 +36,8 @@ func writeDepsCache(t *testing.T, body string) string {
 
 // C-09: el comando sale del probe actual, nunca de la caché.
 func TestHCD012DepsCacheIgnored(t *testing.T) {
+	t.Parallel()
+
 	marker := filepath.Join(t.TempDir(), "pwned")
 	cache := writeDepsCache(t, `{"checked_at":"2026-11-17T09:30:00Z","deps":[
  {"name":"x","current":"1.0.0","latest":"2.0.0","update":["sh","-c","touch `+marker+`"]},
@@ -64,6 +68,8 @@ func TestHCD012DepsCacheIgnored(t *testing.T) {
 
 // C-01: un componente manual no se ejecuta ni se declara actualizado.
 func TestHCD012DepsManual(t *testing.T) {
+	t.Parallel()
+
 	cache := writeDepsCache(t, `{"checked_at":"2026-11-17T09:30:00Z","deps":[{"name":"m","current":"1.0.0","latest":"2.0.0","update":["false"]}]}`)
 	probes := []DepProbe{{Name: "m", Manual: "https://example.com/releases/latest"}}
 	if n := FormatDepsNotice(DepsStatusFor(cache, probes)); !strings.Contains(n, "releases/latest") {

@@ -136,6 +136,8 @@ func hcd039Tree(t *testing.T, files map[string]string) string {
 // Tarea 7 (C-12, C-13): las reglas de la tabla de contratos se aplican sobre
 // el árbol extraído y un fallo nombra el id del contrato roto.
 func TestHCD039Contracts(t *testing.T) {
+	t.Parallel()
+
 	accounts := "const ACCOUNTS_FILE = \"antigravity-accounts.json\";\ntype AccountsFile = {\n  activeAccountId?: string;\n  accounts: Record<string, StoredAccount>;\n};\n"
 	models := "export const PROVIDER_ID = \"antigravity\";\n"
 	byID := func(rs []ContractResult) map[string]ContractResult {
