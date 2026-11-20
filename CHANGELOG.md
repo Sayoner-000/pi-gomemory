@@ -4,6 +4,15 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.19.1] - 2026-11-20
+
+### Fixed
+- `/tdd` ya no pierde lo que un Bash de tests imprime después de la última actualización en vivo. Antes, un fallo real podía aparecer como «error de ejecución» y algunos tests quedaban en curso.
+- Un `mem hcd verify` encadenado tras otros comandos (`cd sub && mem hcd verify …`) también muestra sus tests en `/tdd`.
+- Watch vuelve a comprobar el frontend o Playwright después de un `go test ./...` lanzado por Bash; solo da los cambios por cubiertos si esa era la única suite de tests del proyecto.
+- La sugerencia del input no aparece en el turno siguiente cuando la respuesta del motor o del modelo llega tarde, y el fin de turno ya no espera a la petición al modelo.
+- Los reintentos que preparan el editor al arrancar la sesión se cancelan al cerrarla.
+
 ## [v1.19.0] - 2026-11-20
 
 ### Added
