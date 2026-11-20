@@ -68,7 +68,9 @@ else
   TARBALL="pi-gomemory-setup_${VERSION}_${OS}_${ARCH}.tar.gz"
   BASE_URL="${PI_GOMEMORY_BASE_URL:-https://github.com/${REPO}/releases/download/${VERSION}}"
   TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t 'pi-gomemory')"
-  trap 'rm -rf "${TMP_DIR}"' EXIT
+  # Temporal junto al binario final: si cp, chmod o mv fallan, el trap lo retira.
+  STAGE="${SETUP_BIN}.tmp.$$"
+  trap 'rm -rf "${TMP_DIR}"; rm -f "${STAGE}"' EXIT
 
   download() { # download <url> <destino>
     if command -v curl &>/dev/null; then
@@ -104,9 +106,9 @@ else
   tar -xzf "${TMP_DIR}/${TARBALL}" -C "${TMP_DIR}"
   # Temporal + rename en el mismo directorio: sobrescribir en su sitio un binario
   # firmado y ya ejecutado hace que macOS lo mate (Killed: 9).
-  cp "${TMP_DIR}/pi-gomemory-setup" "${SETUP_BIN}.tmp.$$"
-  chmod +x "${SETUP_BIN}.tmp.$$"
-  mv -f "${SETUP_BIN}.tmp.$$" "${SETUP_BIN}"
+  cp "${TMP_DIR}/pi-gomemory-setup" "${STAGE}"
+  chmod +x "${STAGE}"
+  mv -f "${STAGE}" "${SETUP_BIN}"
   echo -e "${C_SUCCESS}✓ Binario instalado en: ${SETUP_BIN}${C_RESET}"
 fi
 
