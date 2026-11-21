@@ -940,7 +940,7 @@ export default function (pi: ExtensionAPI) {
 			syncWidget(ctx);
 		} finally {
 			busy = false;
-			if (!disposed && epoch === sessionEpoch && pendingCtx) {
+			if (!disposed && pendingCtx) {
 				const next = pendingCtx;
 				pendingCtx = null;
 				await refresh(next);

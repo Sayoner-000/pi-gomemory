@@ -53,7 +53,12 @@ const PERSISTENCE_REASON =
 	"Modo plan activo: index_repository con persistence=true escribe en el repositorio. Usa persistence=false para refrescar solo el índice externo.";
 const INACTIVE = "El modo plan no está activo";
 
-const BLOCKED_MCP_TOOLS = new Set(["delete_project", "mcp__codebase_memory__delete_project"]);
+const BLOCKED_MCP_TOOLS = new Set([
+	"delete_project",
+	"mcp__codebase_memory__delete_project",
+	"hcd_rename",
+	"mcp__gomemory__hcd_rename",
+]);
 
 export function toolBlocked(toolName: string, input: any): string | undefined {
 	if (patterns.tools.includes(toolName) || BLOCKED_MCP_TOOLS.has(toolName)) {

@@ -109,7 +109,7 @@ func RemoveStaleDepsTemps(dir string) []string {
 	}
 	var removed []string
 	for _, e := range entries {
-		if e.IsDir() && strings.HasPrefix(e.Name(), depsTempPrefix) {
+		if e.IsDir() && (strings.HasPrefix(e.Name(), depsTempPrefix) || strings.HasPrefix(e.Name(), depsStagingPrefix)) {
 			p := filepath.Join(dir, e.Name())
 			tempMu.Lock()
 			live := liveTemps[p]
@@ -123,6 +123,23 @@ func RemoveStaleDepsTemps(dir string) []string {
 }
 
 func depsTempOwnedByLiveProcess(dir string) bool {
+	// HCD-069 (H-02): si existe .lock, el bloqueo del kernel (flock) es la fuente
+	// de verdad y no se confunde ante reutilización de PID por otro proceso vivo.
+	lockPath := filepath.Join(dir, ".lock")
+	if f, err := os.OpenFile(lockPath, os.O_RDWR, 0); err == nil {
+		flockErr := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if errors.Is(flockErr, syscall.EWOULDBLOCK) || errors.Is(flockErr, syscall.EAGAIN) {
+			_ = f.Close()
+			return true
+		}
+		if flockErr == nil {
+			_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+			_ = f.Close()
+			return false
+		}
+		_ = f.Close()
+	}
+
 	b, err := os.ReadFile(filepath.Join(dir, ".pid"))
 	if err != nil {
 		return false

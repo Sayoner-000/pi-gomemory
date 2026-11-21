@@ -19,9 +19,12 @@ import (
 // maxScriptBytes acota un script de instalación descargado (HCD-062, C-12).
 const maxScriptBytes = 1 << 20
 
-// depsTempPrefix nombra los temporales del paso; install y uninstall
-// retiran los que quedaron de una ejecución interrumpida.
-const depsTempPrefix = ".pi-gomemory-deps-"
+// depsTempPrefix y depsStagingPrefix nombran los temporales del paso;
+// install y uninstall retiran los que quedaron de una ejecución interrumpida.
+const (
+	depsTempPrefix    = ".pi-gomemory-deps-"
+	depsStagingPrefix = ".pi-gomemory-staging-"
+)
 
 // hardenedClient copia base con plazo y solo admite redirecciones HTTPS.
 func hardenedClient(base *http.Client, timeout time.Duration) *http.Client {
@@ -65,30 +68,52 @@ func depsTempDir(opts *Options) (string, func(), error) {
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return "", nil, err
 	}
-	// Crear primero bajo un prefijo de staging para escribir .pid antes de que
-	// el directorio sea visible para RemoveStaleDepsTemps (HCD-065 / H-08).
-	staging, err := os.MkdirTemp(binDir, ".pi-gomemory-staging-*")
+	// Crear primero bajo un prefijo de staging para escribir .pid y tomar .lock
+	// antes de exponer el directorio bajo depsTempPrefix (HCD-065 / HCD-069).
+	staging, err := os.MkdirTemp(binDir, depsStagingPrefix+"*")
 	if err != nil {
 		return "", nil, fmt.Errorf("crear temporal: %w", err)
 	}
+	untrackStaging := trackTemp(staging)
 	if err := os.Chmod(staging, 0o700); err != nil {
+		untrackStaging()
 		_ = os.RemoveAll(staging)
 		return "", nil, err
 	}
-	// Marca de propiedad entre procesos (HCD-064 / H-03): evita que otra
-	// instancia concurrente de install/uninstall borre este temporal vivo.
+	// Marca de propiedad entre procesos (HCD-064 / HCD-069): .pid informativo y
+	// bloqueo de archivo (.lock vía flock) liberado por el kernel al morir el proceso.
 	if err := writeFileAtomic(filepath.Join(staging, ".pid"), []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+		untrackStaging()
 		_ = os.RemoveAll(staging)
 		return "", nil, fmt.Errorf("registrar propietario del temporal: %w", err)
 	}
-	suffix := strings.TrimPrefix(filepath.Base(staging), ".pi-gomemory-staging-")
+	lockFile, err := os.OpenFile(filepath.Join(staging, ".lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		untrackStaging()
+		_ = os.RemoveAll(staging)
+		return "", nil, fmt.Errorf("crear bloqueo del temporal: %w", err)
+	}
+	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		_ = lockFile.Close()
+		untrackStaging()
+		_ = os.RemoveAll(staging)
+		return "", nil, fmt.Errorf("bloquear temporal: %w", err)
+	}
+	suffix := strings.TrimPrefix(filepath.Base(staging), depsStagingPrefix)
 	dir := filepath.Join(binDir, depsTempPrefix+suffix)
 	if err := os.Rename(staging, dir); err != nil {
+		_ = lockFile.Close()
+		untrackStaging()
 		_ = os.RemoveAll(staging)
 		return "", nil, fmt.Errorf("activar temporal: %w", err)
 	}
 	untrack := trackTemp(dir)
-	return dir, func() { untrack(); _ = os.RemoveAll(dir) }, nil
+	untrackStaging()
+	return dir, func() {
+		untrack()
+		_ = lockFile.Close()
+		_ = os.RemoveAll(dir)
+	}, nil
 }
 
 // pipeOnly oculta el *os.File de un Writer para que exec cree una tubería:

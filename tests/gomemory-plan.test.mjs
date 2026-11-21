@@ -141,6 +141,8 @@ test("modo plan permite lecturas de codegraph/codebase-memory e index_repository
 		["mcp__codebase_memory__index_repository", { repo_path: ".", persistence: true }],
 		["manage_adr", { project: "p", mode: "update", content: "x" }],
 		["mcp__codebase_memory__manage_adr", { project: "p", mode: "set_sections", section_updates: {} }],
+		["hcd_rename", { title: "nuevo" }],
+		["mcp__gomemory__hcd_rename", { title: "nuevo" }],
 		["bash", { command: "mem hcd start --kind fix --title x" }],
 		["bash", { command: "mem hcd verify --task 1 -- go test" }],
 		["bash", { command: "mem hcd close --quote ok" }],

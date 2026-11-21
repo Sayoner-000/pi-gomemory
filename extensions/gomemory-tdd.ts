@@ -1552,7 +1552,12 @@ function matchTestSegment(rawTokens: ShellToken[]): BashTestMatch | null {
 		// Con -v (sin -json) cada test imprime «=== RUN» y «--- PASS/FAIL»: se lee test
 		// a test. Sin -v go test no lista los que pasan y vale el código de salida.
 		const hasVerbose = args.includes("-v") || args.includes("-test.v");
-		const hasRun = args.some((a) => a === "-run" || a.startsWith("-run="));
+		const hasFilter = args.some(
+			(a) =>
+				a === "-run" || a.startsWith("-run=") ||
+				a === "-skip" || a.startsWith("-skip=") ||
+				a === "-short",
+		);
 		const targets: string[] = [];
 		const valueFlags = new Set(["-run", "-skip", "-count", "-timeout", "-tags", "-cpu", "-parallel", "-bench", "-benchtime", "-coverprofile", "-o", "-exec", "-fuzz", "-fuzztime"]);
 		for (let i = 0; i < args.length; i++) {
@@ -1565,7 +1570,7 @@ function matchTestSegment(rawTokens: ShellToken[]): BashTestMatch | null {
 			targets.push(a);
 		}
 		const isFullRecursive = targets.length === 1 && (targets[0] === "./..." || targets[0] === "all");
-		const partial = hasRun || !isFullRecursive;
+		const partial = hasFilter || !isFullRecursive;
 		return {
 			suiteId: "backend",
 			parser: hasJson ? "go-test" : hasVerbose ? "go-text" : "exit-code",
@@ -2577,7 +2582,11 @@ export default function (pi: ExtensionAPI) {
 					watchDirty = true;
 					break;
 				}
-				if (opts.signal?.aborted) break;
+				if (opts.signal?.aborted) {
+					store.clearSuite(plan.id);
+					store.skipSuite(plan.id, "ejecución cancelada");
+					break;
+				}
 				if (ran === 0) store.skipSuite(plan.id, skips.join(" · ") || "no aplica");
 				else {
 					const suite = store.getState().suites.find((s) => s.id === plan.id);
