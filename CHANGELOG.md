@@ -4,6 +4,16 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.23.1] - 2026-11-21
+
+### Fixed
+- Cancelar una ejecución de pruebas en `/tdd` (o cerrar la sesión con una suite en curso) ya no deja la suite ni el estado global bloqueados en `running`; `doRunTestSuite` limpia la suite y la marca como saltada antes de salir. ([HCD-069](hcd/HCD-069-corregir-hallazgos-h-01-a-h-06-de-la-aud.md))
+- `go test ./... -skip <patrón>` y `go test -short ./...` ahora se clasifican como ejecuciones parciales en `/tdd` y no suprimen la regresión completa de Watch. ([HCD-069](hcd/HCD-069-corregir-hallazgos-h-01-a-h-06-de-la-aud.md))
+- El modo `/plan` bloquea también la tool MCP `hcd_rename` (`mcp__gomemory__hcd_rename`), igual que ya bloqueaba `mem hcd rename` por Bash. ([HCD-069](hcd/HCD-069-corregir-hallazgos-h-01-a-h-06-de-la-aud.md))
+- Si cambias de sesión mientras un `refresh` anterior de `/tasks` sigue en vuelo, el refresco pendiente de la nueva sesión ya no se descarta al resolver la llamada vieja. ([HCD-069](hcd/HCD-069-corregir-hallazgos-h-01-a-h-06-de-la-aud.md))
+- Los temporales de descarga de `pi-gomemory-setup` usan un bloqueo de archivo del kernel (`.lock` con `flock`), de modo que `RemoveStaleDepsTemps` limpia directorios huérfanos incluso cuando otro proceso vivo reutiliza el mismo PID. ([HCD-069](hcd/HCD-069-corregir-hallazgos-h-01-a-h-06-de-la-aud.md))
+- Los directorios de staging (`.pi-gomemory-staging-*`) quedan registrados desde su creación para limpieza por señal y también se barren en `RemoveStaleDepsTemps` si un proceso muere antes de `os.Rename`. ([HCD-069](hcd/HCD-069-corregir-hallazgos-h-01-a-h-06-de-la-aud.md))
+
 ## [v1.23.0] - 2026-11-21
 
 ### Added
