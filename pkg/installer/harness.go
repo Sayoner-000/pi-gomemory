@@ -36,12 +36,6 @@ fi
 # 3b. Actualizaciones del meta-harness y sus dependencias. La consulta en red
 #     corre en segundo plano en cada arranque y nunca retrasa Pi; el aviso usa
 #     el resultado de la consulta anterior. Con TTY se pregunta si actualizar.
-if command -v pi-gomemory-setup &>/dev/null; then
-  export PI_GOMEMORY_RUNNING_VERSION="$(pi-gomemory-setup version 2>/dev/null || true)"
-fi
-if command -v mem &>/dev/null; then
-  export GOMEMORY_INSTALLED_VERSION="$(mem --version 2>/dev/null || true)"
-fi
 #     PI_GOMEMORY_NO_UPDATE_CHECK sigue la regla de pi-gomemory-setup: vacía, 0 o
 #     false (sin distinguir mayúsculas ni espacios) dejan la comprobación activa;
 #     cualquier otro valor la desactiva (HCD-037). Compatible con bash 3.2.
@@ -63,6 +57,15 @@ if ! update_check_disabled && command -v pi-gomemory-setup &>/dev/null; then
     esac
   fi
   (pi-gomemory-setup deps-refresh >/dev/null 2>&1 &) || true
+fi
+
+#     Las versiones del banner se leen después de deps-update: si la persona
+#     acaba de actualizar, Pi debe mostrar las nuevas y no las anteriores.
+if command -v pi-gomemory-setup &>/dev/null; then
+  export PI_GOMEMORY_RUNNING_VERSION="$(pi-gomemory-setup version 2>/dev/null || true)"
+fi
+if command -v mem &>/dev/null; then
+  export GOMEMORY_INSTALLED_VERSION="$(mem --version 2>/dev/null || true)"
 fi
 
 # 3c. Repositorio central de skills: reúne las de gomemory y las de los agentes

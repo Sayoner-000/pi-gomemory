@@ -93,6 +93,21 @@ func TestHarnessExportsRunningVersion(t *testing.T) {
 	}
 }
 
+// Las versiones del banner se leen después de deps-update: si la persona
+// acepta actualizar al arrancar, el banner no debe mostrar la versión anterior.
+func TestHarnessVersionsReadAfterDepsUpdate(t *testing.T) {
+	s := GenerateHarnessScript()
+	update := strings.Index(s, "pi-gomemory-setup deps-update")
+	if update < 0 {
+		t.Fatal("el launcher debe ofrecer deps-update")
+	}
+	for _, v := range []string{"export PI_GOMEMORY_RUNNING_VERSION=", "export GOMEMORY_INSTALLED_VERSION="} {
+		if i := strings.Index(s, v); i < update {
+			t.Fatalf("%s debe exportarse después de deps-update", v)
+		}
+	}
+}
+
 func readAsset(t *testing.T, name string) string {
 	t.Helper()
 	return readFile(t, filepath.Join("..", "..", name))
