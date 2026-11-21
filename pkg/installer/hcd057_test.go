@@ -67,7 +67,7 @@ if (t0.some((l) => /^\s+[├└] /.test(l.text))) fails.push("no deben quedar co
 const tone = (id) => row(t0, id)?.tone;
 const want = { "1": "success", "2": "accent", "3": "warning", "4": "error", "5": "dim" };
 for (const [id, tn] of Object.entries(want)) if (tone(id) !== tn) fails.push("tarea " + id + " tono " + tone(id) + ", se esperaba " + tn);
-const glyphs = { "1": "●", "3": "◍", "4": "✗", "5": "○" };
+const glyphs = { "1": "●", "3": "↻", "4": "✗", "5": "○" }; // HCD-068: caducada ↻
 for (const [id, g] of Object.entries(glyphs)) if (!row(t0, id)?.text.includes(g + " " + id + ".")) fails.push("tarea " + id + " sin glifo " + g);
 
 // El widget colorea con el tema y anima el spinner mientras hay algo en curso.
@@ -110,10 +110,11 @@ const head = (statuses) => renderTasksTree({
 })?.[0]?.text ?? "";
 const cases = [
 	// Barra y números separados por dos espacios (la persona: «muy pegado»).
-	[["verified", "pending", "pending", "pending", "pending"], "▰▰▱▱▱▱▱▱▱▱  1/5 · 20 %"],
-	[["pending", "pending", "pending"], "▱▱▱▱▱▱▱▱▱▱  0/3 · 0 %"],
-	[["verified", "verified"], "▰▰▰▰▰▰▰▰▰▰  2/2 · 100 %"],
-	[Array.from({ length: 13 }, (_, i) => (i < 5 ? "verified" : "pending")), "▰▰▰▰▱▱▱▱▱▱  5/13 · 38 %"],
+	// HCD-068: línea continua ━ (lleno) / ─ (vacío).
+	[["verified", "pending", "pending", "pending", "pending"], "━━────────  1/5 · 20 %"],
+	[["pending", "pending", "pending"], "──────────  0/3 · 0 %"],
+	[["verified", "verified"], "━━━━━━━━━━  2/2 · 100 %"],
+	[Array.from({ length: 13 }, (_, i) => (i < 5 ? "verified" : "pending")), "━━━━──────  5/13 · 38 %"],
 ];
 for (const [st, want] of cases) {
 	const h = head(st);

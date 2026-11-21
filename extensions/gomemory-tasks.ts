@@ -85,13 +85,13 @@ const HEARTBEAT_MS = 10_000;
 
 /**
  * Círculo que se llena (HCD-057, Q5): ○ pendiente → parpadea ●/○ en curso (HCD-060) → ● verificada;
- * ◍ verificada pero caducada (hay que volver a verificar); ✗ fallida.
+ * ↻ verificada pero caducada (hay que volver a verificar, HCD-068); ✗ fallida.
  */
 function taskVisual(status: string, active: boolean, now: number): { glyph: string; tone: LineTone } {
 	if (status === "verified") return { glyph: "●", tone: "success" };
 	if (active) return { glyph: TASK_FRAMES[Math.floor(now / TASK_FRAME_MS) % TASK_FRAMES.length], tone: "accent" };
 	if (status === "failed" || status === "red") return { glyph: "✗", tone: "error" };
-	if (status === "unverified") return { glyph: "◍", tone: "warning" }; // tenía evidencia y caducó
+	if (status === "unverified") return { glyph: "↻", tone: "warning" }; // tenía evidencia y caducó
 	return { glyph: "○", tone: "dim" };
 }
 
@@ -131,11 +131,14 @@ function callVisual(status: TaskCallEntry["status"], now: number): { glyph: stri
 
 const PROGRESS_CELLS = 10;
 
-/** Barra de progreso de la unidad: «▰▰▰▰▱▱▱▱▱▱  5/13 · 38 %»; dos espacios separan barra y números (HCD-057). */
+/**
+ * Barra de progreso de la unidad: «━━━━──────  5/13 · 38 %»; dos espacios separan barra y números (HCD-057).
+ * Línea continua de dibujo de cajas (HCD-068): ▰▱ salían entrecortados con fuente de respaldo.
+ */
 function progressBar(done: number, total: number): string {
 	const ratio = total > 0 ? done / total : 0;
 	const filled = Math.round(ratio * PROGRESS_CELLS);
-	return `${"▰".repeat(filled)}${"▱".repeat(PROGRESS_CELLS - filled)}  ${done}/${total} · ${Math.round(ratio * 100)} %`;
+	return `${"━".repeat(filled)}${"─".repeat(PROGRESS_CELLS - filled)}  ${done}/${total} · ${Math.round(ratio * 100)} %`;
 }
 
 function callsWord(n: number): string {
