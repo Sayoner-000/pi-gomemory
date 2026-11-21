@@ -46,6 +46,14 @@ Esto evita depender de carpetas clonadas o rutas relativas en disco. El ejecutab
 
 En `mcp.json` solo se actualizan las tres entradas propias. En `pi-cc-extensions.json` se conservan las claves del usuario, salvo `showStartupHeader`, que se desactiva para no sustituir el banner. `AGENTS.md` deja de recibir instrucciones nuevas: la instalación retira únicamente el protocolo heredado. Un JSON ilegible detiene su paso; las escrituras de varios archivos no forman una transacción conjunta.
 
+## Herramientas externas
+
+`InstallAll` empieza por `EnsureTools` (`pkg/installer/tools.go`). Antepone al `PATH` del proceso el directorio de binarios, `~/.local/bin`, `~/.pi/agent/bin`, `~/.gomemory/bin` y `/usr/local/bin`, y busca `pi`, `mem`, `codegraph` y `codebase-memory-mcp`. Las que faltan se instalan por su canal oficial: los tres primeros con su script y `codebase-memory-mcp` desde su release (`tools_cbm.go`), verificado contra `checksums.txt`. `pi` y `mem` son obligatorias: si fallan, `InstallAll` se detiene antes de retirar la marca de desinstalado o tocar `~/.pi/agent`. Las otras dos solo generan un aviso.
+
+`runInstaller` (`tools_exec.go`) ejecuta cada instalador con la entrada en `/dev/null`, la salida por una tubería (el hijo nunca ve una terminal en stdout) y un temporal privado junto al directorio de binarios como directorio de trabajo. Con `/dev/tty` disponible, el hijo comparte el grupo de procesos de primer plano para poder preguntar y recibir Ctrl‑C; sin terminal va en su propio grupo, que se mata entero al vencer el plazo. El entorno del hijo no hereda `PI_MANAGED_INSTALL_ROOT`, que el lanzador de Pi exporta y que haría trabajar al instalador de Pi sobre la instalación en uso. `tools_signal.go` borra los temporales vivos si llega SIGINT o SIGTERM, e `install` y `uninstall` retiran los que hayan quedado.
+
+Los tests sustituyen la lista de herramientas y los ganchos de red en `TestMain`, así que ninguna prueba sale a internet. `scripts/clean-install-check.sh` hace la comprobación real en un HOME temporal.
+
 ## Configuración de servidores MCP
 
 El instalador actualiza `~/.pi/agent/mcp.json` para conectar tres herramientas complementarias:
@@ -138,6 +146,6 @@ La función `SanitizeFrontmatter` procesa el contenido antes de copiarlo a `~/.p
 El script `pi-gomemory` en `~/.local/bin/` prepara el entorno antes de invocar el binario de Pi:
 
 * Establece `HERDR_ENV=1` y `COLORTERM=truecolor`.
-* Prioriza `~/.local/bin` y `~/.gomemory/bin` en el `PATH`.
+* Prioriza `~/.local/bin`, `~/.pi/agent/bin` y `~/.gomemory/bin` en el `PATH`.
 * Si el primer argumento es `usage`, delega en `pi-gomemory-setup usage`.
 * Comprueba si el directorio actual tiene una base de datos de gomemory (`.gomemory/memories.db`). Si existe, ejecuta `mem context` y pasa el resultado mediante `--append-system-prompt` para que el agente arranque con el historial reciente del proyecto.

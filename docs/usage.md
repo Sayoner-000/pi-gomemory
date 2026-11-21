@@ -55,7 +55,7 @@ El binario `pi-gomemory-setup` acepta los siguientes argumentos:
 Uso: pi-gomemory-setup [comando]
 
 Comandos:
-  install       Ejecuta la instalación completa (opción por defecto)
+  install       Ejecuta la instalación completa (opción por defecto); instala pi, mem, codegraph y codebase-memory-mcp si faltan
   usage         Muestra cuotas y límites de consumo de Google AI Pro (--json disponible)
   claude-usage  Muestra telemetría agregada de tokens de Claude Code (hoy, semana, total)
   anthropic-usage  Devuelve los límites del plan de Anthropic en JSON
@@ -71,6 +71,7 @@ Comandos:
   version       Muestra la versión instalada
   deps-status   Lista los componentes desactualizados frente a la versión instalada real (sale con 10)
   deps-update   Actualiza los componentes desactualizados
+  deps-install  Instala el último release verificado de codebase-memory-mcp (deps-install codebase-memory-mcp)
   update        Actualiza pi-gomemory desde la última release verificada
   uninstall     Retira lo instalado por pi-gomemory (ver «Desinstalar» en installation.md)
   help          Muestra este mensaje de ayuda

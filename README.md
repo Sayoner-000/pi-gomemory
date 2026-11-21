@@ -37,7 +37,18 @@ En macOS o Linux:
 curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | bash
 ```
 
-El script descarga el binario de tu plataforma desde Releases, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Después:
+El script descarga el binario de tu plataforma desde Releases, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Si falta alguna herramienta, la instalación la trae desde su canal oficial, sin que tengas que abrir ninguna página:
+
+| Herramienta | Canal oficial | Si falla |
+|---|---|---|
+| `pi` | `https://pi.dev/install.sh` (pide Node.js 22.19+ y ofrece instalarlo) | se detiene la instalación |
+| `mem` (gomemory) | `scripts/install.sh` de gomemory, con `GOMEMORY_BIN_DIR` = tu directorio de binarios | se detiene la instalación |
+| `codegraph` | `install.sh` de colbymchenry/codegraph | avisa y sigue |
+| `codebase-memory-mcp` | último release de DeusData, verificado con su `checksums.txt` (SHA-256) e instalado con `install --skip-config`, sin tocar la configuración de otros agentes | avisa y sigue |
+
+Lo que ya tienes no se reinstala. Los scripts se ejecutan con la entrada en `/dev/null` y un límite de 10 minutos; si necesitan preguntarte algo (por ejemplo, instalar Node.js), lo hacen por la terminal. Los instaladores oficiales pueden añadir su directorio al `PATH` en `~/.zshrc` o `~/.bashrc`. Para omitir este paso define `PI_GOMEMORY_SKIP_DEPS=1` (vacía, `0` o `false` lo dejan activo); con el modo lite solo se comprueban `pi` y `mem`. Los scripts de pi, gomemory y codegraph se toman de su canal oficial sin fijar versión, igual que sus propias actualizaciones. `uninstall` conserva estas cuatro herramientas y te dice cómo quitar cada una.
+
+Después:
 
 ```bash
 pi-gomemory
@@ -137,6 +148,7 @@ pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y
 pi-gomemory-setup deps-refresh  Consulta las últimas versiones de pi-gomemory y sus dependencias
 pi-gomemory-setup deps-status   Componentes desactualizados según la última consulta (sale con 10)
 pi-gomemory-setup deps-update   Actualiza los componentes desactualizados
+pi-gomemory-setup deps-install codebase-memory-mcp  Instala el último release verificado (SHA-256) de codebase-memory-mcp
 pi-gomemory-setup claude-usage  Consumo de tokens de Claude Code en JSON (lo usa /sidebar)
 pi-gomemory-setup anthropic-usage  Límites del plan de Anthropic (sesión de 5 h y semana) en JSON (lo usa /sidebar)
 pi-gomemory-setup codex-usage      Límites del plan de OpenAI Codex (ventanas primaria y secundaria) en JSON
@@ -217,7 +229,7 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 
 La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.js; requiere `node` en el PATH y falla si falta. No accede a credenciales ni a Google. Puedes ejecutarlas por separado con `node --test tests/antigravity-prompt-guard/guard.test.mjs`.
 
-`install.sh` acepta `PI_GOMEMORY_VERSION`, `PI_GOMEMORY_BIN_DIR` y `PI_GOMEMORY_BASE_URL`. Esta última permite probar el instalador contra un `dist/` local, por ejemplo `file://$PWD/dist`.
+`install.sh` acepta `PI_GOMEMORY_VERSION`, `PI_GOMEMORY_BIN_DIR`, `PI_GOMEMORY_BASE_URL` y `PI_GOMEMORY_SKIP_DEPS`. `bash scripts/clean-install-check.sh` ejecuta la instalación completa en un HOME temporal con compilación local y comprueba que `pi`, `mem`, `codegraph` y `codebase-memory-mcp` respondan (requiere red). Esta última permite probar el instalador contra un `dist/` local, por ejemplo `file://$PWD/dist`.
 
 ## Documentación
 

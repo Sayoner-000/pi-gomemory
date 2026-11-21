@@ -6,14 +6,15 @@ Esta guía describe cómo instalar pi-gomemory en macOS y Linux.
 
 | Herramienta | Estado | Nota |
 |---|---|---|
-| Pi (`pi`) | Obligatorio | Debe estar en el PATH. Versión validada: Pi 1.5.2 (`npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.5.2` o tu método habitual) |
-| macOS o Linux | Obligatorio | Compatible con arquitecturas arm64 y amd64 |
-| [gomemory](https://github.com/Sayoner-000/gomemory) (`mem`) | Recomendado | Memoria persistente del proyecto |
-| [CodeGraph](https://github.com/colbymchenry/codegraph) (`codegraph`) | Opcional | Servidor MCP de grafo AST SQLite |
-| [Codebase Memory](https://github.com/DeusData/codebase-memory-mcp) (`codebase-memory-mcp`) | Opcional | Servidor MCP de grafo estructural |
+| macOS o Linux | Obligatorio | arm64 o amd64 |
+| Node.js 22.19+ y npm | Obligatorio para Pi | Si faltan, el instalador de Pi ofrece instalarlos (pregunta por la terminal) |
+| Pi (`pi`) | Obligatorio | Si falta, se instala desde `https://pi.dev/install.sh` |
+| [gomemory](https://github.com/Sayoner-000/gomemory) (`mem`) | Obligatorio | Si falta, se instala con su `scripts/install.sh` |
+| [CodeGraph](https://github.com/colbymchenry/codegraph) (`codegraph`) | Opcional | Si falta, se instala con su `install.sh` |
+| [Codebase Memory](https://github.com/DeusData/codebase-memory-mcp) (`codebase-memory-mcp`) | Opcional | Si falta, se instala desde su último release, verificado con SHA-256 |
 | Go 1.27+ | Solo para compilar | Requerido si instalas desde el código fuente |
 
-Si algún servidor MCP no está instalado aún, el instalador registrará la configuración para que quede disponible tan pronto lo instales.
+Desde v1.21.0 no hace falta instalar nada de esto antes: el primer paso de la instalación comprueba las cuatro herramientas y trae las que falten.
 
 ## Instalación rápida (recomendada)
 
@@ -22,6 +23,27 @@ Descarga el binario precompilado para tu arquitectura, lo ubica en `~/.local/bin
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | bash
 ```
+
+### Herramientas que se instalan si faltan
+
+El paso `[1/9]` busca `pi`, `mem`, `codegraph` y `codebase-memory-mcp` en el `PATH` y en `~/.local/bin`, `~/.pi/agent/bin`, `~/.gomemory/bin` y `/usr/local/bin` (además de `PI_GOMEMORY_BIN_DIR`). Lo que encuentra no se toca. Lo que falta se instala desde su canal oficial:
+
+| Herramienta | Canal | Si falla |
+|---|---|---|
+| `pi` | `https://pi.dev/install.sh` | la instalación se detiene y muestra el comando manual |
+| `mem` | `scripts/install.sh` de gomemory, con `GOMEMORY_BIN_DIR` apuntando a tu directorio de binarios | la instalación se detiene y muestra el comando manual |
+| `codegraph` | `install.sh` de colbymchenry/codegraph, con `CODEGRAPH_BIN_DIR` igual | avisa y sigue |
+| `codebase-memory-mcp` | último release de DeusData/codebase-memory-mcp | avisa y sigue |
+
+Cada script se descarga solo por HTTPS a un directorio temporal junto a tu directorio de binarios y se ejecuta con la entrada en `/dev/null`, así no consume el resto de `install.sh` cuando lo lanzas con `curl | bash`. Si un instalador necesita preguntarte algo, como el de Pi cuando falta Node.js, lo hace por la terminal. Cada instalador tiene 10 minutos; si se pasa, cuenta como fallo.
+
+`codebase-memory-mcp` se instala así: se resuelve la última etiqueta por la redirección de github.com (sin la API), se descargan el `.tar.gz` de tu plataforma y `checksums.txt`, y si el SHA-256 no coincide no se ejecuta nada. Del archivo solo se extrae el binario; en macOS se le quita la cuarentena y se firma ad hoc, igual que hace su instalador. Después se ejecuta su propio `install -y --force --dir=<bin> --skip-config`, que no modifica la configuración de otros agentes.
+
+Algunos instaladores oficiales añaden su directorio al `PATH` en `~/.zshrc` o `~/.bashrc`, y crean sus propias carpetas (`~/.codegraph`, `~/.pi/agent/install`).
+
+Para saltarte este paso, exporta `PI_GOMEMORY_SKIP_DEPS=1` (vacía, `0` o `false` lo dejan activo). Con el modo lite (`pi-gomemory-setup lite on`) solo se comprueban `pi` y `mem`.
+
+Los scripts de Pi, gomemory y codegraph se toman de su canal oficial sin fijar versión, igual que sus propias actualizaciones (`pi update`, `mem update`, `codegraph upgrade`). HTTPS protege el transporte; el contenido depende de cada proyecto. El `checksums.txt` de codebase-memory-mcp detecta un archivo corrupto, pero no un release comprometido.
 
 ## Compilación desde código fuente
 
@@ -85,10 +107,13 @@ Dentro de Pi, el pie muestra `↑ actualizaciones disponibles` abajo a la derech
 pi-gomemory-setup version       # versión instalada
 pi-gomemory-setup deps-status   # lo desactualizado: última publicada según la consulta frente a la versión instalada real (sale con 10)
 pi-gomemory-setup deps-update   # actualiza cada componente con su comando oficial
+pi-gomemory-setup deps-install codebase-memory-mcp   # instala el último release verificado de codebase-memory-mcp
 pi-gomemory-setup update        # solo pi-gomemory: descarga la release, verifica SHA256SUMS y reinstala
 ```
 
 Si el checksum no coincide, la actualización se rechaza y el binario actual no cambia. Para desactivar las comprobaciones automáticas (launcher, pie de Pi, `check-update` y `deps-refresh`), exporta `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Desde v1.13.7 todos aplican la misma regla: sin definir, vacía, `0` o `false` (sin distinguir mayúsculas) dejan la comprobación activa, y cualquier otro valor la desactiva. Desde v1.13.5, `update` consulta siempre, aunque esa variable esté puesta, porque lo pides tú.
+
+Desde v1.21.0, `deps-update` actualiza `codebase-memory-mcp` con `deps-install` en vez de pedirte que lo descargues a mano. Lo instala en el directorio de binarios de la instalación; si tu shell tiene otra copia antes en el `PATH` (por ejemplo, de Homebrew), no la toca y te avisa. Como `update` vuelve a ejecutar `install`, también instala cualquier herramienta que falte.
 
 Desde v1.13.5, `update` reinstala en el `BIN_DIR` registrado en `~/.pi-gomemory/manifest.json`, aunque la shell no tenga `PI_GOMEMORY_BIN_DIR`. Si la variable tiene valor, manda ella. Si el manifiesto existe pero no se puede leer, `update` falla antes de descargar nada y el binario no cambia.
 
@@ -113,7 +138,7 @@ Desde v1.13.5, el manifiesto es lo último que se retira y solo si nada falló. 
 
 El launcher se busca en el `BIN_DIR` del manifiesto, en `PI_GOMEMORY_BIN_DIR`, en `~/.local/bin` y junto a `pi-gomemory-setup`. Desde v1.13.0, si esa última carpeta queda fuera de `HOME` y nada la respalda (por ejemplo, al ejecutar `HOME=/tmp/prueba pi-gomemory-setup uninstall` con el binario instalado), el launcher no se borra: aparece como `[omitir]` con el motivo «fuera de HOME y sin manifiesto». Retíralo a mano o repite con `PI_GOMEMORY_BIN_DIR`.
 
-Nunca toca la memoria de gomemory (`mem`, su base de datos, `.gomemory/` ni `hcd/`) ni desinstala `pi`, `mem`, `codegraph` o `codebase-memory-mcp`.
+Nunca toca la memoria de gomemory (`mem`, su base de datos, `.gomemory/` ni `hcd/`) ni desinstala `pi`, `mem`, `codegraph` o `codebase-memory-mcp`. Al terminar te recuerda cómo quitar cada una con su propio comando. También borra los temporales `.pi-gomemory-deps-*` que hubieran quedado en el directorio de binarios.
 
 | Opción | Efecto |
 |---|---|
@@ -162,3 +187,5 @@ Si tu terminal no encuentra los comandos, agrega `~/.local/bin` a tu archivo de 
 ```bash
 export PATH="${HOME}/.local/bin:${PATH}"
 ```
+
+El instalador de Pi puede dejar `pi` en `~/.pi/agent/bin` cuando ningún otro directorio candidato está en tu `PATH`. El launcher `pi-gomemory` ya busca ahí, y al terminar `install.sh` lista los directorios con herramientas instaladas que tu shell todavía no tiene, aunque la instalación haya fallado.
