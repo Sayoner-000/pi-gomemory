@@ -1083,16 +1083,6 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (
 	if err != nil {
 		return err
 	}
-	if !flags.DryRun {
-		// HCD-062: temporales del paso de herramientas que no pudieron borrarse.
-		binDir := opts.LocalBinDir
-		if m, err := ReadManifest(opts.HomeDir); err == nil && m != nil && m.BinDir != "" {
-			binDir = m.BinDir
-		}
-		for _, p := range RemoveStaleDepsTemps(binDir) {
-			fmt.Fprintf(w, "  [%s] %s — temporal de instalación huérfano\n", ActionRemove, p)
-		}
-	}
 	// Cubre ejecución, simulación, cancelación y cualquier retorno temprano.
 	defer func() { retErr = errors.Join(retErr, plan.Close()) }()
 	if flags.DryRun {
@@ -1130,6 +1120,15 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (
 		if a := strings.ToLower(strings.TrimSpace(answer)); a != "s" && a != "si" && a != "sí" && a != "y" && a != "yes" {
 			return fmt.Errorf("desinstalación cancelada: no se modificó nada")
 		}
+	}
+
+	// HCD-062/HCD-064: retirar temporales huérfanos solo tras la confirmación.
+	binDir := opts.LocalBinDir
+	if m, err := ReadManifest(opts.HomeDir); err == nil && m != nil && m.BinDir != "" {
+		binDir = m.BinDir
+	}
+	for _, p := range RemoveStaleDepsTemps(binDir) {
+		fmt.Fprintf(w, "  [%s] %s — temporal de instalación huérfano\n", ActionRemove, p)
 	}
 
 	var log strings.Builder

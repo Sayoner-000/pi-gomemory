@@ -87,3 +87,27 @@ func TestHCD062ShellUpdateChildNoStdin(t *testing.T) {
 		t.Fatalf("args = %v", cmd.Args)
 	}
 }
+
+// HCD-064 T7 (H-07 / C-007): scripts/clean-install-check.sh no fija una versión
+// obsoleta literal (v1.20.0), sino que lee la versión fijada desde install.sh.
+func TestHCD064CleanInstallCheckDynamicVersion(t *testing.T) {
+	raw, err := os.ReadFile("scripts/clean-install-check.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(raw)
+	if strings.Contains(src, "v1.20.0") {
+		t.Fatalf("scripts/clean-install-check.sh no debe fijar literalmente v1.20.0")
+	}
+	if !strings.Contains(src, "PINNED_VER") {
+		t.Fatalf("scripts/clean-install-check.sh debe derivar PINNED_VER desde install.sh")
+	}
+	out, err := exec.Command("bash", "-c", `sed -n 's/^VERSION="${PI_GOMEMORY_VERSION:-\([^}]*\)}"/\1/p' install.sh`).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ver := strings.TrimSpace(string(out))
+	if !strings.HasPrefix(ver, "v") {
+		t.Fatalf("no se pudo extraer VERSION de install.sh: %q", ver)
+	}
+}

@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -56,10 +58,14 @@ func fetchHTTPS(client *http.Client, rawURL string, limit int64) ([]byte, error)
 // depsTempDir crea un directorio privado junto al directorio de binarios
 // (no en /tmp, que puede ser noexec) y devuelve cómo borrarlo.
 func depsTempDir(opts *Options) (string, func(), error) {
-	if err := os.MkdirAll(opts.LocalBinDir, 0o755); err != nil {
+	binDir, err := filepath.Abs(opts.LocalBinDir)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolver directorio de binarios: %w", err)
+	}
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return "", nil, err
 	}
-	dir, err := os.MkdirTemp(opts.LocalBinDir, depsTempPrefix+"*")
+	dir, err := os.MkdirTemp(binDir, depsTempPrefix+"*")
 	if err != nil {
 		return "", nil, fmt.Errorf("crear temporal: %w", err)
 	}
@@ -67,6 +73,9 @@ func depsTempDir(opts *Options) (string, func(), error) {
 		_ = os.RemoveAll(dir)
 		return "", nil, err
 	}
+	// Marca de propiedad entre procesos (HCD-064 / H-03): evita que otra
+	// instancia concurrente de install/uninstall borre este temporal vivo.
+	_ = writeFileAtomic(filepath.Join(dir, ".pid"), []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600)
 	untrack := trackTemp(dir)
 	return dir, func() { untrack(); _ = os.RemoveAll(dir) }, nil
 }
@@ -106,7 +115,8 @@ func runInstaller(name string, args, env []string, dir string, out io.Writer, ti
 	cmd.Stdout = pipeOnly{out}
 	cmd.Stderr = pipeOnly{out}
 	cmd.WaitDelay = 5 * time.Second
-	if hooks.TTY == nil || !hooks.TTY() {
+	pgidMode := hooks.TTY == nil || !hooks.TTY()
+	if pgidMode {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		cmd.Cancel = func() error {
 			if cmd.Process == nil {
@@ -114,8 +124,21 @@ func runInstaller(name string, args, env []string, dir string, out io.Writer, ti
 			}
 			return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		}
+	} else {
+		cmd.Cancel = func() error {
+			if cmd.Process == nil {
+				return nil
+			}
+			killProcessTree(cmd.Process.Pid)
+			return nil
+		}
 	}
-	err := cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	untrack := trackLiveChild(cmd.Process.Pid, pgidMode, cancel)
+	err := cmd.Wait()
+	untrack()
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return fmt.Errorf("superó el plazo de %s", timeout)
 	}
@@ -160,4 +183,43 @@ func runQuiet(timeout time.Duration, name string, args ...string) (string, error
 	var buf strings.Builder
 	err := runInstaller(name, args, nil, "", &buf, timeout)
 	return buf.String(), err
+}
+
+// killProcessTree mata al proceso pid y a sus descendientes (HCD-064 / H-05).
+// Se usa cuando el hijo comparte grupo con la terminal (TTY activo) y no se
+// puede aplicar Setpgid.
+func killProcessTree(root int) {
+	if root <= 0 {
+		return
+	}
+	out, err := exec.Command("ps", "-eo", "pid=,ppid=").Output()
+	if err == nil {
+		children := map[int][]int{}
+		for _, line := range strings.Split(string(out), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) != 2 {
+				continue
+			}
+			p, err1 := strconv.Atoi(fields[0])
+			pp, err2 := strconv.Atoi(fields[1])
+			if err1 == nil && err2 == nil {
+				children[pp] = append(children[pp], p)
+			}
+		}
+		var order []int
+		queue := []int{root}
+		for len(queue) > 0 {
+			cur := queue[0]
+			queue = queue[1:]
+			for _, ch := range children[cur] {
+				order = append(order, ch)
+				queue = append(queue, ch)
+			}
+		}
+		// Matar de hojas hacia arriba y por último el proceso raíz.
+		for i := len(order) - 1; i >= 0; i-- {
+			_ = syscall.Kill(order[i], syscall.SIGKILL)
+		}
+	}
+	_ = syscall.Kill(root, syscall.SIGKILL)
 }

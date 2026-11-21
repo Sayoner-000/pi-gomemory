@@ -25,7 +25,11 @@ func DefaultOptions() (*Options, error) {
 
 	binDir := filepath.Join(home, ".local", "bin")
 	if v := os.Getenv("PI_GOMEMORY_BIN_DIR"); v != "" {
-		binDir = v
+		abs, err := filepath.Abs(v)
+		if err != nil {
+			return nil, fmt.Errorf("resolver PI_GOMEMORY_BIN_DIR: %w", err)
+		}
+		binDir = abs
 	}
 	return &Options{
 		HomeDir:     home,

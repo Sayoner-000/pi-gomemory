@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 )
@@ -108,8 +109,12 @@ func installCodebaseMemory(opts *Options, out io.Writer) error {
 	if v, err := runQuiet(time.Minute, path, "--version"); err != nil {
 		return fmt.Errorf("el binario descargado no se ejecuta: %v %s", err, strings.TrimSpace(v))
 	}
+	binDir, err := filepath.Abs(opts.LocalBinDir)
+	if err != nil {
+		return fmt.Errorf("resolver directorio de binarios: %w", err)
+	}
 	fmt.Fprintf(out, "%s      %s %s verificado (SHA-256)%s\n", ColorMuted, cbmBinary, tag, ColorReset)
-	return runInstaller(path, []string{"install", "-y", "--force", "--dir=" + opts.LocalBinDir, "--skip-config"}, nil, tmp, out, hooks.ScriptTimeout)
+	return runInstaller(path, []string{"install", "-y", "--force", "--dir=" + binDir, "--skip-config"}, nil, tmp, out, hooks.ScriptTimeout)
 }
 
 // extractExact extrae del .tar.gz la entrada regular con nombre exacto name.
@@ -131,7 +136,13 @@ func extractExact(tgz []byte, name string, limit int64) ([]byte, error) {
 			return nil, fmt.Errorf("leer tarball: %w", err)
 		}
 		clean := strings.TrimPrefix(h.Name, "./")
-		if filepath.IsAbs(clean) || clean != filepath.Clean(clean) || strings.Contains(clean, "..") {
+		if h.Typeflag == tar.TypeDir {
+			clean = strings.TrimSuffix(clean, "/")
+			if clean == "" || clean == "." {
+				continue
+			}
+		}
+		if filepath.IsAbs(clean) || clean != filepath.Clean(clean) || slices.Contains(strings.Split(clean, "/"), "..") {
 			return nil, fmt.Errorf("tarball con ruta no permitida: %q", h.Name)
 		}
 		if h.Typeflag == tar.TypeSymlink || h.Typeflag == tar.TypeLink {

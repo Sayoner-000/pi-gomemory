@@ -99,8 +99,9 @@ if ! grep -q "compilado en" "${LOG}"; then
   echo "✗ install.sh no compiló el binario local (¿usó la release fijada?)." >&2
   exit 1
 fi
-if grep -q "Binario v1.20.0 compilado\|Descargando pi-gomemory-setup_v1.20.0" "${LOG}"; then
-  echo "✗ Se usó v1.20.0 en lugar del binario local." >&2
+PINNED_VER="$(sed -n 's/^VERSION="${PI_GOMEMORY_VERSION:-\([^}]*\)}"/\1/p' "${REPO}/install.sh")"
+if [ -n "${PINNED_VER}" ] && grep -q "Binario ${PINNED_VER} compilado\|Descargando pi-gomemory-setup_${PINNED_VER}" "${LOG}"; then
+  echo "✗ Se usó ${PINNED_VER} en lugar del binario local." >&2
   exit 1
 fi
 
