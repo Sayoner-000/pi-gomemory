@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.23.0](releases/v1.23.0.md)
+Añade `Alt+P` (y `Ctrl+Alt+P`) para el modo plan con su estado en la cabecera, cambia la barra y el glifo de tarea caducada de `/tasks` y corrige la versión que mostraba la cabecera tras actualizar.
+
 [Notas de v1.22.0](releases/v1.22.0.md)
 Activa `hideThinkingBlock` (`Ctrl+T`) e indicador animado `(thinking...)` por defecto, exige análisis de impacto con `codegraph` y `codebase-memory` siempre y en `/plan`, y corrige los nueve hallazgos de la auditoría de `v1.21.1`.
 

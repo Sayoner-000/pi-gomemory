@@ -110,7 +110,7 @@ mem setup-mcp --scope global --agents claude,codex,agy,opencode
 Durante una sesión interactiva de Pi:
 
 ### Banner de inicio
-Al abrir Pi con `pi-gomemory`, la cabecera muestra la versión de pi-gomemory y la de gomemory instalada. El launcher las exporta en `PI_GOMEMORY_RUNNING_VERSION` (de `pi-gomemory-setup version`) y `GOMEMORY_INSTALLED_VERSION` (de `mem --version`). Si falta alguna, se omite. Con `NO_COLOR` se dibuja sin colores.
+Al abrir Pi con `pi-gomemory`, la cabecera muestra la versión de pi-gomemory y la de gomemory instalada. El launcher las exporta en `PI_GOMEMORY_RUNNING_VERSION` (de `pi-gomemory-setup version`) y `GOMEMORY_INSTALLED_VERSION` (de `mem --version`). Las lee después de la pregunta de actualización, así que si aceptas actualizar al arrancar ya ves las versiones nuevas. Si falta alguna, se omite. Debajo del lema va el estado del modo plan (ver más abajo). Con `NO_COLOR` se dibuja sin colores.
 
 Pi solo admite una cabecera. Si pi-cc-extensions tiene `showStartupHeader: true`, su cabecera sustituye al banner; por eso `pi-gomemory-setup install` (y `update`) fija esa clave en `false` en cada instalación, y `pi-gomemory-setup doctor` avisa en «Banner gomemory» si vuelve a activarse (por ejemplo desde `/ccstyle`).
 
@@ -125,16 +125,19 @@ Mientras el modo plan está activo, Pi bloquea las modificaciones comunes del ag
 - `/plan status` muestra si está activo, sin cambiar el estado.
 - `/plan run` conserva el comportamiento anterior: desactiva el modo, pero no ejecuta el plan automáticamente.
 - `/plan` sin argumentos alterna el modo; `/plan <petición>` lo activa y envía la petición.
+- `Alt+P` alterna el modo desde el teclado, sin iniciar un turno. `Ctrl+Alt+P` hace lo mismo y sirve en terminales de macOS que no envían Option como Alt (en ese caso Option+P escribe `π`). En Windows y WSL solo existe `Ctrl+Alt+P`, porque Pi usa allí `Alt+P` para volver al modelo anterior.
+
+La cabecera indica el estado en todo momento: `◆ MODO PLAN ON · Alt+P` en ámbar (el color `warning` del tema gomemory) o `○ plan off · Alt+P` atenuado. Cambia al instante con el atajo o con `/plan`. La etiqueta `PLAN` del pie sigue apareciendo, aunque con pi-cc-extensions el pie la pinta con su propio color.
 
 ### Panel de tareas (`/tasks`)
-`/tasks` muestra u oculta las tareas de la unidad HCD activa encima del editor. La cabecera lleva una barra de progreso (`▰▰▰▰▱▱▱▱▱▱  5/13 · 38 %`). El estado de cada tarea viene del motor y se dibuja como un círculo que se llena:
+`/tasks` muestra u oculta las tareas de la unidad HCD activa encima del editor. La cabecera lleva una barra de progreso (`━━━━──────  5/13 · 38 %`): tramo grueso para lo hecho y fino para lo que falta. El estado de cada tarea viene del motor y se dibuja como un círculo que se llena:
 
 | Glifo | Estado |
 |---|---|
 | `○` | pendiente |
 | `●` (parpadea) | en curso: la tarea activa, aunque no haya ninguna llamada en marcha; alterna `●` y `○` cada medio segundo |
 | `●` | verificada |
-| `◍` | estuvo verificada, pero el código cambió y hay que volver a verificarla |
+| `↻` | estuvo verificada, pero el código cambió y hay que volver a verificarla |
 | `✗` | fallida |
 
 Cada estado tiene también su color; el glifo se mantiene para quien no distingue colores o usa un tema monocromo. Debajo de cada tarea, el árbol (`├─`, `└─`) muestra las llamadas de la sesión con su estado y duración; la que está en marcha usa el mismo spinner que `/tdd`.

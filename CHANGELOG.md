@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.23.0] - 2026-11-21
+
+### Added
+- `Alt+P` activa o desactiva el modo plan sin iniciar un turno. `Ctrl+Alt+P` hace lo mismo en terminales de macOS que no envían Option como Alt. En Windows y WSL solo se registra `Ctrl+Alt+P`, porque Pi ya usa `Alt+P` para volver al modelo anterior. ([HCD-067](hcd/HCD-067-atajo-alt-p-para-el-modo-plan-y-aviso-en.md))
+- La cabecera de Pi muestra el estado del modo plan: `◆ MODO PLAN ON · Alt+P` en ámbar o `○ plan off · Alt+P` atenuado. Se actualiza al momento con el atajo o con `/plan`. ([HCD-067](hcd/HCD-067-atajo-alt-p-para-el-modo-plan-y-aviso-en.md))
+
+### Changed
+- `/tasks` dibuja la barra de progreso con `━` y `─` en lugar de `▰▱`, que muchas fuentes no incluyen y la terminal pintaba a trozos. La tarea caducada usa `↻` en lugar de `◍`. ([HCD-068](hcd/HCD-068-glifos-de-tasks-legibles-barra-y-tarea-c.md))
+
+### Fixed
+- Si aceptabas actualizar al abrir `pi-gomemory`, la cabecera seguía mostrando las versiones anteriores de gomemory y pi-gomemory. El launcher las leía antes de `deps-update`; ahora las lee después.
+
 ## [v1.22.0] - 2026-11-21
 
 ### Added
