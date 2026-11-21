@@ -8,6 +8,10 @@ La [guía de Antigravity](antigravity.md) explica la referencia publicada, su de
 
 Desde v1.21.1 el pin es pi-antigravity 0.15.0, que corrige el problema upstream (pi-antigravity#152). En la prueba real sin el guard, 0.14.0 devolvió 429 en todos los casos y 0.15.0 respondió en todos. El guard local sigue instalado y es compatible con 0.15.0; retirarlo queda pendiente de decisión.
 
+## ACR y ADM de v1.21.0
+
+La auditoría ACR/ADM sobre `v1.21.0` (`2c10005`, veredicto `APPROVED` sin críticos ni altos) identificó cuatro defectos medios y tres bajos en el paso de instalación de herramientas (señales `SIGINT`/`SIGTERM`, borrado prematuro de temporales en `uninstall`, colisión entre procesos concurrentes, `PI_GOMEMORY_BIN_DIR` relativo, timeout con TTY, entradas de directorio en `extractExact` y versión literal en `scripts/clean-install-check.sh`). [HCD-064](../hcd/HCD-064-corregir-hallazgos-h-01-a-h-07-de-la-aud.md) corrige los siete en [v1.21.1](releases/v1.21.1.md).
+
 ## ACR y ADM de v1.16.0
 
 La [auditoría de v1.16.0](audits/2026-11-19-acr-adm-v1.16.0.md) confirmó cinco defectos, entre ellos la pérdida de configuraciones MCP personalizadas al alternar `lite`. [HCD-052](../hcd/HCD-052-corregir-hallazgos-c-001-a-c-005-de-la-a.md) corrige los cinco en [v1.17.0](releases/v1.17.0.md). La política de confianza de los ejecutores locales de `/tdd` quedó como observación no confirmada, fuera de esa corrección.

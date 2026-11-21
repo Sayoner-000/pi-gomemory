@@ -1,7 +1,8 @@
 # Notas de release
 
-La versión vigente es [v1.21.0](v1.21.0.md). Las notas anteriores describen cada entrega; no sustituyen la [referencia de uso actual](../usage.md).
+La versión vigente es [v1.21.1](v1.21.1.md). Las notas anteriores describen cada entrega; no sustituyen la [referencia de uso actual](../usage.md).
 
+- [v1.21.1](v1.21.1.md)
 - [v1.21.0](v1.21.0.md)
 - [v1.20.0](v1.20.0.md)
 - [v1.19.2](v1.19.2.md)

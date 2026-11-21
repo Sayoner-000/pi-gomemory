@@ -4,6 +4,23 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.21.1] - 2026-11-20
+
+### Added
+- `scripts/antigravity-pin-check.sh` prueba una versión candidata de `pi-antigravity` con la cuenta real (modelos Gemini, Claude, llamadas a `bash` y `google_search`) y comprueba la instalación activa con `--installed`.
+
+### Changed
+- Sube el pin fijado de `pi-antigravity` a `0.15.0`, que incluye la corrección upstream de `pi-antigravity#152`, y añade `0.14.0` a `historicPins` para que `uninstall --packages` siga retirando el pin anterior.
+
+### Fixed
+- Al recibir `SIGINT` o `SIGTERM` durante la instalación de herramientas, el manejador detiene el grupo o árbol de procesos hijo antes de limpiar temporales y devuelve el código convencional `143` en `SIGTERM`.
+- `uninstall` retira los directorios temporales huérfanos (`.pi-gomemory-deps-*`) solo después de comprobar la terminal interactiva y recibir confirmación. Si el usuario cancela o falta `--yes`, no se borra nada.
+- `depsTempDir` escribe un archivo `.pid` de forma atómica y `RemoveStaleDepsTemps` omite los temporales cuyo proceso propietario sigue vivo, evitando colisiones entre ejecuciones simultáneas de `install` y `uninstall`.
+- `PI_GOMEMORY_BIN_DIR` se normaliza a ruta absoluta en `DefaultOptions`, `depsTempDir` e `installCodebaseMemory`, corrigiendo el fallo por doble resolución cuando se pasa una ruta relativa.
+- Cuando vence el plazo de un instalador ejecutado con terminal interactiva (TTY), `runInstaller` termina también sus procesos descendientes.
+- `extractExact` acepta tarballs de `codebase-memory-mcp` con entradas de directorio (`./`, `dir/`) y nombres benignos que contengan `..`, manteniendo el bloqueo frente a rutas `..` de traversal y enlaces simbólicos.
+- `scripts/clean-install-check.sh` lee la versión fijada directamente desde `install.sh` en lugar de compararla contra una cadena literal.
+
 ## [v1.21.0] - 2026-11-20
 
 ### Added

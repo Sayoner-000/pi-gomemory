@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.21.1](releases/v1.21.1.md)
+Sube `pi-antigravity` a `0.15.0` y corrige señales, limpieza concurrente de temporales, rutas relativas en `PI_GOMEMORY_BIN_DIR` y extracción de tarballs en el paso de herramientas.
+
 [Notas de v1.21.0](releases/v1.21.0.md)
 La instalación trae `pi`, `mem`, `codegraph` y `codebase-memory-mcp` desde su canal oficial cuando faltan, y `deps-install` actualiza codebase-memory-mcp desde su release verificado.
 
