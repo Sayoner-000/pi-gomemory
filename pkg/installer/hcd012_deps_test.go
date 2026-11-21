@@ -19,8 +19,10 @@ func TestHCD012DepsNoPipe(t *testing.T) {
 				t.Errorf("%s: comando inseguro %q", p.Name, cmd)
 			}
 		}
-		if p.Name == "codebase-memory-mcp" && (len(p.Update) != 0 || !strings.Contains(p.Manual, "releases/latest")) {
-			t.Errorf("codebase-memory-mcp debe ser manual: %+v", p)
+		// HCD-062: codebase-memory-mcp deja de ser manual y usa el canal
+		// verificado del propio instalador (release + SHA-256).
+		if p.Name == "codebase-memory-mcp" && strings.Join(p.Update, " ") != "pi-gomemory-setup deps-install codebase-memory-mcp" {
+			t.Errorf("codebase-memory-mcp debe actualizarse con deps-install: %+v", p)
 		}
 	}
 }

@@ -114,17 +114,39 @@ fi
 
 chmod +x "${SETUP_BIN}"
 
-# 3. Ejecutar la orquestación de instalación completa
+# 3. Ejecutar la orquestación de instalación completa. La entrada va a
+#    /dev/null: con `curl | bash` la entrada de este script es el propio script
+#    y los instaladores que lance `install` no deben consumirla (HCD-062).
+#    Las preguntas que necesiten hacer las leen ellos de /dev/tty.
 echo ""
-PI_GOMEMORY_BIN_DIR="${INSTALL_DIR}" "${SETUP_BIN}" install
+INSTALL_STATUS=0
+PI_GOMEMORY_BIN_DIR="${INSTALL_DIR}" "${SETUP_BIN}" install </dev/null || INSTALL_STATUS=$?
 
-# 4. Verificación de PATH
+# 4. Verificación de PATH, también si install falló: solo los directorios
+#    conocidos donde quedó alguna herramienta y que el shell no tiene.
 echo ""
-if [[ ":${PATH}:" != *":${INSTALL_DIR}:"* ]]; then
+MISSING_DIRS=()
+for dir in "${INSTALL_DIR}" "${HOME}/.local/bin" "${HOME}/.pi/agent/bin" "${HOME}/.gomemory/bin"; do
+  [[ ":${PATH}:" == *":${dir}:"* ]] && continue
+  for tool in pi-gomemory-setup pi-gomemory pi mem codegraph codebase-memory-mcp; do
+    if [ -x "${dir}/${tool}" ]; then
+      case " ${MISSING_DIRS[*]:-} " in *" ${dir} "*) ;; *) MISSING_DIRS+=("${dir}") ;; esac
+      break
+    fi
+  done
+done
+if [ "${#MISSING_DIRS[@]}" -gt 0 ]; then
   echo -e "${C_BRILLO}Nota importante sobre PATH:${C_RESET}"
-  echo -e "${C_MUTED}Asegúrate de agregar ${INSTALL_DIR} a tu PATH en tu shell profile (~/.zshrc o ~/.bashrc):${C_RESET}"
-  echo -e "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+  echo -e "${C_MUTED}Agrega estos directorios a tu PATH en tu shell profile (~/.zshrc o ~/.bashrc):${C_RESET}"
+  for dir in "${MISSING_DIRS[@]}"; do
+    echo -e "  export PATH=\"${dir}:\$PATH\""
+  done
   echo ""
+fi
+
+if [ "${INSTALL_STATUS}" -ne 0 ]; then
+  echo -e "${C_ERROR}✗ La instalación no terminó (código ${INSTALL_STATUS}). Revisa el mensaje anterior y vuelve a ejecutar el instalador.${C_RESET}" >&2
+  exit "${INSTALL_STATUS}"
 fi
 
 echo -e "${C_SUCCESS}✓ Instalación finalizada. Ahora puedes ejecutar '${C_BRILLO}pi-gomemory${C_SUCCESS}' para iniciar Pi en Herdr.${C_RESET}"

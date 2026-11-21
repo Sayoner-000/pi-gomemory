@@ -1083,6 +1083,16 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (
 	if err != nil {
 		return err
 	}
+	if !flags.DryRun {
+		// HCD-062: temporales del paso de herramientas que no pudieron borrarse.
+		binDir := opts.LocalBinDir
+		if m, err := ReadManifest(opts.HomeDir); err == nil && m != nil && m.BinDir != "" {
+			binDir = m.BinDir
+		}
+		for _, p := range RemoveStaleDepsTemps(binDir) {
+			fmt.Fprintf(w, "  [%s] %s — temporal de instalación huérfano\n", ActionRemove, p)
+		}
+	}
 	// Cubre ejecución, simulación, cancelación y cualquier retorno temprano.
 	defer func() { retErr = errors.Join(retErr, plan.Close()) }()
 	if flags.DryRun {
@@ -1190,12 +1200,23 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (
 	if err := os.MkdirAll(filepath.Dir(UninstalledMarkerPath(opts.HomeDir)), 0755); err == nil {
 		_ = os.WriteFile(UninstalledMarkerPath(opts.HomeDir), []byte(Version+"\n"), 0644)
 	}
+	printToolsKept(w)
 	if changed > 0 {
 		fmt.Fprintf(w, "✓ pi-gomemory desinstalado; se conservaron %d elementos que cambiaron después del plan\n", changed)
 		return nil
 	}
 	fmt.Fprintln(w, "✓ pi-gomemory desinstalado. Para reinstalar: pi-gomemory-setup install")
 	return nil
+}
+
+// printToolsKept explica que las herramientas instaladas por el paso de
+// HCD-062 se conservan y cómo retirar cada una con su propio comando.
+func printToolsKept(w io.Writer) {
+	fmt.Fprintln(w, "Se conservan pi, mem, codegraph y codebase-memory-mcp: son herramientas independientes que otros agentes pueden usar. Para quitarlas:")
+	fmt.Fprintln(w, "  pi:                  rm -rf ~/.pi/agent/install ~/.pi/agent/bin/pi (y su enlace en ~/.local/bin)")
+	fmt.Fprintln(w, "  mem:                 curl -fsSL "+MemInstallScriptURL+" | bash -s -- --uninstall")
+	fmt.Fprintln(w, "  codegraph:           curl -fsSL "+CodegraphInstallScriptURL+" | sh -s -- --uninstall")
+	fmt.Fprintln(w, "  codebase-memory-mcp: codebase-memory-mcp uninstall")
 }
 
 // UninstallLogPath es el log de --verbose; vive junto a la marca de desinstalado.

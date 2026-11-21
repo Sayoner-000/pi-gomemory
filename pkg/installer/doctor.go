@@ -49,7 +49,9 @@ func RunDoctor(opts *Options) []CheckItem {
 		})
 	}
 
-	// 1. Binarios
+	// 1. Binarios, con el PATH ampliado por los directorios conocidos, como
+	// el launcher (HCD-062).
+	prependToolDirs(opts)
 	bins := []string{"pi", "mem", "codegraph", "codebase-memory-mcp"}
 	for _, b := range bins {
 		path, err := exec.LookPath(b)

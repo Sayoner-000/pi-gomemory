@@ -23,7 +23,9 @@ func (h hcd047Home) run(args ...string) (int, string) {
 	h.t.Helper()
 	cmd := exec.Command(h.bin, args...)
 	cmd.Dir = h.home
-	cmd.Env = []string{"HOME=" + h.home, "PATH=/usr/bin:/bin", "PI_GOMEMORY_NO_UPDATE_CHECK=1"}
+	// PI_GOMEMORY_SKIP_DEPS: el binario aparte no ve los ganchos de TestMain
+	// y no debe salir a la red a instalar herramientas (HCD-062).
+	cmd.Env = []string{"HOME=" + h.home, "PATH=/usr/bin:/bin", "PI_GOMEMORY_NO_UPDATE_CHECK=1", "PI_GOMEMORY_SKIP_DEPS=1"}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {

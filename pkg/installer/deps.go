@@ -245,7 +245,8 @@ func DefaultDepProbes(version, piAgentDir string) []DepProbe {
 			Name:    "codebase-memory-mcp",
 			Current: versionFromCmd("codebase-memory-mcp", "--version"),
 			Latest:  githubLatest("https://github.com/DeusData/codebase-memory-mcp/releases/latest"),
-			Manual:  "https://github.com/DeusData/codebase-memory-mcp/releases/latest",
+			// HCD-062: mismo canal verificado que la instalación (release + SHA-256).
+			Update: []string{"pi-gomemory-setup", "deps-install", "codebase-memory-mcp"},
 		},
 		{
 			Name:      "pi-antigravity",
@@ -546,7 +547,14 @@ func UpdateDeps(outdated []DepState, stdout, stderr io.Writer) []string {
 			continue
 		}
 		fmt.Fprintf(stdout, "==> Actualizando %s (%s → %s)...\n", d.Name, d.Current, d.Latest)
-		cmd := exec.Command(d.Update[0], d.Update[1:]...)
+		name := d.Update[0]
+		if name == "pi-gomemory-setup" {
+			// El propio binario, no el que encuentre el PATH (HCD-062, M-5).
+			if self, err := selfExecutable(); err == nil {
+				name = self
+			}
+		}
+		cmd := exec.Command(name, d.Update[1:]...)
 		cmd.Stdout, cmd.Stderr, cmd.Stdin = stdout, stderr, os.Stdin
 		if err := cmd.Run(); err != nil {
 			fmt.Fprintf(stderr, "%s✗ %s: %v%s\n", ColorError, d.Name, err, ColorReset)

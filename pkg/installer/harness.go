@@ -24,7 +24,7 @@ export GOMEMORY_CLIENT="pi"
 # 2. Asegurar acceso prioritario a binarios locales (incluido el directorio del
 #    propio launcher, donde también vive pi-gomemory-setup)
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PATH="${SELF_DIR}:${HOME}/.local/bin:${HOME}/.gomemory/bin:${PATH}"
+export PATH="${SELF_DIR}:${HOME}/.local/bin:${HOME}/.pi/agent/bin:${HOME}/.gomemory/bin:${PATH}"
 
 # 3. Subcomando rápido para ver cuota y consumo de Google AI Pro / Antigravity
 if [ "${1:-}" = "usage" ] || [ "${1:-}" = "quota" ] || [ "${1:-}" = "/antigravity.usage" ]; then

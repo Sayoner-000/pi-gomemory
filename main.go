@@ -182,6 +182,10 @@ func main() {
 			installer.DefaultDepProbes(version, opts.PiAgentDir), os.Stdout, os.Stderr); code != 0 {
 			os.Exit(code)
 		}
+	case "deps-install":
+		if code := installer.RunDepsInstall(opts, os.Args[2:], os.Stdout, os.Stderr); code != 0 {
+			os.Exit(code)
+		}
 	case "check-update":
 		res := installer.CheckUpdate(version, installer.UpdateCheckConfig{
 			CachePath: installer.DefaultUpdateCachePath(opts.PiAgentDir),
@@ -325,13 +329,19 @@ func defaultUpdateDeps() updateDeps {
 		apiURL:     installer.DefaultReleasesAPI,
 		baseURL:    installer.DefaultReleasesBaseURL,
 		run: func(exe string, env []string) error {
-			cmd := exec.Command(exe, "install")
-			cmd.Env = env
-			cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
-			return cmd.Run()
+			return installChildCmd(exe, env).Run()
 		},
 		out: os.Stdout,
 	}
+}
+
+// installChildCmd es el `install` que relanza update. No hereda la entrada
+// estándar: con `curl | bash` sería el resto del script (HCD-062, C-10).
+func installChildCmd(exe string, env []string) *exec.Cmd {
+	cmd := exec.Command(exe, "install")
+	cmd.Env = env
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return cmd
 }
 
 // runUpdate reemplaza el binario por la última release verificada y relanza la instalación con él.

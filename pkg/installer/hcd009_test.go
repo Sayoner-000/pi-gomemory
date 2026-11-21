@@ -44,11 +44,14 @@ func TestNoGitHubAPI(t *testing.T) {
 	if strings.Contains(DefaultReleasesAPI, "api.github.com") {
 		t.Fatalf("DefaultReleasesAPI = %s", DefaultReleasesAPI)
 	}
-	src, err := os.ReadFile("deps.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(src), "api.github.com") {
-		t.Fatal("deps.go no debe consultar api.github.com")
+	// HCD-062: también el paso de herramientas.
+	for _, f := range []string{"deps.go", "tools.go", "tools_cbm.go", "tools_exec.go"} {
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(src), "api.github.com") {
+			t.Fatalf("%s no debe consultar api.github.com", f)
+		}
 	}
 }

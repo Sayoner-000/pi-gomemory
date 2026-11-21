@@ -167,10 +167,15 @@ func CheckUpdate(current string, cfg UpdateCheckConfig) UpdateCheckResult {
 // github.com/<repo>/releases/latest lee la cabecera Location de la redirección
 // (/releases/tag/<tag>) sin seguirla; con una respuesta JSON lee tag_name.
 func fetchLatestTag(apiURL string, timeout time.Duration) (string, error) {
-	client := &http.Client{
+	return fetchLatestTagWith(&http.Client{
 		Timeout:       timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}
+	}, apiURL)
+}
+
+// fetchLatestTagWith es fetchLatestTag con un cliente dado, que no debe
+// seguir redirecciones (HCD-062).
+func fetchLatestTagWith(client *http.Client, apiURL string) (string, error) {
 	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
 	if err != nil {
 		return "", err
