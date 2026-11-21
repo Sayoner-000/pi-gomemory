@@ -4,6 +4,26 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.21.0] - 2026-11-20
+
+### Added
+- `install` instala `pi`, `mem`, `codegraph` y `codebase-memory-mcp` si no están. Usa el canal oficial de cada uno: `pi.dev/install.sh`, el `scripts/install.sh` de gomemory, el `install.sh` de codegraph y el último release de codebase-memory-mcp verificado contra su `checksums.txt`. Si fallan `pi` o `mem`, la instalación se detiene con el comando manual; si fallan los otros dos, avisa y sigue. Lo que ya tienes no se reinstala.
+- `pi-gomemory-setup deps-install codebase-memory-mcp` instala el último release verificado. `deps-update` lo usa en lugar de pedir una descarga manual.
+- `PI_GOMEMORY_SKIP_DEPS` omite el paso de herramientas, con la misma regla que `PI_GOMEMORY_NO_UPDATE_CHECK`. En modo lite solo se comprueban `pi` y `mem`.
+- `scripts/clean-install-check.sh` hace una instalación real en un HOME temporal y comprueba que las cuatro herramientas responden. Con `--no-node` comprueba el fallo rápido cuando falta Node.js.
+
+### Changed
+- El launcher añade `~/.pi/agent/bin` a su `PATH`, que es donde el instalador de Pi deja `pi` si no encuentra otro directorio en el `PATH`. `doctor` busca en los mismos directorios.
+- `install.sh` muestra la nota de `PATH` también cuando la instalación falla, termina con el código de `install` y solo lista directorios donde quedó alguna herramienta.
+- `uninstall` conserva `pi`, `mem`, `codegraph` y `codebase-memory-mcp` y explica cómo quitar cada una.
+
+### Fixed
+- Con `curl … | bash`, `install` y los instaladores que lanza ya no leen el resto de `install.sh` como entrada: reciben `/dev/null`. `update` tampoco pasa su entrada al `install` que relanza.
+
+### Security
+- Las descargas del paso solo aceptan HTTPS (también en las redirecciones), exigen HTTP 200 y tienen límite de tamaño. Del `.tar.gz` de codebase-memory-mcp solo se extrae el binario, y se rechaza el archivo entero si trae rutas con `..`, rutas absolutas o enlaces.
+- Los scripts de Pi, gomemory y codegraph se ejecutan sin versión fija, igual que sus propias actualizaciones. Está documentado en la guía de instalación.
+
 ## [v1.20.0] - 2026-11-20
 
 ### Changed
