@@ -58,8 +58,9 @@ export function piBlock(selectedTools: unknown[] = []): string {
 		);
 	}
 	lines.push(
-		"- HCD: comprueba la unidad activa con 'mem hcd show'; ejecuta las comprobaciones en bash para ver el rojo o el verde y registra la evidencia con 'mem hcd verify'.",
-		"- Modo plan: antes de redactar un plan llama a get_plan_context() o 'mem plan-context'; entrega el árbol de tareas atómicas y detente.",
+		"- Impacto obligatorio (siempre, con o sin /plan): antes de editar código, proponer cambios o abrir una unidad HCD ante cualquier solicitud, valida el impacto completo del proyecto en solo lectura con codegraph (codegraph_explore si existe .codegraph/) y codebase-memory (list_projects/index_status, search_graph, trace_path inbound/outbound y check_index_coverage), identificando símbolos, llamadores y archivos afectados antes de tocar nada.",
+		"- HCD: comprueba la unidad activa con 'mem hcd show'; mide primero el impacto del proyecto con codegraph y codebase-memory; ejecuta las comprobaciones en bash para ver el rojo o el verde y registra la evidencia con 'mem hcd verify'.",
+		"- Modo plan: antes de redactar un plan o abrir un HCD, llama a get_plan_context() o 'mem plan-context', valida el impacto del proyecto en solo lectura con codegraph (codegraph_explore) y codebase-memory (search_graph, trace_path, check_index_coverage), entrega el Mapa de impacto y el árbol de tareas atómicas y detente.",
 		"- Splash: ejecuta la tool splash_review con la ruta del documento y una lente opcional. No le envíes historial ni memoria, no la sustituyas por una autoevaluación y no tomes un fallo de ejecución por una revisión aprobada.",
 		"- Si gomemory no respondió al iniciar la sesión, usa la CLI 'mem' (mem context, mem search) o get_context().",
 	);

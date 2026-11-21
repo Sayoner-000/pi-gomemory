@@ -17,6 +17,8 @@
     "(^|[;&|(]|&&|\\|\\|)\\s*sed\\s+(-[a-zA-Z]*i|--in-place)",
     "(^|[;&|(]|&&|\\|\\|)\\s*git\\s+(commit|push|reset|checkout|switch|merge|rebase|add|rm|mv|restore|stash|cherry-pick|tag|apply|clean|pull)(\\s|$)",
     "(^|[;&|(]|&&|\\|\\|)\\s*(npm|pnpm|yarn|bun)\\s+(install|i|add|remove|uninstall|update|ci)(\\s|$)",
-    "(^|[;&|(]|&&|\\|\\|)\\s*go\\s+(mod\\s+tidy|get|install|build\\s+.*-o)(\\s|$)"
+    "(^|[;&|(]|&&|\\|\\|)\\s*go\\s+(mod\\s+tidy|get|install|build\\s+.*-o)(\\s|$)",
+    "(^|[;&|(]|&&|\\|\\|)\\s*mem\\s+hcd\\s+(start|clarify|approve|verify|close|cancel|promote|rename)(\\s|$)",
+    "(^|[;&|(]|&&|\\|\\|)\\s*codegraph\\s+index(\\s|$)"
   ]
 }

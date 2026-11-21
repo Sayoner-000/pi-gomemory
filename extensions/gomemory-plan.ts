@@ -29,16 +29,49 @@ export function bashBlocked(command: string): boolean {
 	return block.some((re) => re.test(cmd));
 }
 
+export const IMPACT_PROTOCOL = `## Validación obligatoria de impacto antes de HCD (solo lectura)
+
+Antes de proponer el árbol de tareas o abrir una unidad HCD, valida el impacto completo del proyecto sin modificar archivos del repositorio:
+1. **codegraph**: si el proyecto tiene \`.codegraph/\`, consulta \`codegraph_explore\` sobre los símbolos y archivos implicados para inspeccionar fuentes y llamadas dinámicas. Si no existe \`.codegraph/\`, decláralo sin ejecutar \`codegraph index\`.
+2. **codebase-memory**: verifica el proyecto y su frescura con \`list_projects\` e \`index_status\`. Si el índice falta o está desactualizado, puedes refrescar el índice externo con \`index_repository(mode="moderate", persistence=false)\` (no escribe archivos en el repositorio; nunca uses \`persistence=true\` en modo plan).
+3. **Radio de impacto**: ejecuta \`search_graph\`, \`trace_path\` (\`direction="both"\` para llamadores inbound y dependencias outbound) y \`check_index_coverage\` sobre todas las rutas candidatas antes de afirmar qué archivos o contratos se ven afectados.
+4. **Entregable**: incluye una sección explícita **«Mapa de impacto»** (símbolos, llamadores, archivos afectados y estado/huecos de cobertura) antes del árbol de tareas atómicas. No modifiques código ni abras/mutes unidades HCD mientras el modo plan esté activo.`;
+
 const FALLBACK = `[gomemory-plan:fallback]
 Estás en MODO PLAN (solo planificación). No modifiques archivos ni ejecutes comandos que cambien estado.
 Descompón la solicitud en un árbol de tareas atómicas: cada hoja con un verbo, un objeto, un único
 resultado inspeccionable y la comprobación que la demuestra. Explora con herramientas de lectura,
-entrega el árbol y pregunta si se ejecuta. La persona sale del modo con /plan off.`;
+entrega el árbol y pregunta si se ejecuta. La persona sale del modo con /plan off.
+
+${IMPACT_PROTOCOL}`;
 
 export const PLAN_SECTION = "gomemory-plan";
 
 const REASON = "Modo plan activo: no se permiten modificaciones. Usa /plan off para salir.";
+const PERSISTENCE_REASON =
+	"Modo plan activo: index_repository con persistence=true escribe en el repositorio. Usa persistence=false para refrescar solo el índice externo.";
 const INACTIVE = "El modo plan no está activo";
+
+const BLOCKED_MCP_TOOLS = new Set(["delete_project", "mcp__codebase_memory__delete_project"]);
+
+export function toolBlocked(toolName: string, input: any): string | undefined {
+	if (patterns.tools.includes(toolName) || BLOCKED_MCP_TOOLS.has(toolName)) {
+		return REASON;
+	}
+	if (toolName === "bash" && bashBlocked(String(input?.command ?? ""))) {
+		return REASON;
+	}
+	if ((toolName === "index_repository" || toolName === "mcp__codebase_memory__index_repository") && input?.persistence === true) {
+		return PERSISTENCE_REASON;
+	}
+	if (
+		(toolName === "manage_adr" || toolName === "mcp__codebase_memory__manage_adr") &&
+		(input?.mode === "update" || input?.mode === "set_sections")
+	) {
+		return REASON;
+	}
+	return undefined;
+}
 
 export default function (pi: ExtensionAPI) {
 	// La promesa existe solo mientras el modo está activo. Su resolución no cambia el estado.
@@ -49,7 +82,7 @@ export default function (pi: ExtensionAPI) {
 			const r = await pi.exec("mem", ["plan-context"], { cwd, timeout: 5000 });
 			const out = (r.stdout ?? "").trim();
 			if (r.code === 0 && out !== "") {
-				return `Estás en MODO PLAN: no modifiques archivos; entrega el árbol de tareas y pregunta si se ejecuta.\n\n${out}`;
+				return `Estás en MODO PLAN: no modifiques archivos; valida el impacto completo del proyecto en solo lectura, entrega el árbol de tareas y pregunta si se ejecuta.\n\n${IMPACT_PROTOCOL}\n\n${out}`;
 			}
 		} catch {
 			// mem ausente o con error: se usa el respaldo
@@ -96,12 +129,8 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("tool_call", async (event: any) => {
 		if (!method) return;
-		if (patterns.tools.includes(event.toolName)) {
-			return { block: true, reason: REASON };
-		}
-		if (event.toolName === "bash" && bashBlocked(String(event.input?.command ?? ""))) {
-			return { block: true, reason: REASON };
-		}
+		const reason = toolBlocked(String(event?.toolName ?? ""), event?.input ?? event?.args);
+		if (reason) return { block: true, reason };
 	});
 
 	// El método va como sección del prompt (HCD-045, Q5): reemplazar systemPrompt

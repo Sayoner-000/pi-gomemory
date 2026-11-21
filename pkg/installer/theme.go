@@ -34,5 +34,12 @@ func InstallTheme(assets fs.FS, piAgentDir string) error {
 	if err := setJSONField(settings, "theme", "gomemory"); err != nil {
 		return err
 	}
+	// HCD-066 (1A): activar Ctrl+T (hideThinkingBlock) por defecto sin pisar
+	// una elección previa explícita de la persona en settings.json.
+	if _, exists := settings["hideThinkingBlock"]; !exists {
+		if err := setJSONField(settings, "hideThinkingBlock", true); err != nil {
+			return err
+		}
+	}
 	return writeJSONObject(settingsPath, settings)
 }

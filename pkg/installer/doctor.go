@@ -159,6 +159,19 @@ func RunDoctor(opts *Options) []CheckItem {
 				Details: "no encontrado en settings.json",
 			})
 		}
+		if hidden, ok := s["hideThinkingBlock"].(bool); ok && hidden {
+			items = append(items, CheckItem{
+				Name:    "Thinking colapsado (Ctrl+T)",
+				Status:  "OK",
+				Details: "hideThinkingBlock activo en settings.json",
+			})
+		} else {
+			items = append(items, CheckItem{
+				Name:    "Thinking colapsado (Ctrl+T)",
+				Status:  "INFO",
+				Details: "bloques de razonamiento expandidos (pulsa Ctrl+T o fija hideThinkingBlock: true)",
+			})
+		}
 	}
 
 	// 5. Plugin pi-cc-extensions
