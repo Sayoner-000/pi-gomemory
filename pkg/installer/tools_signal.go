@@ -128,7 +128,7 @@ func depsTempOwnedByLiveProcess(dir string) bool {
 		return false
 	}
 	pid, err := strconv.Atoi(strings.TrimSpace(string(b)))
-	if err != nil || pid <= 0 {
+	if err != nil || pid <= 0 || pid == os.Getpid() {
 		return false
 	}
 	err = syscall.Kill(pid, 0)

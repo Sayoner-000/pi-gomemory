@@ -776,6 +776,8 @@ export default function (pi: ExtensionAPI) {
 	let spinEvery = 0;
 	let heartbeat: ReturnType<typeof setInterval> | null = null;
 	let heartbeatCtx: any = null;
+	let disposed = false;
+	let sessionEpoch = 0;
 
 	/**
 	 * Latido del panel (HCD-061): mientras está visible, vuelve a consultar el motor
@@ -836,6 +838,7 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	function syncWidget(ctx: any) {
+		if (disposed) return;
 		const hasView = Boolean(visible && currentUnit && renderTasksTree(currentUnit, tracker));
 		if (!hasView) {
 			mounted = false;
@@ -905,16 +908,19 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	async function refresh(ctx: any) {
+		if (disposed) return;
 		if (busy) {
 			pendingCtx = ctx;
 			return;
 		}
+		const epoch = sessionEpoch;
 		busy = true;
 		try {
 			let nextUnit: Unit | null = null;
-			if (visible) {
+			if (visible && !disposed) {
 				try {
 					const r = await pi.exec("mem", ["hcd", "show", "--json"], { cwd: ctx.cwd, timeout: 5000 });
+					if (disposed || epoch !== sessionEpoch) return;
 					if (r.code === 0 && visible) {
 						const parsed = JSON.parse(r.stdout ?? "");
 						if (parsed?.ok && parsed.unit_id && parsed.state === "active" && Array.isArray(parsed.tasks) && parsed.tasks.length > 0) {
@@ -925,15 +931,18 @@ export default function (pi: ExtensionAPI) {
 					// mem ausente, sin unidad o salida inválida: no se muestra nada
 				}
 			}
+			if (disposed || epoch !== sessionEpoch) return;
 			currentUnit = visible ? nextUnit : null;
 			if (visible) tracker.syncUnit(currentUnit);
 			syncWidget(ctx);
 		} finally {
 			busy = false;
-			if (pendingCtx) {
+			if (!disposed && epoch === sessionEpoch && pendingCtx) {
 				const next = pendingCtx;
 				pendingCtx = null;
 				await refresh(next);
+			} else {
+				pendingCtx = null;
 			}
 		}
 	}
@@ -1006,6 +1015,8 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	pi.on("session_start", async (_event: any, ctx: any) => {
+		disposed = false;
+		sessionEpoch++;
 		await refresh(ctx);
 	});
 
@@ -1025,7 +1036,7 @@ export default function (pi: ExtensionAPI) {
 			syncWidget(ctx);
 		}
 		const cmd = String(args?.command ?? "");
-		if (toolName === "bash" && /\bmem\s+hcd\b/.test(cmd)) {
+		if (!disposed && toolName === "bash" && /\bmem\s+hcd\b/.test(cmd)) {
 			stopPolling();
 			pollTimer = setInterval(() => {
 				void refresh(ctx);
@@ -1061,6 +1072,10 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("session_shutdown", async () => {
+		disposed = true;
+		sessionEpoch++;
+		pendingCtx = null;
+		currentUnit = null;
 		stopPolling();
 		mounted = false;
 		requestWidgetRender = null;

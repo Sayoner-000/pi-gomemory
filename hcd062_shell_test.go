@@ -111,3 +111,20 @@ func TestHCD064CleanInstallCheckDynamicVersion(t *testing.T) {
 		t.Fatalf("no se pudo extraer VERSION de install.sh: %q", ver)
 	}
 }
+
+// HCD-065 T1 (H-01 / C-001): scripts/clean-install-check.sh no debe rechazar
+// un binario compilado localmente cuando el commit actual lleva el mismo tag
+// que VERSION en install.sh (por ejemplo v1.21.1).
+func TestHCD065CleanInstallCheckTaggedCommit(t *testing.T) {
+	raw, err := os.ReadFile("scripts/clean-install-check.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(raw)
+	if strings.Contains(src, "Binario ${PINNED_VER} compilado") {
+		t.Fatalf("scripts/clean-install-check.sh no debe rechazar 'Binario ${PINNED_VER} compilado' porque install.sh imprime ese mensaje al compilar localmente en un commit etiquetado")
+	}
+	if !strings.Contains(src, "Descargando pi-gomemory-setup_${PINNED_VER}") {
+		t.Fatalf("scripts/clean-install-check.sh debe seguir rechazando la descarga de la release fijada")
+	}
+}

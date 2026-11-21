@@ -166,7 +166,7 @@ func TestHCD064RemoveStaleRespectsLivePID(t *testing.T) {
 	if err := os.MkdirAll(otherLive, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(otherLive, ".pid"), []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(otherLive, ".pid"), []byte(strconv.Itoa(os.Getppid())+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(otherDead, 0o700); err != nil {

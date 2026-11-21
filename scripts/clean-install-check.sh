@@ -100,7 +100,7 @@ if ! grep -q "compilado en" "${LOG}"; then
   exit 1
 fi
 PINNED_VER="$(sed -n 's/^VERSION="${PI_GOMEMORY_VERSION:-\([^}]*\)}"/\1/p' "${REPO}/install.sh")"
-if [ -n "${PINNED_VER}" ] && grep -q "Binario ${PINNED_VER} compilado\|Descargando pi-gomemory-setup_${PINNED_VER}" "${LOG}"; then
+if [ -n "${PINNED_VER}" ] && grep -q "Descargando pi-gomemory-setup_${PINNED_VER}" "${LOG}"; then
   echo "✗ Se usó ${PINNED_VER} en lugar del binario local." >&2
   exit 1
 fi

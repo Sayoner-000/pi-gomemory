@@ -65,17 +65,28 @@ func depsTempDir(opts *Options) (string, func(), error) {
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return "", nil, err
 	}
-	dir, err := os.MkdirTemp(binDir, depsTempPrefix+"*")
+	// Crear primero bajo un prefijo de staging para escribir .pid antes de que
+	// el directorio sea visible para RemoveStaleDepsTemps (HCD-065 / H-08).
+	staging, err := os.MkdirTemp(binDir, ".pi-gomemory-staging-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("crear temporal: %w", err)
 	}
-	if err := os.Chmod(dir, 0o700); err != nil {
-		_ = os.RemoveAll(dir)
+	if err := os.Chmod(staging, 0o700); err != nil {
+		_ = os.RemoveAll(staging)
 		return "", nil, err
 	}
 	// Marca de propiedad entre procesos (HCD-064 / H-03): evita que otra
 	// instancia concurrente de install/uninstall borre este temporal vivo.
-	_ = writeFileAtomic(filepath.Join(dir, ".pid"), []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600)
+	if err := writeFileAtomic(filepath.Join(staging, ".pid"), []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+		_ = os.RemoveAll(staging)
+		return "", nil, fmt.Errorf("registrar propietario del temporal: %w", err)
+	}
+	suffix := strings.TrimPrefix(filepath.Base(staging), ".pi-gomemory-staging-")
+	dir := filepath.Join(binDir, depsTempPrefix+suffix)
+	if err := os.Rename(staging, dir); err != nil {
+		_ = os.RemoveAll(staging)
+		return "", nil, fmt.Errorf("activar temporal: %w", err)
+	}
 	untrack := trackTemp(dir)
 	return dir, func() { untrack(); _ = os.RemoveAll(dir) }, nil
 }

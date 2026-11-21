@@ -252,6 +252,16 @@ export function getRegisteredMCPServers(agentDir?: string): MCPServerInfo[] {
 	}
 }
 
+function turnContextTokens(usage: any): number {
+	if (!usage) return 0;
+	const parts =
+		(usage.input || 0) +
+		(usage.output || 0) +
+		(usage.cacheRead || usage.cache_read_input_tokens || 0) +
+		(usage.cacheWrite || usage.cache_creation_input_tokens || 0);
+	return parts > 0 ? parts : (usage.totalTokens || 0);
+}
+
 /**
  * Recolecta métricas de tokens y coste desde la sesión activa de Pi.
  */
@@ -267,9 +277,10 @@ export function collectContextMetrics(ctx: any): { tokens: number; contextLimit:
 				if (entry.type === "message" && entry.message?.role === "assistant") {
 					const msg = entry.message as AssistantMessage;
 					if (msg.usage) {
-						tokens += (msg.usage.input || 0) + (msg.usage.output || 0);
+						const turn = turnContextTokens(msg.usage);
+						tokens += turn;
 						cost += msg.usage.cost?.total || 0;
-						lastTurnTokens = (msg.usage.input || 0) + (msg.usage.output || 0);
+						if (turn > 0) lastTurnTokens = turn;
 					}
 				}
 			}

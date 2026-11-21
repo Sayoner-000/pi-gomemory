@@ -1122,13 +1122,25 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (
 		}
 	}
 
-	// HCD-062/HCD-064: retirar temporales huérfanos solo tras la confirmación.
-	binDir := opts.LocalBinDir
+	// HCD-062/HCD-064/HCD-065: retirar temporales huérfanos solo tras la confirmación,
+	// limpiando tanto opts.LocalBinDir (PI_GOMEMORY_BIN_DIR) como manifest.BinDir.
+	seenBinDirs := map[string]bool{}
+	binDirs := []string{opts.LocalBinDir}
 	if m, err := ReadManifest(opts.HomeDir); err == nil && m != nil && m.BinDir != "" {
-		binDir = m.BinDir
+		binDirs = append(binDirs, m.BinDir)
 	}
-	for _, p := range RemoveStaleDepsTemps(binDir) {
-		fmt.Fprintf(w, "  [%s] %s — temporal de instalación huérfano\n", ActionRemove, p)
+	for _, dir := range binDirs {
+		if dir == "" {
+			continue
+		}
+		cleanDir := filepath.Clean(dir)
+		if seenBinDirs[cleanDir] {
+			continue
+		}
+		seenBinDirs[cleanDir] = true
+		for _, p := range RemoveStaleDepsTemps(cleanDir) {
+			fmt.Fprintf(w, "  [%s] %s — temporal de instalación huérfano\n", ActionRemove, p)
+		}
 	}
 
 	var log strings.Builder

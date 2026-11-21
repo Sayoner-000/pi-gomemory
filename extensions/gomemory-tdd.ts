@@ -1564,7 +1564,8 @@ function matchTestSegment(rawTokens: ShellToken[]): BashTestMatch | null {
 			}
 			targets.push(a);
 		}
-		const partial = hasRun || (targets.length > 0 && !(targets.length === 1 && targets[0] === "./..."));
+		const isFullRecursive = targets.length === 1 && (targets[0] === "./..." || targets[0] === "all");
+		const partial = hasRun || !isFullRecursive;
 		return {
 			suiteId: "backend",
 			parser: hasJson ? "go-test" : hasVerbose ? "go-text" : "exit-code",
@@ -1871,7 +1872,8 @@ function bashLineParser(store: TDDStore, match: BashTestMatch): LineParser {
 /** Cierra la suite de un Bash de tests: código real, fila de error si no hubo test fallido. */
 function finishBashRun(store: TDDStore, match: BashTestMatch, parser: LineParser, lines: string[], isError: boolean, partial: boolean) {
 	const res: StreamResult = { code: isError ? 1 : 0, missing: false, tail: lines.slice(-MAX_TAIL_LINES) };
-	const failed = Boolean(isError) || parser.finish(res);
+	const parserFailed = parser.finish(res);
+	const failed = Boolean(isError) || parserFailed;
 	if (failed) {
 		const suite = store.getState().suites.find((s) => s.id === match.suiteId);
 		const hasFailedTest = suite?.tests.some((t) => t.status === "failed");
@@ -2478,22 +2480,29 @@ export default function (pi: ExtensionAPI) {
 
 	/** Cancela la ejecución de watch en curso o en cola (HCD-056). */
 	let watchAbort: AbortController | null = null;
+	/** Cancela cualquier ejecución activa de pruebas al cerrar la sesión (HCD-065). */
+	let sessionAbort = new AbortController();
 
 	function runTestSuite(domainOrAll?: string, ctx?: any, opts: RunOptions = {}): Promise<SuiteDomain[]> {
 		// Una ejecución pedida no espera detrás de watch, que solo es informativo.
 		if (!opts.watch) watchAbort?.abort();
+		const baseAbort = sessionAbort;
+		const signal = opts.signal ? AbortSignal.any([baseAbort.signal, opts.signal]) : baseAbort.signal;
+		const runOpts: RunOptions = { ...opts, signal };
 		runsPending++;
 		const next = runChain.then(async () => {
+			// Sesión cerrada mientras esperaba turno: no arranca nuevos procesos.
+			if (baseAbort.signal.aborted) return [] as SuiteDomain[];
 			// Watch abortado mientras esperaba turno: no corre y sus cambios siguen sin comprobar.
-			if (opts.watch && opts.signal?.aborted) {
+			if (runOpts.watch && runOpts.signal?.aborted) {
 				watchDirty = true;
 				return [] as SuiteDomain[];
 			}
 			// Una ejecución completa cubre los cambios previos: watch no la repite.
 			// Una filtrada no: solo comprobó parte de la suite.
-			if ((!domainOrAll || domainOrAll === "all") && !opts.filter) watchDirty = false;
-			opts.onStart?.();
-			return doRunTestSuite(domainOrAll, ctx, opts);
+			if ((!domainOrAll || domainOrAll === "all") && !runOpts.filter) watchDirty = false;
+			runOpts.onStart?.();
+			return doRunTestSuite(domainOrAll, ctx, runOpts);
 		});
 		const settled = next.finally(() => runsPending--);
 		runChain = settled.catch(() => undefined);
@@ -2528,11 +2537,12 @@ export default function (pi: ExtensionAPI) {
 		const plans = detectSuites(cwd).filter((p) => target === "all" || p.id === target);
 		// Mantiene vivo el spinner del panel mientras hay procesos en curso.
 		const ticker = setInterval(() => requestOverlayRender?.(), SPINNER_INTERVAL_MS * 2);
+		(ticker as any)?.unref?.();
 		try {
 			for (const plan of plans) {
-				// Watch abortado a mitad: lo que falta no se toca y lo comprobará otra ejecución.
-				if (opts.watch && opts.signal?.aborted) {
-					watchDirty = true;
+				// Ejecución abortada (Watch o cierre de sesión): no arranca suites pendientes.
+				if (opts.signal?.aborted) {
+					if (opts.watch) watchDirty = true;
 					break;
 				}
 				store.clearSuite(plan.id);
@@ -2558,7 +2568,7 @@ export default function (pi: ExtensionAPI) {
 						ran++;
 						failed ||= outcome.failed;
 					}
-					if (opts.watch && opts.signal?.aborted) break;
+					if (opts.signal?.aborted) break;
 				}
 				if (opts.watch && opts.signal?.aborted) {
 					// Interrumpido, no fallido: los tests cortados no son un veredicto.
@@ -2567,6 +2577,7 @@ export default function (pi: ExtensionAPI) {
 					watchDirty = true;
 					break;
 				}
+				if (opts.signal?.aborted) break;
 				if (ran === 0) store.skipSuite(plan.id, skips.join(" · ") || "no aplica");
 				else {
 					const suite = store.getState().suites.find((s) => s.id === plan.id);
@@ -2769,6 +2780,10 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("session_shutdown", async () => {
+		watchAbort?.abort();
+		watchAbort = null;
+		sessionAbort.abort();
+		sessionAbort = new AbortController();
 		hcdRows.clear();
 		hcdUnit = undefined;
 		if (hcdTicker) clearInterval(hcdTicker);

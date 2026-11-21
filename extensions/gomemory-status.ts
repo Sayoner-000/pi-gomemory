@@ -15,6 +15,20 @@ const UPDATES_STATUS_KEY = "gomemory-updates";
 /** `pi-gomemory-setup deps-status` sale con 10 cuando hay algo desactualizado. */
 const DEPS_OUTDATED_EXIT = 10;
 
+/** Etiqueta para bloques de razonamiento colapsados (HCD-066, 2A). */
+export const HIDDEN_THINKING_LABEL = "(thinking...)";
+/** Ola de gotitas en glifos de texto puro (sin emojis, HCD-020 Q3 / HCD-066 2A). */
+export const THINKING_DROPLET_FRAMES = ["·   ", "•·  ", "●•· ", " •●•", "  ·●", "   ·"] as const;
+export const THINKING_INDICATOR_INTERVAL_MS = 110;
+
+export function buildThinkingIndicator(theme?: { fg?: (role: string, text: string) => string }) {
+	const color = (text: string) => (theme?.fg ? theme.fg("accent", text) : text);
+	return {
+		frames: THINKING_DROPLET_FRAMES.map(color),
+		intervalMs: THINKING_INDICATOR_INTERVAL_MS,
+	};
+}
+
 /**
  * Misma regla que `pi-gomemory-setup` y el launcher (HCD-037): vacía, "0" o
  * "false" (sin distinguir mayúsculas ni espacios) dejan la comprobación activa;
@@ -29,6 +43,14 @@ export default function (pi: ExtensionAPI) {
 	let customFooterEnabled = true;
 	let updatesAvailable = false;
 	let requestRender: (() => void) | null = null;
+	let activeUi: any = null;
+
+	function setupThinkingIndicator(ctx: any) {
+		if (!ctx?.ui) return;
+		activeUi = ctx.ui;
+		ctx.ui.setHiddenThinkingLabel?.(HIDDEN_THINKING_LABEL);
+		ctx.ui.setWorkingIndicator?.(buildThinkingIndicator(ctx.ui.theme));
+	}
 
 	/** Publica el aviso: en el pie propio si está activo; si no, en el pie por defecto con setStatus. */
 	function showUpdates(ctx: any, available: boolean) {
@@ -84,11 +106,16 @@ export default function (pi: ExtensionAPI) {
 							if (entry.type === "message" && entry.message.role === "assistant") {
 								const msg = entry.message as AssistantMessage;
 								if (msg.usage) {
+									const u = msg.usage as any;
+									const cr = u.cacheRead || u.cache_read_input_tokens || 0;
+									const cw = u.cacheWrite || u.cache_creation_input_tokens || 0;
 									input += msg.usage.input || 0;
 									output += msg.usage.output || 0;
-									cacheRead += (msg.usage as any).cacheRead || (msg.usage as any).cache_read_input_tokens || 0;
+									cacheRead += cr;
 									cost += msg.usage.cost?.total || 0;
-									lastTurnTokens = (msg.usage.input || 0) + (msg.usage.output || 0);
+									const parts = (msg.usage.input || 0) + (msg.usage.output || 0) + cr + cw;
+									const turn = parts > 0 ? parts : (u.totalTokens || 0);
+									if (turn > 0) lastTurnTokens = turn;
 								}
 							}
 						}
@@ -161,11 +188,20 @@ export default function (pi: ExtensionAPI) {
 		});
 	}
 
-	// Activar footer en arranque de sesión
+	// Activar footer e indicador de thinking en arranque de sesión
 	pi.on("session_start", async (_event, ctx) => {
 		setupFooter(ctx);
+		setupThinkingIndicator(ctx);
 		// Sin esperar: la consulta en red nunca retrasa el arranque de la sesión.
 		if (ctx.ui) void checkUpdates(ctx);
+	});
+
+	pi.on("session_shutdown", async (_event, ctx) => {
+		const ui = ctx?.ui ?? activeUi;
+		ui?.setWorkingIndicator?.();
+		ui?.setHiddenThinkingLabel?.();
+		activeUi = null;
+		requestRender = null;
 	});
 
 	// Comando para alternar la barra de tokens y TUI gomemory
