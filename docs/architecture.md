@@ -83,7 +83,7 @@ La función `InstallMCPServers` lee el archivo `mcp.json` existente y solo agreg
 
 ### Plugin pi-antigravity
 
-Para conectar Pi con los modelos de Google AI Pro mediante Antigravity, el instalador registra el paquete `npm:pi-antigravity@0.14.0` en `settings.json` (junto con `npm:pi-cc-extensions@1.0.21`). Ambos van fijados a una versión exacta, porque Pi no reinstala un paquete fijado así. `uninstall --packages` retira también las entradas de pins anteriores que escribió pi-gomemory (`historicPins` en `plugin.go`). Además, inyecta la dependencia `typebox: "*"` en la sección `peerDependencies` de la configuración para evitar avisos molestos de npm al resolver tipos.
+Para conectar Pi con los modelos de Google AI Pro mediante Antigravity, el instalador registra el paquete `npm:pi-antigravity@0.15.0` en `settings.json` (junto con `npm:pi-cc-extensions@1.0.21`). Ambos van fijados a una versión exacta, porque Pi no reinstala un paquete fijado así. `uninstall --packages` retira también las entradas de pins anteriores que escribió pi-gomemory (`historicPins` en `plugin.go`). Además, inyecta la dependencia `typebox: "*"` en la sección `peerDependencies` de la configuración para evitar avisos molestos de npm al resolver tipos.
 
 ### Guard opcional de generación
 

@@ -39,7 +39,7 @@ var (
 func validateCandidate(ctx context.Context, spec string) ([]ContractResult, error) {
 	pkg, version, ok := strings.Cut(spec, "@")
 	if !ok || pkg == "" || version == "" {
-		return nil, fmt.Errorf("PINS_CANDIDATE=%q: usa <paquete>@<versión>, por ejemplo pi-antigravity@0.14.0", spec)
+		return nil, fmt.Errorf("PINS_CANDIDATE=%q: usa <paquete>@<versión>, por ejemplo pi-antigravity@0.15.0", spec)
 	}
 	pinned := false
 	for _, p := range PinnedPackages() {

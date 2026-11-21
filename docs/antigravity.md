@@ -1,5 +1,21 @@
 # Antigravity: HTTP 429 y mitigación local
 
+## Estado con pi-antigravity 0.15.0 (v1.21.1+)
+
+pi-antigravity 0.15.0 incluye la corrección upstream de [pi-antigravity#152](https://github.com/Rahularya01/pi-antigravity/issues/152), cerrado el 2026-11-20. Cuando las instrucciones del sistema superan 126 caracteres, el propio plugin las pliega al primer turno de usuario y omite `systemInstruction`; también neutraliza la frase inicial del prompt de Pi. Es el mismo efecto que el guard local. `ANTIGRAVITY_INLINE_SYSTEM=0` o `ANTIGRAVITY_PROMPT_GUARD=off` lo desactivan en el plugin.
+
+La prueba real del 2026-11-20 (Pi 1.6.0, misma cuenta, cargando solo el plugin) dio estos resultados con `scripts/antigravity-pin-check.sh`:
+
+| Caso | 0.14.0 | 0.15.0 |
+|---|---|---|
+| Sin herramientas: `gemini-4-argon:low`, `gemini-3.8-flash:low`, `gemini-4-neon:low` | 429 en los tres | responde |
+| Prompt por defecto de Pi con herramientas | 429 | responde |
+| Llamada real a bash | 429 | responde |
+| `claude-sonnet-5-5:low` | 429 | responde |
+| `google_search` del plugin | 429 | responde |
+
+Con el guard local cargado, las dos versiones responden. Por eso subir el pin no cambia nada para quien ya tenía el guard activo, y el guard sigue instalándose mientras se decide si se retira. Para repetir la prueba con otra versión: `bash scripts/antigravity-pin-check.sh <versión>`; para comprobar la instalación real: `bash scripts/antigravity-pin-check.sh --installed <versión>`.
+
 ## Alcance vigente (v1.16.0+)
 
 Desde `v1.16.0`, `extensions/antigravity-prompt-guard.js` se embebe e instala por defecto como **workaround temporal** hasta que upstream publique la corrección de [pi-antigravity#152](https://github.com/Rahularya01/pi-antigravity/issues/152). Puede desactivarse por proceso con `ANTIGRAVITY_PROMPT_GUARD=off` y se retira limpiamente con `uninstall`. En `v1.15.3`–`v1.15.4` permanecía únicamente como referencia opt-in.

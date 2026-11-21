@@ -11,7 +11,7 @@ import (
 // TestPinsValidate comprueba un candidato del registro npm real contra los
 // contratos de su paquete (HCD-039):
 //
-//	PINS_CANDIDATE=pi-antigravity@0.14.0 go test -tags pins -count=1 -v ./pkg/installer -run '^TestPinsValidate$'
+//	PINS_CANDIDATE=pi-antigravity@0.15.0 go test -tags pins -count=1 -v ./pkg/installer -run '^TestPinsValidate$'
 //
 // Sin PINS_CANDIDATE se omite. No escribe en ~/.pi/agent.
 func TestPinsValidate(t *testing.T) {

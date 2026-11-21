@@ -207,7 +207,7 @@ Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`
 
 Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano si la última consulta en red tiene más de una hora y vuelve a consultar, de modo que una release se anuncia como mucho una hora después de publicarse. El aviso solo informa: para instalar, responde a la pregunta del launcher o ejecuta `pi-gomemory-setup deps-update`. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Vacía, `0` o `false` la dejan activa.
 
-`pi-antigravity` y `pi-cc-extensions` se instalan fijados a una versión exacta (`npm:pi-antigravity@0.14.0`, `npm:pi-cc-extensions@1.0.21`); cambian solo con una release nueva de pi-gomemory, que antes valida cada versión candidata contra lo que pi-gomemory necesita de ella. Si npm publica una versión más nueva que todavía no se ha validado, `pi-gomemory-setup doctor` lo avisa con `⚠`, pero `deps-update` sigue instalando solo la versión fijada.
+`pi-antigravity` y `pi-cc-extensions` se instalan fijados a una versión exacta (`npm:pi-antigravity@0.15.0`, `npm:pi-cc-extensions@1.0.21`); cambian solo con una release nueva de pi-gomemory, que antes valida cada versión candidata contra lo que pi-gomemory necesita de ella. Si npm publica una versión más nueva que todavía no se ha validado, `pi-gomemory-setup doctor` lo avisa con `⚠`, pero `deps-update` sigue instalando solo la versión fijada.
 
 ### Cuota de OpenAI Codex
 

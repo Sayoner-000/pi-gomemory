@@ -6,6 +6,8 @@
 
 La [guía de Antigravity](antigravity.md) explica la referencia publicada, su desactivación y el riesgo: conservar el texto no conserva su prioridad ni garantiza protección equivalente frente a inyección de instrucciones. La prueba real recuperó Hydrogen, Sonnet y un ciclo de herramientas; la persona confirmó el panel y las cuotas. Esto no demuestra que todos los HTTP 429 tengan la misma causa. Los pins ya publicados en v1.14.0 no equivalían a ese smoke real; HCD-040 se cerró después de completarlo y obtener aprobación.
 
+Desde v1.21.1 el pin es pi-antigravity 0.15.0, que corrige el problema upstream (pi-antigravity#152). En la prueba real sin el guard, 0.14.0 devolvió 429 en todos los casos y 0.15.0 respondió en todos. El guard local sigue instalado y es compatible con 0.15.0; retirarlo queda pendiente de decisión.
+
 ## ACR y ADM de v1.16.0
 
 La [auditoría de v1.16.0](audits/2026-11-19-acr-adm-v1.16.0.md) confirmó cinco defectos, entre ellos la pérdida de configuraciones MCP personalizadas al alternar `lite`. [HCD-052](../hcd/HCD-052-corregir-hallazgos-c-001-a-c-005-de-la-a.md) corrige los cinco en [v1.17.0](releases/v1.17.0.md). La política de confianza de los ejecutores locales de `/tdd` quedó como observación no confirmada, fuera de esa corrección.
