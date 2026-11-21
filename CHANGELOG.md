@@ -4,6 +4,28 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.22.0] - 2026-11-21
+
+### Added
+- `install` y `theme` activan `hideThinkingBlock: true` por defecto en `~/.pi/agent/settings.json` para que Pi inicie con los bloques de razonamiento colapsados (`Ctrl+T`). Si ya existe una preferencia explícita en el archivo, se respeta sin sobrescribirla. `doctor` incluye el chequeo `Thinking colapsado (Ctrl+T)`.
+- `gomemory-status.ts` configura al iniciar sesión un indicador animado en glifos de texto puro (`· • ●`) mediante `setWorkingIndicator` y fija la etiqueta `(thinking...)` con `setHiddenThinkingLabel`, restaurando los valores por defecto en `session_shutdown`. Convive con `pi-cc-extensions` sin interferencias.
+- `/plan` inyecta un protocolo de análisis de impacto previo a HCD en `gomemory-plan.ts` (tanto con `mem plan-context` como en el texto de respaldo) que exige consultar `codegraph` y `codebase-memory` y presentar un Mapa de impacto antes del árbol de tareas.
+- `gomemory-context.ts` incluye la validación previa de impacto con `codegraph` y `codebase-memory` como regla permanente en todas las sesiones de Pi, esté o no activo `/plan`.
+
+### Changed
+- En modo `/plan`, `gomemory-plan.ts` y `gomemory-plan-patterns.json` bloquean las mutaciones de estado HCD (`mem hcd start|clarify|approve|verify|close|cancel|promote|rename`), `codegraph index`, `delete_project`, `manage_adr` en modo escritura (`update`, `set_sections`) e `index_repository` con `persistence: true`. Las consultas de grafos y el refresco del índice externo (`persistence: false`) permanecen permitidos.
+
+### Fixed
+- `scripts/clean-install-check.sh` ya no rechaza una compilación local cuando el commit lleva el mismo tag que la versión fijada en `install.sh`; ahora comprueba únicamente si se descargó el tarball de la release.
+- En `/tdd`, `finishBashRun` ejecuta siempre `parser.finish(res)` aunque el comando termine con error, cerrando los tests interrumpidos en lugar de dejar el estado global en `running`.
+- En `/tasks`, un `refresh` en vuelo que responde después de `session_shutdown` queda descartado por época de sesión y no vuelve a montar el widget ni a reactivar los intervalos de 500 ms y 10 s.
+- `/sidebar` y el pie de estado (`gomemory-status.ts`) suman `cacheRead` y `cacheWrite` (con respaldo en `totalTokens`) al calcular el uso de ventana de contexto. En sesiones con prompt caching ya no informan 0% cuando la ventana está ocupada.
+- En `/tdd`, ejecutar `go test` sin argumentos de paquete se clasifica como ejecución parcial (`partial: true`) porque solo prueba el paquete actual, evitando que suprima la regresión recursiva `./...` del modo watch.
+- Al cerrar una sesión (`session_shutdown`), `/tdd` cancela `watchAbort` y las ejecuciones activas de `/tdd run`, terminando los grupos de procesos detached y limpiando sus timers.
+- `depsTempOwnedByLiveProcess` ignora entradas cuyo `.pid` coincide con `os.Getpid()` si el directorio no está en `liveTemps`, permitiendo limpiar temporales huérfanos tras reciclaje de PID.
+- `depsTempDir` crea primero el directorio en `.pi-gomemory-staging-*`, propaga cualquier error al escribir `.pid` y lo renombra al prefijo final para cerrar la ventana TOCTOU frente a `RemoveStaleDepsTemps`.
+- `uninstall` limpia temporales huérfanos tanto en `PI_GOMEMORY_BIN_DIR` como en el `bin_dir` del manifiesto (deduplicados), sin que el manifiesto anule la variable de entorno.
+
 ## [v1.21.1] - 2026-11-20
 
 ### Added

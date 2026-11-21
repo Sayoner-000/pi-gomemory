@@ -8,6 +8,10 @@ La [guía de Antigravity](antigravity.md) explica la referencia publicada, su de
 
 Desde v1.21.1 el pin es pi-antigravity 0.15.0, que corrige el problema upstream (pi-antigravity#152). En la prueba real sin el guard, 0.14.0 devolvió 429 en todos los casos y 0.15.0 respondió en todos. El guard local sigue instalado y es compatible con 0.15.0; retirarlo queda pendiente de decisión.
 
+## ACR y ADM de v1.21.1
+
+La auditoría ACR/ADM completa sobre `v1.21.1` (`bb5f342`, revisión `acr_3edbeeef-cb54-4a7c-a08f-0b6514cc1c04`, veredicto `APPROVED` sin críticos ni altos) detectó seis defectos medios y tres bajos: falso rechazo en `scripts/clean-install-check.sh` sobre commits etiquetados, cortocircuito en `finishBashRun` de `/tdd`, refresco tardío tras `session_shutdown` en `/tasks`, omisión de `cacheRead`/`cacheWrite` en `/sidebar` y el pie de estado, clasificación de `go test` sin paquete como ejecución completa, subprocesos detached sin cancelar al cerrar `/tdd`, retención de temporales huérfanos con `pid == os.Getpid()`, ventana TOCTOU y error silenciado al escribir `.pid` en `depsTempDir`, y precedencia de `manifest.BinDir` sobre `PI_GOMEMORY_BIN_DIR` en `uninstall`. [HCD-065](../hcd/HCD-065-corregir-hallazgos-h-01-a-h-09-de-la-aud.md) cierra los nueve en [v1.22.0](releases/v1.22.0.md).
+
 ## ACR y ADM de v1.21.0
 
 La auditoría ACR/ADM sobre `v1.21.0` (`2c10005`, veredicto `APPROVED` sin críticos ni altos) identificó cuatro defectos medios y tres bajos en el paso de instalación de herramientas (señales `SIGINT`/`SIGTERM`, borrado prematuro de temporales en `uninstall`, colisión entre procesos concurrentes, `PI_GOMEMORY_BIN_DIR` relativo, timeout con TTY, entradas de directorio en `extractExact` y versión literal en `scripts/clean-install-check.sh`). [HCD-064](../hcd/HCD-064-corregir-hallazgos-h-01-a-h-07-de-la-aud.md) corrige los siete en [v1.21.1](releases/v1.21.1.md).

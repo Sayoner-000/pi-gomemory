@@ -91,7 +91,7 @@ La preferencia y la propiedad de `+codemode` se guardan en `~/.pi-gomemory/codem
 
 `pi-gomemory-setup lite on` retira los servidores de grafo gestionados por pi-gomemory y conserva los personalizados. El modo se mantiene al ejecutar `install`, `update`, `mcp` o cambiar codemode. Usa `lite status` para consultarlo y `lite off` para restaurar los servidores gestionados que falten.
 
-Al abrir o cambiar una sesión, `gomemory-context.ts` carga `mem context` una vez con el directorio del proyecto y un timeout de 3000 ms. Inyecta hasta 24 576 bytes de texto UTF-8 más el aviso de recorte, si hace falta, y el bloque de protocolo de Pi. Si falla o no devuelve contexto, muestra una advertencia por sesión y mantiene solo ese bloque. `/plan` añade su método en otra sección del prompt.
+Al abrir o cambiar una sesión, `gomemory-context.ts` carga `mem context` una vez con el directorio del proyecto y un timeout de 3000 ms. Inyecta hasta 24 576 bytes de texto UTF-8 más el aviso de recorte, si hace falta, y el bloque de protocolo de Pi. Ese bloque incluye la regla permanente de medir el impacto completo del proyecto con `codegraph` y `codebase-memory` en solo lectura antes de editar código o abrir una unidad HCD, con o sin `/plan`. Si `mem context` falla o no devuelve contenido, muestra una advertencia por sesión y mantiene el bloque de protocolo. `/plan` añade su método y el protocolo de Mapa de impacto en otra sección del prompt.
 
 `AGENTS.md` queda para tus instrucciones. `install` retira el protocolo antiguo de pi-gomemory, conservando el texto propio. Abre una sesión nueva o ejecuta `/reload` después de actualizar las extensiones. Consulta las [limitaciones](known-issues.md) de cambios parciales de configuración y del bloqueo de `/plan`.
 
@@ -114,8 +114,11 @@ Al abrir Pi con `pi-gomemory`, la cabecera muestra la versión de pi-gomemory y 
 
 Pi solo admite una cabecera. Si pi-cc-extensions tiene `showStartupHeader: true`, su cabecera sustituye al banner; por eso `pi-gomemory-setup install` (y `update`) fija esa clave en `false` en cada instalación, y `pi-gomemory-setup doctor` avisa en «Banner gomemory» si vuelve a activarse (por ejemplo desde `/ccstyle`).
 
+### Thinking colapsado e indicador animado
+Desde `v1.22.0`, la instalación activa `hideThinkingBlock: true` en `~/.pi/agent/settings.json` si el usuario no había fijado otro valor, de modo que Pi inicia con los bloques de razonamiento colapsados (`Ctrl+T` los expande o colapsa en cualquier momento). `gomemory-status.ts` muestra la etiqueta `(thinking...)` y una secuencia animada de puntos (`· • ●`) en el indicador de carga, sin interferir con el texto de `pi-cc-extensions`.
+
 ### Modo plan (`/plan`)
-Mientras el modo plan está activo, Pi bloquea las modificaciones comunes del agente.
+Mientras el modo plan está activo, Pi bloquea las modificaciones comunes del agente (`edit`, `write`, `powershell`, comandos destructivos en `bash`), las mutaciones de estado HCD (`mem hcd start`, `clarify`, `approve`, `verify`, `close`, `cancel`, `promote`, `rename`), `codegraph index`, `delete_project`, `manage_adr` en escritura e `index_repository` con `persistence: true`. Las consultas de solo lectura de `codegraph` y `codebase-memory`, así como `index_repository` con `persistence: false` sobre el índice externo, permanecen permitidos. Antes de proponer tareas o abrir un HCD, el protocolo exige entregar un Mapa de impacto con símbolos, llamadores, archivos afectados y cobertura.
 
 - `/plan on` activa el modo sin enviar una petición.
 - `/plan off` lo desactiva sin iniciar un turno. El siguiente turno ya no recibe las instrucciones de modo plan.

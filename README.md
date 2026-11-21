@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.21.1"><img src="https://img.shields.io/badge/version-1.21.1-blue" alt="Version 1.21.1"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.22.0"><img src="https://img.shields.io/badge/version-1.22.0-blue" alt="Version 1.22.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -76,9 +76,9 @@ make install
 | **Memoria persistente** | `gomemory` guarda decisiones, bugs y convenciones y las devuelve en cada sesión | `~/.pi/agent/mcp.json` |
 | **Grafo de código** | `codegraph` y `codebase-memory` responden quién llama a qué y qué rompe un cambio, sin recorrer archivos a ciegas | `~/.pi/agent/mcp.json` |
 | **21 skills** | El ciclo HCD completo (`hcd`, `hcd-define` … `hcd-close`), verificación (`verify-loop`, `search-first`), revisión adversarial y auditoría defensiva | `~/.pi-gomemory/skills/` |
-| **Contexto y protocolo** | Carga `mem context` por sesión y añade las instrucciones específicas de Pi | `~/.pi/agent/extensions/gomemory-context.ts` |
+| **Contexto y protocolo** | Carga `mem context` por sesión y exige medir impacto con `codegraph` y `codebase-memory` antes de editar o abrir un HCD | `~/.pi/agent/extensions/gomemory-context.ts` |
 | **Modelos de Google AI Pro** | Plugin `pi-antigravity` y el comando `pi-gomemory usage`, que consulta la cuota real de tu cuenta | `~/.pi/agent/settings.json` |
-| **Interfaz** | `pi-cc-extensions` (diffs laterales, `/context`), barra de tokens y coste (`/tokens`) con aviso de actualizaciones, paneles `/tasks` y `/tdd`, sugerencia del siguiente comando en el input (`Tab` la acepta) y el tema gomemory en Truecolor | `~/.pi/agent/` |
+| **Interfaz** | `pi-cc-extensions` (diffs laterales, `/context`), thinking colapsado por defecto (`Ctrl+T`) con indicador animado y etiqueta `(thinking...)`, barra de tokens y coste (`/tokens`), paneles `/tasks` y `/tdd`, sugerencia en el input (`Tab`) y el tema gomemory en Truecolor | `~/.pi/agent/` |
 | **Launcher** | `pi-gomemory` prepara el entorno de Herdr y carga el contexto del proyecto | `~/.local/bin/` |
 
 `pi-gomemory-setup doctor` comprueba cada pieza y te dice qué falta.
