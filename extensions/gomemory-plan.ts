@@ -9,6 +9,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { release } from "node:os";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 interface Patterns {
@@ -73,9 +74,89 @@ export function toolBlocked(toolName: string, input: any): string | undefined {
 	return undefined;
 }
 
+/**
+ * HCD-067: estado del modo plan compartido con el header (gomemory-banner.ts, otro
+ * módulo). Se publica en globalThis, igual que el dock del sidebar y /tdd.
+ */
+export const PLAN_STATE_KEY = Symbol.for("pi-gomemory.plan");
+export interface PlanState {
+	on: boolean;
+	subscribe(listener: () => void): () => void;
+	set(on: boolean): void;
+}
+export function planState(): PlanState {
+	const g = globalThis as any;
+	if (!g[PLAN_STATE_KEY]) {
+		const listeners = new Set<() => void>();
+		const state: PlanState = {
+			on: false,
+			subscribe(listener) {
+				listeners.add(listener);
+				return () => listeners.delete(listener);
+			},
+			set(on) {
+				if (state.on === on) return;
+				state.on = on;
+				for (const l of listeners) {
+					try {
+						l();
+					} catch {
+						// un suscriptor roto no impide cambiar el modo
+					}
+				}
+			},
+		};
+		g[PLAN_STATE_KEY] = state;
+	}
+	return g[PLAN_STATE_KEY];
+}
+
+/**
+ * Atajos del modo plan: Alt+P y Ctrl+Alt+P de respaldo (terminales macOS que no
+ * envían Option como Alt). En Windows y WSL Pi usa Alt+P para el modelo anterior.
+ */
+export function planShortcutKeys(
+	platform: string = process.platform,
+	osRelease: string = release(),
+	env: Record<string, string | undefined> = process.env,
+): string[] {
+	const windowsLike = platform === "win32" || /microsoft/i.test(osRelease) || Boolean(env.WSL_DISTRO_NAME);
+	return windowsLike ? ["ctrl+alt+p"] : ["alt+p", "ctrl+alt+p"];
+}
+
 export default function (pi: ExtensionAPI) {
 	// La promesa existe solo mientras el modo está activo. Su resolución no cambia el estado.
 	let method: Promise<string> | undefined;
+	const shared = planState();
+	shared.set(false);
+
+	function planOn(ctx: any) {
+		method = loadMethod(ctx.cwd);
+		const theme = ctx.ui?.theme;
+		ctx.ui.setStatus("gomemory-plan", typeof theme?.fg === "function" ? theme.fg("warning", "PLAN") : "PLAN");
+		shared.set(true);
+	}
+
+	function planOff(ctx: any) {
+		method = undefined;
+		ctx.ui.setStatus("gomemory-plan", undefined);
+		shared.set(false);
+	}
+
+	for (const key of planShortcutKeys()) {
+		pi.registerShortcut?.(key as any, {
+			description: "Modo plan de gomemory: activar o desactivar",
+			handler: async (ctx: any) => {
+				if (method) {
+					planOff(ctx);
+					ctx.ui.notify("Modo plan desactivado", "info");
+				} else {
+					planOn(ctx);
+					ctx.ui.notify("Modo plan activo: edit, write y comandos que modifican están bloqueados", "info");
+				}
+			},
+		});
+	}
 
 	async function loadMethod(cwd: string): Promise<string> {
 		try {
@@ -103,16 +184,14 @@ export default function (pi: ExtensionAPI) {
 					ctx.ui.notify(INACTIVE, "info");
 					return;
 				}
-				method = undefined;
-				ctx.ui.setStatus("gomemory-plan", undefined);
+				planOff(ctx);
 				ctx.ui.notify(arg === "run"
 					? "Modo plan desactivado: ya se permiten modificaciones"
 					: "Modo plan desactivado", "info");
 				return;
 			}
 			if (!method) {
-				method = loadMethod(ctx.cwd);
-				ctx.ui.setStatus("gomemory-plan", "PLAN");
+				planOn(ctx);
 				ctx.ui.notify("Modo plan activo: edit, write y comandos que modifican están bloqueados", "info");
 			} else if (arg === "on") {
 				ctx.ui.notify("Modo plan activo", "info");

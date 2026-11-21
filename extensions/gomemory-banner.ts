@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { planState } from "./gomemory-plan.ts";
 
 // One glyph per terminal column. Colors are stored left to right for visible glyphs.
 const artwork = [
@@ -118,7 +119,22 @@ export function bannerTagline(width: number, noColor: boolean): string {
   return noColor ? margin + HCD_TAGLINE : margin + "\x1b[2;38;2;145;169;197m" + HCD_TAGLINE + "\x1b[0m";
 }
 
+// HCD-067: línea del modo plan. ON en ámbar (#f4c66b, `warning` del theme gomemory),
+// OFF atenuado para que también se sepa que está apagado.
+export function planHeaderLine(width: number, noColor: boolean, on: boolean): string {
+  const text = on ? "◆ MODO PLAN ON · Alt+P" : "○ plan off · Alt+P";
+  const margin = " ".repeat(Math.max(0, Math.floor((width - text.length) / 2)));
+  if (noColor) return margin + text;
+  return margin + (on ? "\x1b[1;38;2;244;198;107m" : "\x1b[2;38;2;145;169;197m") + text + "\x1b[0m";
+}
+
+let unsubscribePlan: (() => void) | undefined;
+
 export default function (pi: ExtensionAPI) {
+  pi.on("session_shutdown", async () => {
+    unsubscribePlan?.();
+    unsubscribePlan = undefined;
+  });
   pi.on("session_start", async (_event, ctx) => {
     if (ctx.mode !== "tui") return;
     const noColor = Boolean(process.env.NO_COLOR);
@@ -133,9 +149,23 @@ export default function (pi: ExtensionAPI) {
     };
     const version = bannerVersion(process.env.PI_GOMEMORY_RUNNING_VERSION || (await ask("pi-gomemory-setup", ["version"])));
     const gomemory = gomemoryVersion(process.env.GOMEMORY_INSTALLED_VERSION || (await ask("mem", ["--version"])));
-    ctx.ui.setHeader(() => ({
-      render: (width: number) => [...renderBanner(width, noColor), bannerTitle(width, noColor, version, gomemory), bannerTagline(width, noColor)],
-      invalidate() {},
-    }));
+    const plan = planState();
+    ctx.ui.setHeader((tui: any) => {
+      unsubscribePlan?.();
+      unsubscribePlan = plan.subscribe(() => tui?.requestRender?.());
+      return {
+        render: (width: number) => [
+          ...renderBanner(width, noColor),
+          bannerTitle(width, noColor, version, gomemory),
+          bannerTagline(width, noColor),
+          planHeaderLine(width, noColor, plan.on),
+        ],
+        invalidate() {},
+        dispose() {
+          unsubscribePlan?.();
+          unsubscribePlan = undefined;
+        },
+      };
+    });
   });
 }

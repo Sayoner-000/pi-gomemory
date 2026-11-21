@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import registerPlan, { PLAN_SECTION } from "../extensions/gomemory-plan.ts";
+import registerPlan, { PLAN_SECTION, PLAN_STATE_KEY, planShortcutKeys } from "../extensions/gomemory-plan.ts";
 
 function setup(exec = async () => ({ code: 0, stdout: "Método de prueba" })) {
 	const hooks = new Map();
@@ -8,6 +8,7 @@ function setup(exec = async () => ({ code: 0, stdout: "Método de prueba" })) {
 	const messages = [];
 	const notices = [];
 	const status = new Map();
+	const shortcuts = new Map();
 	const ctx = {
 		cwd: process.cwd(),
 		isIdle: () => true,
@@ -21,6 +22,7 @@ function setup(exec = async () => ({ code: 0, stdout: "Método de prueba" })) {
 			assert.equal(name, "plan");
 			command = options.handler;
 		},
+		registerShortcut: (key, options) => shortcuts.set(key, options.handler),
 		on: (name, handler) => hooks.set(name, handler),
 		exec,
 		sendUserMessage: (...args) => messages.push(args),
@@ -31,7 +33,8 @@ function setup(exec = async () => ({ code: 0, stdout: "Método de prueba" })) {
 		turn: async (sections) => {
 			await hooks.get("before_agent_start")({ systemPromptOptions: { sections } });
 		},
-		ctx, messages, notices, status,
+		key: (k) => shortcuts.get(k)(ctx),
+		ctx, messages, notices, status, shortcuts,
 	};
 }
 
@@ -150,4 +153,41 @@ test("modo plan permite lecturas de codegraph/codebase-memory e index_repository
 	]) {
 		assert.equal((await pi.tool(tool, input))?.block, true, `debía bloquear ${tool} ${JSON.stringify(input)}`);
 	}
+});
+
+// HCD-067: Alt+P (y Ctrl+Alt+P de respaldo) alternan el modo y el estado se publica al header.
+test("planShortcutKeys: Alt+P y Ctrl+Alt+P; en Windows y WSL solo Ctrl+Alt+P", () => {
+	assert.deepEqual(planShortcutKeys("darwin", "25.0.0", {}), ["alt+p", "ctrl+alt+p"]);
+	assert.deepEqual(planShortcutKeys("linux", "6.8.0", {}), ["alt+p", "ctrl+alt+p"]);
+	assert.deepEqual(planShortcutKeys("win32", "10.0", {}), ["ctrl+alt+p"]);
+	assert.deepEqual(planShortcutKeys("linux", "5.15.0-microsoft-standard-WSL2", {}), ["ctrl+alt+p"]);
+	assert.deepEqual(planShortcutKeys("linux", "6.8.0", { WSL_DISTRO_NAME: "Ubuntu" }), ["ctrl+alt+p"]);
+});
+
+test("Alt+P alterna el modo plan, bloquea y publica el estado para el header", async () => {
+	const pi = setup();
+	const shared = globalThis[PLAN_STATE_KEY];
+	assert.ok(shared, "el estado debe publicarse en Symbol.for('pi-gomemory.plan')");
+	let changes = 0;
+	const off = shared.subscribe(() => changes++);
+	assert.ok(pi.shortcuts.has("ctrl+alt+p"));
+	const key = pi.shortcuts.has("alt+p") ? "alt+p" : "ctrl+alt+p";
+
+	await pi.key(key);
+	assert.equal(shared.on, true);
+	assert.equal(pi.status.get("gomemory-plan"), "PLAN");
+	assert.equal((await pi.tool("edit")).block, true);
+	assert.equal(pi.messages.length, 0, "el atajo no debe enviar mensajes");
+
+	await pi.key(key);
+	assert.equal(shared.on, false);
+	assert.equal(pi.status.get("gomemory-plan"), undefined);
+	assert.equal(await pi.tool("edit"), undefined);
+
+	await pi.plan("on");
+	assert.equal(shared.on, true, "/plan on también publica el estado");
+	await pi.plan("off");
+	assert.equal(shared.on, false);
+	assert.equal(changes, 4);
+	off();
 });
