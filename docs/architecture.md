@@ -75,7 +75,7 @@ La función `InstallMCPServers` lee el archivo `mcp.json` existente y solo agreg
 
 `gomemory-plan.ts` usa la sección `gomemory-plan`, por lo que no reemplaza el prompt completo. El bloque Pi no enumera servidores según `selectedTools`: en Pi 1.5.2 los MCP pueden seguir conectándose cuando ocurre ese evento. Las declaraciones del prompt determinan qué herramientas se ofrecen directamente.
 
-`InstallAll` deja los servidores MCP en modo directo (`codemode off`) por defecto y respeta un `codemode on` explícito. `SetCodemodePreference` guarda las órdenes explícitas on/off y la propiedad de `+codemode` en `~/.pi-gomemory/codemode.json`. La desinstalación reconoce las definiciones MCP directas e híbridas exactas y conserva las personalizadas.
+`InstallAll` deja Pi en codemode híbrido por defecto (HCD-071) y respeta un `codemode off` explícito. Cuando añade `+codemode` anota la propiedad y el destino real de `settings.json`, sin fijar preferencia. `SetCodemodePreference` guarda las órdenes explícitas on/off y la propiedad de `+codemode` en `~/.pi-gomemory/codemode.json`. La desinstalación reconoce las definiciones MCP directas e híbridas exactas y conserva las personalizadas.
 
 `RetireLegacyInstructions` reconoce marcadores y variantes históricas publicadas, almacenadas en `pkg/installer/legacy/`. La migración conserva texto ajeno, permisos y enlaces. Si solo queda el bloque propio, borra el archivo normal o vacía el destino enlazado. `doctor` avisa si el protocolo sigue presente.
 

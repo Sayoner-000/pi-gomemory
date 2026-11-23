@@ -52,8 +52,8 @@ func InstallAll(assets fs.FS, opts *Options) error {
 	if err := os.Remove(UninstalledMarkerPath(opts.HomeDir)); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("retirar marca de desinstalado: %w", err)
 	}
-	// Modo MCP directo (codemode off) es el valor por defecto, salvo `codemode on` (HCD-050).
-	fmt.Printf("%s==> [2/9] Registrando servidores MCP (gomemory, codegraph, codebase-memory) en modo directo...%s\n", ColorCyan, ColorReset)
+	// Codemode híbrido es el valor por defecto, salvo `codemode off` (HCD-071).
+	fmt.Printf("%s==> [2/9] Registrando servidores MCP (gomemory, codegraph, codebase-memory) en modo codemode híbrido (codemode off para directo)...%s\n", ColorCyan, ColorReset)
 	if err := applyCodemodeDefault(opts, os.Stdout); err != nil {
 		return fmt.Errorf("paso MCP: %w", err)
 	}

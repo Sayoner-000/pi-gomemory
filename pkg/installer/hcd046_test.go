@@ -62,21 +62,22 @@ func TestHCD046Preference(t *testing.T) {
 	})
 }
 
-// Tarea 2 (HCD-050): install deja modo MCP directo (codemode off) por defecto,
-// respeta un codemode on explícito y revierte limpiamente instalaciones v1.15.x
-// sin preferencia (respetando +codemode ajeno).
+// Tarea 2 (HCD-050, revisada por HCD-071): install deja codemode híbrido por
+// defecto, respeta un codemode on explícito, conserva la propiedad de un
+// +codemode propio de v1.15.x y no se atribuye uno ajeno.
 func TestHCD046InstallDefault(t *testing.T) {
-	t.Run("instalación nueva en modo directo (codemode off)", func(t *testing.T) {
+	// HCD-071 revierte HCD-050: el valor por defecto vuelve a ser el híbrido.
+	t.Run("instalación nueva en codemode híbrido (HCD-071)", func(t *testing.T) {
 		opts := sandbox(t)
 		if err := InstallAll(repoAssets(t), opts); err != nil {
 			t.Fatal(err)
 		}
-		if s, _ := GetCodemodeStatus(opts.PiAgentDir); s.Enabled || s.SettingsEnabled || s.MCPEnabled {
-			t.Fatalf("install debe dejar codemode off por defecto: %+v", s)
+		if s, _ := GetCodemodeStatus(opts.PiAgentDir); !s.Enabled {
+			t.Fatalf("install debe dejar codemode híbrido por defecto: %+v", s)
 		}
 		st := hcd046State(t, opts.HomeDir)
-		if st.AddedPlusCodemode || st.Preference != "" {
-			t.Fatalf("install no debe activar ni fijar preferencia por defecto: %+v", st)
+		if !st.AddedPlusCodemode || st.Preference != "" {
+			t.Fatalf("install debe registrar la propiedad sin fijar preferencia: %+v", st)
 		}
 	})
 	t.Run("respeta codemode on explícito", func(t *testing.T) {
@@ -95,7 +96,7 @@ func TestHCD046InstallDefault(t *testing.T) {
 			t.Fatal("install no informa de que respeta codemode on")
 		}
 	})
-	t.Run("revierte limpiamente default v1.15.x sin preferencia", func(t *testing.T) {
+	t.Run("conserva el híbrido propio de v1.15.x sin preferencia (HCD-071)", func(t *testing.T) {
 		opts := sandbox(t)
 		// Simula una instalación de v1.15.x: activó codemode por defecto (preference == "")
 		// dejando added_plus_codemode=true y settings_target apuntando a settings.json.
@@ -110,12 +111,12 @@ func TestHCD046InstallDefault(t *testing.T) {
 		if err := applyCodemodeDefault(opts, &out); err != nil {
 			t.Fatal(err)
 		}
-		if s, _ := GetCodemodeStatus(opts.PiAgentDir); s.Enabled || s.SettingsEnabled || s.MCPEnabled || s.Partial {
-			t.Fatalf("no revirtió limpiamente a modo directo: %+v", s)
+		if s, _ := GetCodemodeStatus(opts.PiAgentDir); !s.Enabled || s.Partial {
+			t.Fatalf("debe seguir en híbrido: %+v", s)
 		}
 		after := hcd046State(t, opts.HomeDir)
-		if after.AddedPlusCodemode || after.SettingsTarget != "" || after.Preference != "" {
-			t.Fatalf("el estado no quedó limpio tras revertir v1.15.x: %+v", after)
+		if !after.AddedPlusCodemode || after.SettingsTarget == "" || after.Preference != "" {
+			t.Fatalf("se perdió la propiedad de +codemode: %+v", after)
 		}
 	})
 	t.Run("no toca +codemode de v1.15.0 sin settings_target ni de otro destino", func(t *testing.T) {
@@ -130,8 +131,8 @@ func TestHCD046InstallDefault(t *testing.T) {
 		if !slices.Contains(hcd046DefaultTools(t, opts.PiAgentDir), "+codemode") {
 			t.Fatal("retiró +codemode sin settings_target verificable")
 		}
-		if s, _ := GetCodemodeStatus(opts.PiAgentDir); s.MCPEnabled {
-			t.Fatalf("MCP debe quedar en modo directo: %+v", s)
+		if s, _ := GetCodemodeStatus(opts.PiAgentDir); !s.Enabled {
+			t.Fatalf("MCP debe quedar en híbrido por defecto (HCD-071): %+v", s)
 		}
 	})
 }

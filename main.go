@@ -263,7 +263,7 @@ func codemodeNote() string {
 	for _, name := range []string{"gomemory", "codebase-memory"} {
 		direct = append(direct, slices.Sorted(maps.Keys(servers[name].ToolExposure))...)
 	}
-	return "Nota: el modo por defecto de install y update es directo (codemode off, con gomemory, codegraph y codebase-memory en exposure \"direct\"); `codemode on` activa el modo codemode híbrido de forma persistente. En modo codemode híbrido, Pi habilita +codemode (sandbox QuickJS para paralelizar llamadas y filtrar salidas >20 KB antes de entrar al contexto) y pasa gomemory y codebase-memory a exposure \"codemode\", manteniendo direct las herramientas de protocolo y consulta diaria (" +
+	return "Nota: el modo por defecto de install y update es codemode híbrido; `codemode off` vuelve al modo directo (gomemory, codegraph y codebase-memory en exposure \"direct\") y la elección se recuerda en install y update. En modo codemode híbrido, Pi habilita +codemode (sandbox QuickJS para paralelizar llamadas y filtrar salidas >20 KB antes de entrar al contexto) y pasa gomemory y codebase-memory a exposure \"codemode\", manteniendo direct las herramientas de protocolo y consulta diaria (" +
 		strings.Join(direct, ", ") + "). El resto sigue disponible a través de la tool codemode."
 }
 
@@ -280,14 +280,14 @@ func runCodemode(opts *installer.Options, args []string, out io.Writer) error {
 		if err := installer.SetCodemodePreference(opts, true); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, "✓ Modo codemode híbrido activado (settings.json + mcp.json). install y update respetarán esta elección; vuelve al modo directo con `codemode off`.")
+		fmt.Fprintln(out, "✓ Modo codemode híbrido activado (settings.json + mcp.json). Es el valor por defecto; vuelve al modo directo con `codemode off`.")
 		fmt.Fprintln(out, note)
 		return nil
 	case "off":
 		if err := installer.SetCodemodePreference(opts, false); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, "✓ Modo codemode desactivado (+codemode retirado y MCP restaurado a exposure \"direct\").")
+		fmt.Fprintln(out, "✓ Modo codemode desactivado (+codemode retirado y MCP restaurado a exposure \"direct\"). install y update respetarán esta elección; vuelve al híbrido con `codemode on`.")
 		return nil
 	case "status":
 		st, err := installer.GetCodemodeStatus(piAgentDir)

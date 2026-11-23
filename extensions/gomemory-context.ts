@@ -54,7 +54,7 @@ export function piBlock(selectedTools: unknown[] = []): string {
 	];
 	if (codemode) {
 		lines.push(
-			"- Codemode activo: el resto de tools de gomemory y codebase-memory (review_*, octopus_*, pack_*, hcd_history, socratica_flow, query_graph…) no se pierden; se llaman desde la tool 'codemode' con 'tools.<nombre>(args)'. No recurras a grep/find por no verlas como directas.",
+			"- Codemode activo: el resto de tools de gomemory y codebase-memory (review_*, octopus_*, pack_*, hcd_history, socratica_flow, query_graph…) no se pierden; se llaman desde la tool 'codemode' con 'tools.<nombre>(args)'. No recurras a grep/find por no verlas como directas. Si una skill nombra una tool que no está declarada (por ejemplo socratica_flow), antes de concluir que una tool no existe búscala desde codemode con searchTools('<nombre>') y llámala por ahí.",
 		);
 	}
 	lines.push(

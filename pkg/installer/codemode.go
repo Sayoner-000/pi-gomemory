@@ -213,14 +213,12 @@ func SetCodemodePreference(opts *Options, enabled bool) error {
 	})
 }
 
-// applyCodemodeDefault es el paso MCP de install: modo MCP directo (codemode
-// off) por defecto, salvo que la persona lo activara con `codemode on`
-// (HCD-050), respetando además el modo lite activo (C-002). En modo directo
-// solo escribe el perfil directo de los servidores propios y no toca
-// defaultTools, que puede llevar un `+codemode` de la persona (HCD-047, C-02).
-// Si una instalación anterior de v1.15.x dejó `+codemode` propio sin
-// preferencia explícita y el destino de settings.json coincide (C-08), lo
-// retira limpiamente bajo rollback para no dejar estado parcial.
+// applyCodemodeDefault es el paso MCP de install y update: codemode híbrido
+// por defecto (HCD-071, que revierte HCD-050) y modo directo solo si la
+// persona eligió `codemode off`, componiendo con el modo lite (C-002). En
+// híbrido registra si `+codemode` lo añadió pi-gomemory y en qué destino
+// (C-08), sin fijar preferencia. En directo no toca defaultTools, que puede
+// llevar un `+codemode` de la persona (HCD-047, C-02).
 // Tras aplicar el modo avisa, sin cambiar nada, del estado parcial y de las
 // tools de codebase-memory duplicadas por una extensión ajena (HCD-070).
 func applyCodemodeDefault(opts *Options, w io.Writer) error {
@@ -240,11 +238,15 @@ func applyCodemodeMode(opts *Options, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if st.Preference == "on" {
-		if liteSt.Enabled {
-			fmt.Fprintf(w, "%s    · codemode y modo lite activos: se conserva gomemory en perfil híbrido%s\n", ColorMuted, ColorReset)
-		} else {
+	if st.Preference != "off" {
+		switch {
+		case st.Preference == "on":
 			fmt.Fprintf(w, "%s    · codemode activado por la persona (pi-gomemory-setup codemode on): se conserva el perfil híbrido%s\n", ColorMuted, ColorReset)
+		default:
+			fmt.Fprintf(w, "%s    · codemode híbrido por defecto: tools de protocolo directas y el resto por codemode (vuelve a directo con pi-gomemory-setup codemode off)%s\n", ColorMuted, ColorReset)
+		}
+		if liteSt.Enabled {
+			fmt.Fprintf(w, "%s    · modo lite activo: gomemory en perfil híbrido, sin servidores de grafo%s\n", ColorMuted, ColorReset)
 		}
 		return withConfigRollback(opts.PiAgentDir, func() error {
 			if err := enableCodemodeWithLite(opts, &st, liteSt.Enabled); err != nil {
@@ -253,23 +255,7 @@ func applyCodemodeMode(opts *Options, w io.Writer) error {
 			return writeCodemodeState(opts.HomeDir, st)
 		})
 	}
-	if st.Preference == "" && st.AddedPlusCodemode {
-		target, err := configTarget(filepath.Join(opts.PiAgentDir, "settings.json"))
-		if err != nil {
-			return err
-		}
-		if st.SettingsTarget != "" && st.SettingsTarget == target {
-			fmt.Fprintf(w, "%s    · revirtiendo codemode híbrido del valor por defecto anterior a modo directo (HCD-050)%s\n", ColorMuted, ColorReset)
-			return withConfigRollback(opts.PiAgentDir, func() error {
-				if _, _, err := setCodemodeWithLite(opts.PiAgentDir, false, liteSt.Enabled); err != nil {
-					return err
-				}
-				st.AddedPlusCodemode, st.SettingsTarget = false, ""
-				return writeCodemodeState(opts.HomeDir, st)
-			})
-		}
-		fmt.Fprintf(w, "%s    · se conserva +codemode en settings.json (no se pudo comprobar destino propio); servidores MCP en modo directo%s\n", ColorMuted, ColorReset)
-	}
+	fmt.Fprintf(w, "%s    · codemode off elegido por la persona: servidores MCP en modo directo%s\n", ColorMuted, ColorReset)
 	if liteSt.Enabled {
 		fmt.Fprintf(w, "%s    · modo lite activo (pi-gomemory-setup lite on): se conserva perfil liviano%s\n", ColorMuted, ColorReset)
 	}

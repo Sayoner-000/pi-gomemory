@@ -1,6 +1,6 @@
 # ADR-0004: contexto de gomemory por sesión y codemode híbrido
 
-- Estado: aceptado en HCD-044, HCD-045 y HCD-046; valor por defecto enmendado a modo directo (`codemode off`) en HCD-050 (2026-11-19).
+- Estado: aceptado en HCD-044, HCD-045 y HCD-046; valor por defecto enmendado a modo directo (`codemode off`) en HCD-050 (2026-11-19) y devuelto a codemode híbrido en HCD-071 (2026-11-22).
 - Fecha: 2026-11-17.
 
 ## Contexto
@@ -15,7 +15,7 @@ El método de `/plan` ocupa otra sección. El bloque Pi no enumera MCP desde `se
 
 La instalación retira el protocolo heredado de AGENTS.md mediante marcadores y fixtures históricos exactos. El texto del usuario, los permisos y los enlaces se conservan.
 
-`install` y `update` usan codemode híbrido por defecto (enmendado en **HCD-050**: vuelven a usar modo MCP directo `codemode off` por defecto, respetando `codemode on` explícito y revirtiendo limpiamente instalaciones previas sin preferencia). Las órdenes explícitas on/off y la propiedad de `+codemode` quedan en `~/.pi-gomemory/codemode.json`. `uninstall` reconoce perfiles MCP directos e híbridos intactos y solo retira una activación de codemode atribuible al instalador.
+`install` y `update` usan codemode híbrido por defecto (HCD-050 lo cambió a modo directo; **HCD-071** lo devolvió al híbrido tras medir 27 tools declaradas frente a unas 80, y respeta `codemode off` explícito). Las órdenes explícitas on/off y la propiedad de `+codemode` quedan en `~/.pi-gomemory/codemode.json`. `uninstall` reconoce perfiles MCP directos e híbridos intactos y solo retira una activación de codemode atribuible al instalador.
 
 ## Consecuencias
 

@@ -79,7 +79,7 @@ Comandos:
 
 ## Codemode y contexto vivo
 
-`install` y `update` usan modo MCP **directo** (`codemode off`) por defecto para `gomemory`, `codegraph` y `codebase-memory`. Estas órdenes permiten activar el modo híbrido o volver a directo, guardando una elección explícita para las siguientes instalaciones:
+`install` y `update` dejan Pi en modo **codemode híbrido** por defecto: `gomemory` y `codebase-memory` declaran directas solo sus tools de protocolo y consulta diaria, `codegraph` sigue directo y el resto se llama desde `codemode`. Con `codemode off` vuelves al modo directo, y esa elección se respeta en las siguientes instalaciones:
 
 ```bash
 pi-gomemory-setup codemode on
@@ -89,7 +89,9 @@ pi-gomemory-setup codemode status
 
 La preferencia y la propiedad de `+codemode` se guardan en `~/.pi-gomemory/codemode.json`. Las herramientas MCP declaradas se llaman directamente; el resto se consulta desde `codemode` con `tools.<nombre>(args)`. `mcp` regenera los servidores y conserva un perfil híbrido ya activo.
 
-Cuando `settings.json` tiene `+codemode` y `mcp.json` sigue en directo, o al revés, `codemode status` responde `parcial`. En ese estado Pi carga todas las tools directas y además `codemode`, así que pagas las dos cosas en cada turno. `install`, `update` y `doctor` lo avisan. Para salir, elige un modo con `codemode on` u `codemode off`.
+Si una skill nombra una tool que el modelo no ve declarada (por ejemplo `socratica_flow`), el protocolo que inyecta `gomemory-context.ts` le pide buscarla con `searchTools` desde `codemode` antes de darla por inexistente.
+
+Cuando `settings.json` tiene `+codemode` y `mcp.json` sigue en directo, o al revés, `codemode status` responde `parcial`. Con el híbrido por defecto solo pasa si elegiste `codemode off` y otra herramienta añadió `+codemode`. En ese estado Pi carga todas las tools directas y además `codemode`, así que pagas las dos cosas en cada turno. `install`, `update` y `doctor` lo avisan. Para salir, elige un modo con `codemode on` u `codemode off`.
 
 Los mismos comandos avisan si `codebase-memory-mcp install` dejó una extensión para Pi, normalmente `~/.pi/agent/extensions/cbmem.ts`. Esa extensión registra las tools de codebase-memory sin prefijo y Pi las ve dos veces, una por la extensión y otra por el servidor MCP. pi-gomemory no la borra porque no la instaló. Bórrala tú y, si reinstalas codebase-memory-mcp, usa `--clients` sin `pi`. `codebase-memory-mcp uninstall` no sirve para esto: quita la integración de todos los agentes.
 
