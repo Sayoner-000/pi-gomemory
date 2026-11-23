@@ -221,7 +221,17 @@ func SetCodemodePreference(opts *Options, enabled bool) error {
 // Si una instalación anterior de v1.15.x dejó `+codemode` propio sin
 // preferencia explícita y el destino de settings.json coincide (C-08), lo
 // retira limpiamente bajo rollback para no dejar estado parcial.
+// Tras aplicar el modo avisa, sin cambiar nada, del estado parcial y de las
+// tools de codebase-memory duplicadas por una extensión ajena (HCD-070).
 func applyCodemodeDefault(opts *Options, w io.Writer) error {
+	if err := applyCodemodeMode(opts, w); err != nil {
+		return err
+	}
+	warnExposure(opts.PiAgentDir, w)
+	return nil
+}
+
+func applyCodemodeMode(opts *Options, w io.Writer) error {
 	st, err := readCodemodeState(opts.HomeDir)
 	if err != nil {
 		return err

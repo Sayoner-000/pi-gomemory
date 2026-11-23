@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -52,5 +53,24 @@ func TestCodemodeCLI(t *testing.T) {
 
 	if err := runCodemode(opts, []string{"invalid"}, &out); err == nil {
 		t.Fatal("expected error for invalid subcommand")
+	}
+}
+
+// HCD-070 tarea 4: `codemode status` da el remedio cuando el estado es parcial.
+func TestHCD070CodemodeStatusHint(t *testing.T) {
+	home := t.TempDir()
+	opts := &installer.Options{HomeDir: home, PiAgentDir: filepath.Join(home, ".pi", "agent")}
+	if err := os.MkdirAll(opts.PiAgentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(opts.PiAgentDir, "settings.json"), []byte(`{"defaultTools":["+codemode"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runCodemode(opts, []string{"status"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "parcial") || !strings.Contains(out.String(), installer.CodemodePartialHint()) {
+		t.Fatalf("status parcial sin remedio:\n%s", out.String())
 	}
 }

@@ -133,6 +133,9 @@ func RunDoctor(opts *Options) []CheckItem {
 		}
 	}
 
+	// 3b. Exposición de tools: codemode parcial y tools duplicadas (HCD-070).
+	items = append(items, exposureDoctorItems(piAgentDir)...)
+
 	// 4. Plugin pi-antigravity
 	settingsPath := filepath.Join(piAgentDir, "settings.json")
 	if data, err := os.ReadFile(settingsPath); err == nil {

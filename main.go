@@ -301,6 +301,9 @@ func runCodemode(opts *installer.Options, args []string, out io.Writer) error {
 			state = "parcial"
 		}
 		fmt.Fprintf(out, "codemode: %s (settings=%v, mcp=%v)\n", state, st.SettingsEnabled, st.MCPEnabled)
+		if st.Partial {
+			fmt.Fprintln(out, installer.CodemodePartialHint())
+		}
 		fmt.Fprintln(out, note)
 		return nil
 	case "help", "-h", "--help":
