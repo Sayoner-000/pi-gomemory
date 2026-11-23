@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.23.2"><img src="https://img.shields.io/badge/version-1.23.2-blue" alt="Version 1.23.2"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.24.0"><img src="https://img.shields.io/badge/version-1.24.0-blue" alt="Version 1.24.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -160,14 +160,14 @@ Con `usage`, si la API no responde o el token caducó, el comando termina con un
 
 ### Codemode y contexto por sesión
 
-`install` y `update` dejan los servidores MCP (`gomemory`, `codegraph` y `codebase-memory`) en modo **directo** (`codemode off`) por defecto. Si quieres activar el modo codemode híbrido de forma persistente:
+Desde v1.24.0, `install` y `update` dejan Pi en modo **codemode híbrido**. El modelo recibe directas solo las tools que usa a diario (contexto y memoria de gomemory, `search_graph`, `trace_path`, `get_code_snippet`, `check_index_coverage` y `codegraph_explore`) y llega al resto desde `codemode`. En una instalación típica son 27 tools por turno en lugar de unas 80. Si prefieres todas directas:
 
 ```bash
-pi-gomemory-setup codemode on
+pi-gomemory-setup codemode off
 pi-gomemory-setup codemode status
 ```
 
-La elección queda en `~/.pi-gomemory/codemode.json` y se respeta al reinstalar o actualizar. `codemode off` vuelve al modo directo. En modo híbrido se conservan herramientas MCP de consulta frecuente como directas y las demás siguen disponibles desde `codemode` mediante `tools.<nombre>(args)`. CodeGraph permanece siempre directo.
+La elección queda en `~/.pi-gomemory/codemode.json` y se respeta al reinstalar o actualizar. `codemode on` vuelve al híbrido. En modo híbrido se conservan herramientas MCP de consulta frecuente como directas y las demás siguen disponibles desde `codemode` mediante `tools.<nombre>(args)`. CodeGraph permanece siempre directo.
 
 Si `codemode status` responde `parcial`, Pi tiene `+codemode` activo pero los servidores siguen en directo (o al revés) y carga las dos cosas a la vez. Elige un modo con `codemode on` u `codemode off`. `doctor` también avisa cuando `codebase-memory-mcp install` dejó una extensión para Pi (`cbmem.ts`) que repite las tools del servidor MCP `codebase-memory`; bórrala y, si reinstalas codebase-memory-mcp, pásale `--clients` sin `pi`.
 

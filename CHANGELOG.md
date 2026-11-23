@@ -4,6 +4,15 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.24.0] - 2026-11-22
+
+### Changed
+- `install` y `update` dejan Pi en codemode híbrido por defecto. El modelo recibe directas solo las tools de uso diario y llega al resto desde `codemode`: en una instalación típica son 27 tools por turno en lugar de unas 80. Quien haya elegido `codemode off` sigue en modo directo. Revierte el valor por defecto de v1.15.4. ([HCD-071](hcd/HCD-071-codemode-hibrido-por-defecto-en-install.md))
+- `codemode status`, `codemode on` y `codemode off` describen el nuevo valor por defecto y cómo cambiarlo. ([HCD-071](hcd/HCD-071-codemode-hibrido-por-defecto-en-install.md))
+
+### Fixed
+- Con codemode activo, una skill que nombraba una tool no declarada, como `socratica_flow`, podía concluir que no existía y seguir solo en texto. El protocolo que inyecta `gomemory-context.ts` pide ahora buscarla con `searchTools` desde `codemode` antes. ([HCD-071](hcd/HCD-071-codemode-hibrido-por-defecto-en-install.md))
+
 ## [v1.23.2] - 2026-11-22
 
 ### Added

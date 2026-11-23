@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.24.0](releases/v1.24.0.md)
+`install` y `update` vuelven a dejar Pi en codemode híbrido por defecto (27 tools por turno en lugar de unas 80) y respetan `codemode off`. El protocolo de Pi pide buscar por `codemode` una tool antes de darla por inexistente.
+
 [Notas de v1.23.2](releases/v1.23.2.md)
 Avisa cuando codemode queda a medias (`+codemode` con los servidores MCP en directo) y cuando la extensión `cbmem.ts` de codebase-memory-mcp repite las tools del servidor MCP. Lo hacen `install`, `update`, `doctor` y `codemode status`.
 
