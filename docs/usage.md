@@ -89,7 +89,9 @@ pi-gomemory-setup codemode status
 
 La preferencia y la propiedad de `+codemode` se guardan en `~/.pi-gomemory/codemode.json`. Las herramientas MCP declaradas se llaman directamente; el resto se consulta desde `codemode` con `tools.<nombre>(args)`. `mcp` regenera los servidores y conserva un perfil híbrido ya activo.
 
-Si `settings.json` tiene `+codemode` pero `mcp.json` sigue en modo directo (o al revés), el estado es **parcial**: Pi expone todas las tools directas y además `codemode`. `install`, `update`, `doctor` y `codemode status` lo avisan; resuélvelo con `codemode on` o `codemode off`. También avisan si una extensión generada por `codebase-memory-mcp install` (por ejemplo `~/.pi/agent/extensions/cbmem.ts`) registra las tools de codebase-memory a la vez que el servidor MCP: pi-gomemory no la toca; retírala y reinstala codebase-memory-mcp con `--clients` sin `pi`.
+Cuando `settings.json` tiene `+codemode` y `mcp.json` sigue en directo, o al revés, `codemode status` responde `parcial`. En ese estado Pi carga todas las tools directas y además `codemode`, así que pagas las dos cosas en cada turno. `install`, `update` y `doctor` lo avisan. Para salir, elige un modo con `codemode on` u `codemode off`.
+
+Los mismos comandos avisan si `codebase-memory-mcp install` dejó una extensión para Pi, normalmente `~/.pi/agent/extensions/cbmem.ts`. Esa extensión registra las tools de codebase-memory sin prefijo y Pi las ve dos veces, una por la extensión y otra por el servidor MCP. pi-gomemory no la borra porque no la instaló. Bórrala tú y, si reinstalas codebase-memory-mcp, usa `--clients` sin `pi`. `codebase-memory-mcp uninstall` no sirve para esto: quita la integración de todos los agentes.
 
 `pi-gomemory-setup lite on` retira los servidores de grafo gestionados por pi-gomemory y conserva los personalizados. El modo se mantiene al ejecutar `install`, `update`, `mcp` o cambiar codemode. Usa `lite status` para consultarlo y `lite off` para restaurar los servidores gestionados que falten.
 

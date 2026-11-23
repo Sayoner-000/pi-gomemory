@@ -62,22 +62,22 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.23.1_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.23.1_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.23.1_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.23.1_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.23.2_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.23.2_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.23.2_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.23.2_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.23.1_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.23.2_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar, comprueba que `pi-gomemory-setup version` devuelve `v1.23.1` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas. Desde `v1.22.0`, `install` también activa `hideThinkingBlock: true` (`Ctrl+T`) en `~/.pi/agent/settings.json` cuando esa clave no existe, respetando cualquier preferencia previa del usuario.
+Después de instalar, comprueba que `pi-gomemory-setup version` devuelve `v1.23.2` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas. Desde `v1.22.0`, `install` también activa `hideThinkingBlock: true` (`Ctrl+T`) en `~/.pi/agent/settings.json` cuando esa clave no existe, respetando cualquier preferencia previa del usuario.
 
 Si vienes de v1.12.0 o anterior, revisa los permisos de `~/.pi/agent` y los [problemas conocidos](known-issues.md). Desde v1.15.0, `install` no crea un protocolo en `AGENTS.md`: retira el bloque heredado sin modificar el texto propio. Conserva los permisos y los enlaces; si solo había protocolo, borra el archivo normal o vacía el destino enlazado. Desde v1.15.1, lo retira solo después de instalar `gomemory-context.ts`, quita a la vez el bloque marcado y las copias históricas sin marcas, y si los marcadores de pi-gomemory son ambiguos (huérfanos, repetidos o invertidos) conserva el archivo completo y avisa.
 
@@ -90,6 +90,8 @@ Desde v1.16.0, el instalador incluye el guard de Antigravity. Este cambia la pri
 ## Codemode y contexto
 
 La instalación y `update` dejan los servidores MCP (`gomemory`, `codegraph` y `codebase-memory`) en modo **directo** (`codemode off`) por defecto, salvo que hayas activado `pi-gomemory-setup codemode on`. Esa preferencia persiste en `~/.pi-gomemory/codemode.json`. Consulta el estado con `pi-gomemory-setup codemode status` y vuelve al modo directo con `codemode off`. En modo directo la instalación solo escribe los tres servidores MCP propios y no toca `defaultTools`, aunque hayas activado `+codemode` para otros usos (si una instalación anterior de v1.15.x activó `+codemode` por defecto sin preferencia explícita y el destino de `settings.json` coincide, `install` lo retira limpiamente). Si `codemode on`, `install` o `update` fallan a medias, `settings.json` y `mcp.json` vuelven a su contenido anterior.
+
+Desde v1.23.2, `install` y `update` avisan si el modo queda `parcial` (un `+codemode` que no añadió pi-gomemory con los servidores en directo) y si una extensión de `codebase-memory-mcp` duplica las tools del servidor MCP. No cambian nada por su cuenta: el aviso dice qué comando ejecutar. Los detalles están en la [guía de uso](usage.md#codemode-y-contexto-vivo).
 
 Después de instalar, usa `/reload` o abre una sesión nueva. `gomemory-context.ts` consulta `mem context` con el directorio del proyecto, espera hasta tres segundos y añade el contexto al prompt. No necesitas iniciar Pi desde el launcher para que se ejecute esta extensión. Si falla, se muestra una advertencia; usa `get_context()` o `mem context` para recuperar la memoria.
 

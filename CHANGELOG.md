@@ -4,6 +4,15 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.23.2] - 2026-11-22
+
+### Added
+- `doctor` incluye las comprobaciones «Modo codemode» y «Tools de codebase-memory». ([HCD-070](hcd/HCD-070-exposicion-mcp-duplicada-y-codemode-parc.md))
+
+### Fixed
+- `install` y `update` ya no dejan pasar en silencio un `+codemode` que no añadió pi-gomemory cuando los servidores MCP están en directo. En ese estado Pi cargaba todas las tools directas y además `codemode`. Ahora avisan del estado `parcial` y sugieren `codemode on` u `codemode off`, igual que `codemode status`. ([HCD-070](hcd/HCD-070-exposicion-mcp-duplicada-y-codemode-parc.md))
+- `install`, `update` y `doctor` detectan la extensión para Pi que genera `codebase-memory-mcp install` (`cbmem.ts`) cuando también está registrado el servidor MCP `codebase-memory`, porque Pi ve sus 17 tools dos veces. Muestran la ruta y cómo quitarla, sin tocar el archivo. ([HCD-070](hcd/HCD-070-exposicion-mcp-duplicada-y-codemode-parc.md))
+
 ## [v1.23.1] - 2026-11-21
 
 ### Fixed

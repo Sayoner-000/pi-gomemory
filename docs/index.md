@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.23.2](releases/v1.23.2.md)
+Avisa cuando codemode queda a medias (`+codemode` con los servidores MCP en directo) y cuando la extensión `cbmem.ts` de codebase-memory-mcp repite las tools del servidor MCP. Lo hacen `install`, `update`, `doctor` y `codemode status`.
+
 [Notas de v1.23.1](releases/v1.23.1.md)
 Corrige seis hallazgos de la auditoría de `v1.23.0`: cancelación de suites en `/tdd`, detección de `-skip` y `-short` en `go test`, bloqueo de `hcd_rename` en `/plan`, refresco de `/tasks` al cambiar de sesión y limpieza de temporales con `flock` y staging.
 
