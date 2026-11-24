@@ -15,6 +15,39 @@ import (
 // el SHA256 del SKILL.md escrito, para no borrar nunca una skill ajena o editada.
 const skillMarkerFile = ".pi-gomemory"
 
+// memSkillSources son las carpetas donde `mem` instala sus skills, en orden de
+// preferencia. Su copia es la vigente: gana a la embebida, que solo queda como
+// respaldo si `mem` no instaló la skill en ningún agente (HCD-073).
+var memSkillSources = []string{
+	"~/.claude/skills",
+	"~/.config/opencode/skills",
+	"~/.codex/skills",
+	"~/.gemini/config/skills",
+}
+
+// maxSkillBytes acota la lectura de un SKILL.md ajeno.
+const maxSkillBytes = 1 << 20
+
+// memSkillContent devuelve el SKILL.md que `mem` instaló para name. Ignora
+// rutas que resuelven dentro de repo (evita leer su propia copia) y archivos
+// que no son regulares o superan maxSkillBytes.
+func memSkillContent(home, repo, name string) ([]byte, bool) {
+	for _, src := range memSkillSources {
+		p := filepath.Join(expandHome(src, home), name, "SKILL.md")
+		if real, err := filepath.EvalSymlinks(p); err != nil || isUnder(real, repo) {
+			continue
+		}
+		fi, err := os.Stat(p)
+		if err != nil || !fi.Mode().IsRegular() || fi.Size() > maxSkillBytes {
+			continue
+		}
+		if b, err := os.ReadFile(p); err == nil && len(bytes.TrimSpace(b)) > 0 {
+			return b, true
+		}
+	}
+	return nil, false
+}
+
 func contentHash(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
@@ -71,10 +104,11 @@ func SanitizeFrontmatter(content []byte) []byte {
 	return buf.Bytes()
 }
 
-// installEmbeddedSkills copia y sanitiza las skills embebidas en dir, cada una
-// con su marca. Sustituye enlaces y copias embebidas intactas; nunca pisa una
-// carpeta propia de la persona ni una copia embebida que haya editado.
-func installEmbeddedSkills(assets fs.FS, dir string) ([]string, error) {
+// installEmbeddedSkills copia y sanitiza las skills de gomemory en dir, cada
+// una con su marca. El contenido sale de la copia que `mem` instaló en el
+// anfitrión y, si no hay, del binario (HCD-073). Sustituye enlaces y copias
+// intactas; nunca pisa una carpeta propia de la persona ni una copia editada.
+func installEmbeddedSkills(assets fs.FS, dir, home string) ([]string, error) {
 	entries, err := fs.ReadDir(assets, "skills")
 	if err != nil {
 		return nil, fmt.Errorf("leer skills embebidas: %w", err)
@@ -94,6 +128,11 @@ func installEmbeddedSkills(assets fs.FS, dir string) ([]string, error) {
 			return names, fmt.Errorf("leer skill embebida %s: %w", skillName, err)
 		}
 		names = append(names, skillName)
+		if home != "" {
+			if b, ok := memSkillContent(home, dir, skillName); ok {
+				rawContent = b
+			}
+		}
 
 		dstSkillDir := filepath.Join(dir, skillName)
 		if fi, err := os.Lstat(dstSkillDir); err == nil {

@@ -22,6 +22,7 @@ var hostSkillSources = []string{
 	"~/.config/opencode/skills",
 	"~/.claude/skills",
 	"~/.codex/skills",
+	"~/.gemini/config/skills", // donde instala `mem` para agy (HCD-073)
 	"~/.gemini/skills",
 }
 
@@ -105,7 +106,7 @@ func SyncSkillRepo(assets fs.FS, home string) (SkillRepoResult, error) {
 		return res, fmt.Errorf("crear %s: %w", repo, err)
 	}
 
-	embedded, err := installEmbeddedSkills(assets, repo)
+	embedded, err := installEmbeddedSkills(assets, repo, home)
 	if err != nil {
 		return res, err
 	}
@@ -315,6 +316,38 @@ func isUnder(target, root string) bool {
 		return under(filepath.Join(rt, filepath.Base(target)), rr)
 	}
 	return false
+}
+
+// skillDriftItem informa si las copias intactas de Pi difieren de las que
+// instaló mem (HCD-073). Solo lee.
+func skillDriftItem(home string) CheckItem {
+	const name = "Skills de gomemory al día"
+	repo := SkillRepoDir(home)
+	entries, _ := os.ReadDir(repo)
+	var drift []string
+	compared := 0
+	for _, e := range entries {
+		dir := filepath.Join(repo, e.Name())
+		if e.Type()&os.ModeSymlink != 0 || !e.IsDir() || !isPristineEmbeddedCopy(dir) {
+			continue // enlaces del anfitrión y copias personalizadas no se comparan
+		}
+		mem, ok := memSkillContent(home, repo, e.Name())
+		if !ok {
+			continue
+		}
+		compared++
+		cur, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+		if err != nil || !bytes.Equal(cur, SanitizeFrontmatter(mem)) {
+			drift = append(drift, e.Name())
+		}
+	}
+	switch {
+	case len(drift) > 0:
+		return CheckItem{Name: name, Status: "WARN", Details: fmt.Sprintf("%d difieren de las que instaló mem (%s); ejecuta pi-gomemory-setup skills-sync", len(drift), strings.Join(drift, ", "))}
+	case compared == 0:
+		return CheckItem{Name: name, Status: "INFO", Details: "mem no instaló skills en ningún agente; Pi usa las embebidas"}
+	}
+	return CheckItem{Name: name, Status: "OK", Details: fmt.Sprintf("%d coinciden con las que instaló mem", compared)}
 }
 
 // SkillRepoSummary describe el repositorio para doctor. Solo lee.

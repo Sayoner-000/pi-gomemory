@@ -32,12 +32,17 @@ Anuncia el carril y el motivo, por ejemplo: «Carril: Vía rápida — fix con r
 - **Pedido nuevo**: propone tipo y título, confírmalos y ejecuta `mem hcd start --kind <fix|feature|evolution|technical> --lane <fast|full> --title "…" --why "<motivo del carril>" --intent "…" --json --client <agente>`.
   - `fix` corrige un fallo observado; `feature` añade un comportamiento; `evolution` cambia uno existente; `technical` mejora una propiedad técnica medible.
 - Continúa con la skill de `next_action` (normalmente `/hcd-define`).
+- **Examen socrático en carril completo**: al entrar o retomar una unidad en carril `full`, la definición requiere examen socrático (`data.definition_review.socratic`). En modo plan solo conversación y propuesta; difiere los comandos mutantes hasta que el anfitrión permita la ejecución. Si ya existe un examen socrático vigente para la revisión actual, retómalo sin repetir preguntas; si falta o caducó, se conduce en `/hcd-define` y se registra con `mem hcd review [unidad] --kind socratic`.
 - **Antes de definir**, consulta lo ya decidido sobre el tema o los archivos que vas a tocar: `mem hcd history "<tema>"` o `mem hcd history --file <ruta>` (tool MCP `hcd_history`). Si una unidad o una auditoría anterior decidió algo distinto, cítala en la definición y explica por qué se cambia.
 
 ## 3. Promueve si la Vía rápida se queda corta
 
 Si en una unidad `fast` aparecen decisiones interdependientes, `mem hcd promote --json`: el documento gana Historias y Slices, la evidencia se conserva y la unidad entra en la ceremonia completa.
 
-## 4. Edición sin unidad activa
+## 4. Renombrar una unidad
+
+Si la persona pide cambiar el nombre de una unidad (activa, cerrada o cancelada), ejecuta `mem hcd rename [unidad] --title "…" --json --client <agente>` (tool MCP `hcd_rename`). El motor renombra el título, el archivo `hcd/<ID>-<slug>.md` y su línea `# título`, conserva evidencia, aprobaciones y foco, y actualiza la ficha del historial. No muevas el archivo a mano; si alguien ya lo hizo o editó el `# título`, `mem hcd show` lo reconcilia.
+
+## 5. Edición sin unidad activa
 
 En Codex y OpenCode no hay hook que avise: antes de editar código para un cambio, comprueba que hay una unidad activa (`mem hcd show --json`). Si no la hay, empieza por el paso 1.

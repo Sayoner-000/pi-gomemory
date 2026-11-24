@@ -25,5 +25,5 @@ description: "Paso verify de HCD: registra la evidencia de cada tarea ejecutando
    - Una evidencia puede cubrir varias tareas: `--task 2,3`, solo si el comando comprueba todas ellas. Agrupa comprobaciones finales sobre código estable; no atribuyas cobertura a tareas que el comando no prueba.
 3. `--json` y `--client` van **antes** de `--`: todo lo que sigue es el comando.
 4. Lee `data.evidence`: `passed`, `red_observed`, `exit_code` y `excerpt`. Si falló, corrige y vuelve a verificar. No reinterpretes un fallo como éxito.
-5. Lee el estado devuelto por `verify`: no repitas `show` inmediatamente si no hubo cambios, interrupciones ni otro agente trabajando. Una llamada basta para ejecutar y registrar; Codemode no requiere repetirla por CLI. Mantén una verificación por llamada Bash (sin bucles ni funciones que agrupen verificaciones) para permitir intervención entre comprobaciones y actualizar el panel de tareas de Pi.
+5. Lee el estado devuelto por `verify`: no repitas `show` inmediatamente si no hubo cambios, interrupciones ni otro agente trabajando. Una llamada basta para ejecutar y registrar; Codemode no requiere repetirla por CLI. Mantén una verificación por llamada para permitir intervención entre comprobaciones.
 6. Cuando el paso sea `close`, sigue con `/hcd-analyze` y `/hcd-close`. Nunca omitas los gates ni la aprobación humana.

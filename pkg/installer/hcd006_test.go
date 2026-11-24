@@ -29,11 +29,13 @@ func TestSkillRepoScan(t *testing.T) {
 			t.Fatal("se esperaban colisiones resueltas")
 		}
 	}
-	if got := readFile(t, filepath.Join(repo, "hcd", "SKILL.md")); got != "embebida\n" {
-		t.Fatalf("hcd debe ser la embebida: %q", got)
+	// HCD-073 (Q1=a): el contenido sale de la copia que mem instaló en el
+	// anfitrión, pero sigue siendo una copia real con marca, no un enlace.
+	if got := readFile(t, filepath.Join(repo, "hcd", "SKILL.md")); got != "oc\n" {
+		t.Fatalf("hcd debe venir de la copia de mem: %q", got)
 	}
 	if fi, _ := os.Lstat(filepath.Join(repo, "hcd")); fi.Mode()&os.ModeSymlink != 0 {
-		t.Fatal("la embebida debe ser una copia real")
+		t.Fatal("la skill de gomemory debe ser una copia real")
 	}
 	want := map[string]string{
 		"humanizer":  filepath.Join(h, ".agents", "skills", "humanizer"),

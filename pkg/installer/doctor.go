@@ -226,6 +226,7 @@ func RunDoctor(opts *Options) []CheckItem {
 			Details: "no se encontraron skills instaladas",
 		})
 	}
+	items = append(items, skillDriftItem(opts.HomeDir))
 	items = append(items, CheckItem{
 		Name:    "Repositorio de skills",
 		Status:  "INFO",
