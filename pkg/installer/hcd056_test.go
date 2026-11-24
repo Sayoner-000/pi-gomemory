@@ -390,7 +390,7 @@ func TestHCD056SkillsTDD(t *testing.T) {
 		}
 	}
 	impl := readAsset(t, "skills/hcd-implement/SKILL.md")
-	for _, want := range []string{"Rojo antes del cambio en toda tarea con un test automatizable", "--expect-fail", "filter", "no automatizable"} {
+	for _, want := range []string{"Rojo antes del cambio en toda tarea con un test automatizable", "--expect-fail", "comprobación acotada", "No ejecutes la misma comprobación fuera y dentro del motor", "no automatizable"} {
 		if !strings.Contains(impl, want) {
 			t.Errorf("hcd-implement/SKILL.md no contiene %q", want)
 		}
