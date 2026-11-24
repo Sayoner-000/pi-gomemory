@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.24.1](releases/v1.24.1.md)
+Actualiza las skills embebidas `hcd-implement` y `hcd-verify` para que Pi evite revalidar tareas anteriores por caducidad durante la implementación y no duplique comprobaciones fuera y dentro de `mem hcd verify`.
+
 [Notas de v1.24.0](releases/v1.24.0.md)
 `install` y `update` vuelven a dejar Pi en codemode híbrido por defecto (27 tools por turno en lugar de unas 80) y respetan `codemode off`. El protocolo de Pi pide buscar por `codemode` una tool antes de darla por inexistente.
 

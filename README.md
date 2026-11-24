@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.24.0"><img src="https://img.shields.io/badge/version-1.24.0-blue" alt="Version 1.24.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.24.1"><img src="https://img.shields.io/badge/version-1.24.1-blue" alt="Version 1.24.1"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -237,6 +237,8 @@ La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.j
 ## Documentación
 
 - [Guía HTML v1.15](docs/Guia-PI-GOMEMORY-v1.15.html): instalación, contexto por sesión y referencia de comandos
+- [Notas de v1.24.1](docs/releases/v1.24.1.md): actualización de las skills embebidas `hcd-implement` y `hcd-verify` para evitar revalidaciones innecesarias (HCD-072)
+- [Notas de v1.24.0](docs/releases/v1.24.0.md): `install` y `update` dejan Pi en codemode híbrido por defecto (HCD-071)
 - [Notas de v1.15.4](docs/releases/v1.15.4.md): modo MCP directo (`codemode off`) por defecto y transición limpia desde v1.15.x (HCD-050)
 - [Notas de v1.15.3](docs/releases/v1.15.3.md): regresión de Antigravity, cierre verificado de HCD-040 y mitigación local opt-in
 - [Antigravity: HTTP 429 y mitigación local](docs/antigravity.md): diagnóstico, riesgo de prioridad, activación manual y reversión

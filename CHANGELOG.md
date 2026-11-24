@@ -4,6 +4,12 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.24.1] - 2026-11-23
+
+### Fixed
+- Actualiza las skills embebidas `hcd-implement` y `hcd-verify` para alinearlas con el flujo HCD vigente de `mem`: durante la implementación se verifica solo la tarea actual, sin revalidar tareas anteriores por caducidad tras cada edición ni repetir la misma comprobación fuera y dentro de `mem hcd verify`. Las revalidaciones de evidencia caducada quedan para antes del cierre, sobre código estable. ([HCD-072](hcd/HCD-072-actualizar-skills-hcd-embebidas-para-evi.md))
+- Actualiza `TestHCD056SkillsTDD` y añade `TestHCD072EmbeddedScheduling` para validar el contenido embebido y confirmar que `SyncSkillRepo` conserva las skills personalizadas del usuario. ([HCD-072](hcd/HCD-072-actualizar-skills-hcd-embebidas-para-evi.md))
+
 ## [v1.24.0] - 2026-11-22
 
 ### Changed
