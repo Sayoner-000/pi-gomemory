@@ -67,6 +67,8 @@ Comandos:
   plugin        Configura pi-antigravity y pi-cc-extensions en settings.json
   skills        Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills/
   skills-sync   Sincroniza el repositorio central de skills y purga copias legadas
+                --check: solo comprueba; sale con 10 si hay skills desfasadas o editadas que difieren de mem
+                --restore <skill>…: repone skills de gomemory editadas localmente
   harness       Genera el launcher pi-gomemory en ~/.local/bin (o PI_GOMEMORY_BIN_DIR)
   version       Muestra la versión instalada
   deps-status   Lista los componentes desactualizados frente a la versión instalada real (sale con 10)
@@ -246,7 +248,9 @@ Muestra el desglose de espacio ocupado en la ventana de contexto del modelo para
 
 ## Catálogo de skills instaladas
 
-El instalador copia y sanitiza 21 skills en `~/.pi-gomemory/skills/`, junto con enlaces a las skills de los demás agentes:
+El instalador copia y sanitiza 20 skills en `~/.pi-gomemory/skills/`, junto con enlaces a las skills de los demás agentes. Si `mem` instaló su propia copia de una skill en otro agente, esa copia gana a la embebida.
+
+**Skills al día tras `mem update`.** Al iniciar cada sesión y después de un `mem update` ejecutado desde Pi, `gomemory-status` lanza `pi-gomemory-setup skills-sync --check`. Si hay copias desfasadas, sincroniza y avisa de que `/reload` carga la versión nueva. Las copias de gomemory editadas a mano no se sobrescriben nunca: si difieren de la versión de `mem`, Pi avisa en amarillo y `pi-gomemory-setup skills-sync --restore <skill>` las repone, salvo que la carpeta tenga otros archivos tuyos. En el repositorio de pi-gomemory, `TestHCD080EmbeddedSkillsMatchMem` falla si `skills/` se queda por detrás de las copias de `mem` de tu máquina (se omite si no hay ninguna o con `PI_GOMEMORY_SKIP_SKILL_DRIFT=1`); `make skills-embed` las copia.
 
 Harness Continual Development (HCD):
 `hcd`, `hcd-define`, `hcd-clarify`, `hcd-approve`, `hcd-slice`, `hcd-tasks`, `hcd-implement`, `hcd-verify`, `hcd-analyze`, `hcd-close`.
@@ -258,7 +262,7 @@ Auditoría y control de calidad:
 `adversarial-consensus-review`, `defensive-qa-audit`.
 
 Memoria y asistencia técnica:
-`codebase-memory`, `constitution`, `socratica`.
+`constitution`, `socratica`.
 
 ## Supresión y prevención de advertencias (warnings)
 

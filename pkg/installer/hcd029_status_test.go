@@ -23,7 +23,8 @@ const pi = {
 	on: (ev, fn) => { handlers[ev] = fn; },
 	registerCommand: (name, def) => { commands[name] = def; },
 	exec: async (cmd, args) => {
-		execs.push(cmd + " " + args.join(" "));
+		// Solo la secuencia de actualizaciones; skills-sync --check es de HCD-080.
+		if (args[0].startsWith("deps-")) execs.push(cmd + " " + args.join(" "));
 		const q = codes[args[0]] ?? [1];
 		return { code: q.length > 1 ? q.shift() : q[0], stdout: "", stderr: "" };
 	},

@@ -14,6 +14,8 @@ Adaptación a los cambios de HCD de gomemory 2.59.0 (HCD-064): una tarea caducad
 - El protocolo HCD que inyecta `extensions/gomemory-context.ts` indica que una tarea caducada con pendientes no se reverifica y que al cierre se usa `mem hcd verify --stale` sin comando.
 
 ### Added
+- Skills de Pi al día tras `mem update` (HCD-080): `pi-gomemory-setup skills-sync --check` compara `~/.pi-gomemory/skills` con la versión vigente (la copia de `mem` o la embebida) sin escribir y sale con 10 si hay skills desfasadas o editadas que difieren. `gomemory-status.ts` lo ejecuta en `session_start` y tras un bash con `mem update`: sincroniza las desfasadas y avisa de `/reload`. Las copias editadas a mano no se sobrescriben; se avisa en amarillo y `skills-sync --restore <skill>…` las repone (se niega si la carpeta tiene otros archivos).
+- `TestHCD080EmbeddedSkillsMatchMem` detecta en el repositorio que `skills/` se quedó por detrás de las copias que instaló `mem` (se omite sin ellas o con `PI_GOMEMORY_SKIP_SKILL_DRIFT=1`), y `make skills-embed` las copia.
 - Prueba de integración en `tests/gomemory-tasks.test.mjs` contra el binario real `mem` ≥ 2.59.0 (repo y `HOME` temporales; se omite sin él), y aserciones nuevas en `hcd072_skills_test.go` y `TestHCD079ContextProtocol`.
 
 ### Fixed

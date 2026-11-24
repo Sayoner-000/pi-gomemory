@@ -149,16 +149,8 @@ func main() {
 		}
 		fmt.Println("✓ Plugins pi-antigravity y pi-cc-extensions configurados en Pi.")
 	case "skills", "skills-sync":
-		res, err := installer.InstallSkills(EmbeddedAssets, opts)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error sincronizando skills: %v\n", err)
-			os.Exit(1)
-		}
-		if cmd == "skills" {
-			fmt.Printf("✓ %d skills de gomemory y %d del anfitrión en %s (%d colisiones resueltas).\n", res.Embedded, res.Linked, installer.SkillRepoSetting, len(res.Collisions))
-			for _, c := range res.Collisions {
-				fmt.Printf("    %s: gana %s, se omite %s\n", c.Name, c.Winner, c.Loser)
-			}
+		if code := runSkillsSync(opts, cmd, os.Args[2:], os.Stdout, os.Stderr); code != 0 {
+			os.Exit(code)
 		}
 	case "harness":
 		if err := installer.InstallHarness(opts.LocalBinDir); err != nil {
@@ -238,6 +230,81 @@ func main() {
 	}
 }
 
+// skillsDriftExit es la salida de `skills-sync --check` con skills desfasadas,
+// la misma que usa `deps-status` para «hay algo desactualizado» (HCD-080).
+const skillsDriftExit = 10
+
+// runSkillsSync implementa `skills`/`skills-sync [--check]`. Con --check solo
+// compara el repositorio central con las skills vigentes (las de `mem` o las
+// embebidas): 0 si está al día, 10 y la lista si no. Sin --check sincroniza.
+func runSkillsSync(opts *installer.Options, cmd string, args []string, out, errOut io.Writer) int {
+	check, restore := false, false
+	var names []string
+	for _, a := range args {
+		switch {
+		case a == "--check":
+			check = true
+		case a == "--restore":
+			restore = true
+		case restore && !strings.HasPrefix(a, "-"):
+			names = append(names, a)
+		default:
+			fmt.Fprintf(errOut, "opción desconocida para %s: %s (admite --check o --restore <skill>…)\n", cmd, a)
+			return 2
+		}
+	}
+	if restore {
+		if check || len(names) == 0 {
+			fmt.Fprintf(errOut, "uso: pi-gomemory-setup %s --restore <skill> [<skill>…]\n", cmd)
+			return 2
+		}
+		if err := installer.RestoreSkills(EmbeddedAssets, opts, names); err != nil {
+			fmt.Fprintf(errOut, "No se repusieron las skills: %v\n", err)
+			if errors.Is(err, installer.ErrUnknownSkill) {
+				return 2
+			}
+			return 1
+		}
+		fmt.Fprintf(out, "✓ Repuestas desde la versión vigente de gomemory: %s. Usa /reload en Pi para cargarlas.\n", strings.Join(names, ", "))
+		return 0
+	}
+	if check {
+		drift, err := installer.SkillRepoDrift(EmbeddedAssets, opts.HomeDir)
+		if err != nil {
+			fmt.Fprintf(errOut, "Error comprobando skills: %v\n", err)
+			return 1
+		}
+		edited, err := installer.SkillRepoEdited(EmbeddedAssets, opts.HomeDir)
+		if err != nil {
+			fmt.Fprintf(errOut, "Error comprobando skills: %v\n", err)
+			return 1
+		}
+		if len(drift) > 0 {
+			fmt.Fprintf(errOut, "skills de gomemory desfasadas en %s: %s. Ejecuta pi-gomemory-setup skills-sync\n", installer.SkillRepoSetting, strings.Join(drift, ", "))
+		}
+		// Q1: las editadas no se sobrescriben; se informa cómo reponerlas.
+		if len(edited) > 0 {
+			fmt.Fprintf(errOut, "skills de gomemory editadas localmente y desfasadas respecto a mem: %s. Ejecuta pi-gomemory-setup skills-sync --restore %s\n", strings.Join(edited, ", "), strings.Join(edited, " "))
+		}
+		if len(drift)+len(edited) > 0 {
+			return skillsDriftExit
+		}
+		return 0
+	}
+	res, err := installer.InstallSkills(EmbeddedAssets, opts)
+	if err != nil {
+		fmt.Fprintf(errOut, "Error sincronizando skills: %v\n", err)
+		return 1
+	}
+	if cmd == "skills" {
+		fmt.Fprintf(out, "✓ %d skills de gomemory y %d del anfitrión en %s (%d colisiones resueltas).\n", res.Embedded, res.Linked, installer.SkillRepoSetting, len(res.Collisions))
+		for _, c := range res.Collisions {
+			fmt.Fprintf(out, "    %s: gana %s, se omite %s\n", c.Name, c.Winner, c.Loser)
+		}
+	}
+	return 0
+}
+
 // runComponents implementa `components --names | --json` (HCD-076): --names
 // lista los tool del catálogo sin red; --json refresca a la fuerza y
 // devuelve el estado de todo el catálogo.
@@ -275,6 +342,8 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup plugin      Configura pi-antigravity y pi-cc-extensions")
 	fmt.Println("  pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills")
 	fmt.Println("  pi-gomemory-setup skills-sync Sincroniza el repositorio central y purga copias legadas")
+	fmt.Println("  pi-gomemory-setup skills-sync --check  Solo comprueba: sale con 10 si hay skills desfasadas (p. ej. tras mem update)")
+	fmt.Println("  pi-gomemory-setup skills-sync --restore <skill>…  Repone skills de gomemory editadas localmente")
 	fmt.Println("  pi-gomemory-setup harness     Instala el launcher pi-gomemory en ~/.local/bin")
 	fmt.Println("  pi-gomemory-setup version     Muestra la versión instalada")
 	fmt.Println("  pi-gomemory-setup check-update  Avisa si hay una release nueva (caché de 24 h)")

@@ -15,6 +15,26 @@ const UPDATES_STATUS_KEY = "gomemory-updates";
 /** `pi-gomemory-setup deps-status` sale con 10 cuando hay algo desactualizado. */
 const DEPS_OUTDATED_EXIT = 10;
 
+/** `pi-gomemory-setup skills-sync --check` sale con 10 si hay skills desfasadas (HCD-080). */
+const SKILLS_DRIFT_EXIT = 10;
+/** Un bash que actualizó gomemory: sus skills pueden haber cambiado (HCD-080). */
+const MEM_UPDATE_RE = /(^|[\s;&|(])mem\s+update\b/;
+
+/**
+ * Lee la salida de `skills-sync --check`: las desfasadas que la sincronización
+ * repone y las editadas localmente que no toca (Q1), cada grupo en su línea.
+ */
+export function skillsCheckReport(stderr: string): { drifted: string[]; edited: string[] } {
+	const names = (re: RegExp) => {
+		const m = re.exec(stderr ?? "");
+		return m ? m[1].split(",").map((s) => s.trim()).filter(Boolean) : [];
+	};
+	return {
+		drifted: names(/desfasadas en [^:\n]*:\s*([^\n]*?)\.\s*Ejecuta/),
+		edited: names(/editadas localmente[^:\n]*:\s*([^\n]*?)\.\s*Ejecuta/),
+	};
+}
+
 /** Plazo de `/componentes` para `sync`: hasta cinco instaladores de 10 min (HCD-076, N4). */
 export const COMPONENTS_SYNC_TIMEOUT_MS = 60 * 60 * 1000;
 
@@ -110,6 +130,46 @@ export default function (pi: ExtensionAPI) {
 			// sin red: se mantiene el resultado anterior
 		}
 		showUpdates(ctx, await outdated());
+	}
+
+	/**
+	 * HCD-080: si `mem update` cambió las skills de gomemory, el repositorio que
+	 * carga Pi (~/.pi-gomemory/skills) queda atrás hasta el siguiente install.
+	 * Comprueba sin escribir y, solo si hay deriva, sincroniza y avisa: Pi carga
+	 * las skills al arrancar, así que la versión nueva llega con /reload.
+	 */
+	let skillsCheck: Promise<void> | null = null;
+	function syncSkills(ctx: any): Promise<void> {
+		if (skillsCheck) return skillsCheck;
+		skillsCheck = (async () => {
+			try {
+				const r = await pi.exec("pi-gomemory-setup", ["skills-sync", "--check"], { timeout: 10_000 });
+				if (r.code !== SKILLS_DRIFT_EXIT) return; // al día, o setup antiguo sin --check
+				const { drifted, edited } = skillsCheckReport(r.stderr);
+				// Sin nombres reconocibles (setup de otra versión) se sincroniza igual.
+				if (drifted.length || !edited.length) {
+					const s = await pi.exec("pi-gomemory-setup", ["skills-sync"], { timeout: 30_000 });
+					const list = drifted.length ? ` (${drifted.join(", ")})` : "";
+					if (s.code === 0) {
+						ctx.ui?.notify?.(`Skills de gomemory actualizadas desde mem${list}. Usa /reload para cargarlas.`, "info");
+					} else {
+						ctx.ui?.notify?.(`Skills de gomemory desfasadas${list}; no se pudieron sincronizar. Ejecuta pi-gomemory-setup skills-sync.`, "warning");
+					}
+				}
+				// Las editadas a mano no se pisan: se avisa cómo reponerlas (Q1).
+				if (edited.length) {
+					ctx.ui?.notify?.(
+						`Skills de gomemory editadas localmente y desfasadas respecto a mem: ${edited.join(", ")}. Para recibir la versión nueva: pi-gomemory-setup skills-sync --restore ${edited.join(" ")}`,
+						"warning",
+					);
+				}
+			} catch {
+				// setup ausente: no se afirma nada
+			} finally {
+				skillsCheck = null;
+			}
+		})();
+		return skillsCheck;
 	}
 
 	function setupFooter(ctx: any) {
@@ -223,6 +283,15 @@ export default function (pi: ExtensionAPI) {
 		setupThinkingIndicator(ctx);
 		// Sin esperar: la consulta en red nunca retrasa el arranque de la sesión.
 		if (ctx.ui) void checkUpdates(ctx);
+		// Local y rápido, pero tampoco retrasa el arranque (HCD-080). Con
+		// PI_GOMEMORY_NO_UPDATE_CHECK no se consulta nada (HCD-037, C-02).
+		if (!updateCheckDisabled()) void syncSkills(ctx);
+	});
+
+	// HCD-080: tras un `mem update` desde Pi, las skills de gomemory pueden haber cambiado.
+	pi.on("tool_result", async (event: any, ctx: any) => {
+		if (event?.toolName !== "bash" || event?.isError || updateCheckDisabled()) return;
+		if (MEM_UPDATE_RE.test(String(event?.input?.command ?? ""))) void syncSkills(ctx);
 	});
 
 	pi.on("session_shutdown", async (_event, ctx) => {

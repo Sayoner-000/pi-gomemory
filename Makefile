@@ -1,4 +1,4 @@
-.PHONY: all build install doctor dist clean
+.PHONY: all build install doctor dist clean skills-embed
 
 BINARY_NAME=pi-gomemory
 BIN_DIR=bin
@@ -22,6 +22,20 @@ doctor: build
 
 dist:
 	@bash scripts/build-release.sh $(VERSION)
+
+# HCD-080: copia en skills/ las SKILL.md que instaló `mem` (mismo orden que
+# memSkillSources), saltando las que resuelven dentro de ~/.pi-gomemory.
+MEM_SKILL_SOURCES = $(HOME)/.claude/skills $(HOME)/.config/opencode/skills $(HOME)/.codex/skills $(HOME)/.gemini/config/skills
+skills-embed:
+	@for d in skills/*/; do \
+		n=$$(basename $$d); \
+		for s in $(MEM_SKILL_SOURCES); do \
+			f=$$s/$$n/SKILL.md; [ -f $$f ] || continue; \
+			case $$(realpath $$f) in $(HOME)/.pi-gomemory/*) continue;; esac; \
+			if ! cmp -s $$f $$d/SKILL.md; then cp $$f $$d/SKILL.md; echo "✓ $$n ← $$s"; fi; \
+			break; \
+		done; \
+	done
 
 clean:
 	rm -rf $(BIN_DIR)/$(BINARY_NAME)-setup $(DIST_DIR)
