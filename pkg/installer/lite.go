@@ -64,7 +64,7 @@ func IsLiteMode(homeDir string) bool {
 	return err == nil && enabled
 }
 
-// LiteMCPServers devuelve solo gomemory en mcp.json (sin codegraph ni codebase-memory)
+// LiteMCPServers devuelve solo gomemory en mcp.json (sin codegraph)
 // para reducir el consumo de RAM cuando corren múltiples sesiones Pi.
 func LiteMCPServers() map[string]MCPServerDef {
 	def := DefaultMCPServers()

@@ -54,10 +54,13 @@ func TestHCD052LiteAndMCP(t *testing.T) {
 				t.Fatalf("lite off: %v", err)
 			}
 			afterOff := hcd052Servers(t, opts.PiAgentDir)
-			for _, name := range []string{"gomemory", "codegraph", "codebase-memory"} {
+			for _, name := range []string{"gomemory", "codegraph"} {
 				if _, ok := afterOff[name]; !ok {
 					t.Fatalf("lite off no restauró %s", name)
 				}
+			}
+			if _, ok := afterOff["codebase-memory"]; ok {
+				t.Fatal("lite off no debe registrar codebase-memory")
 			}
 			if !sameJSON(afterOff["mine"], foreign) {
 				t.Fatalf("lite off alteró entrada ajena: %s", afterOff["mine"])
@@ -108,8 +111,8 @@ func TestHCD052LiteAndMCP(t *testing.T) {
 			if !sameJSON(afterOff["gomemory"], customGM) {
 				t.Fatalf("C-003: lite off sobrescribió gomemory personalizado: %s", afterOff["gomemory"])
 			}
-			if _, ok := afterOff["codebase-memory"]; !ok {
-				t.Fatal("lite off debió restaurar codebase-memory gestionado")
+			if _, ok := afterOff["codebase-memory"]; ok {
+				t.Fatal("lite off no debe registrar codebase-memory")
 			}
 			if !sameJSON(afterOff["mine"], foreign) {
 				t.Fatalf("lite off alteró entrada ajena: %s", afterOff["mine"])
@@ -139,8 +142,8 @@ func TestHCD052LiteAndMCP(t *testing.T) {
 			if !sameJSON(afterOff["codegraph"], editedGraph) {
 				t.Fatalf("C-003: lite off pisó la edición hecha entre ambos comandos: %s", afterOff["codegraph"])
 			}
-			if _, ok := afterOff["codebase-memory"]; !ok {
-				t.Fatal("lite off debió restaurar codebase-memory ausente")
+			if _, ok := afterOff["codebase-memory"]; ok {
+				t.Fatal("lite off no debe registrar codebase-memory")
 			}
 		})
 	})
@@ -282,14 +285,13 @@ func TestHCD052LiteAndMCP(t *testing.T) {
 				t.Fatalf("C-002: GetCodemodeStatus inconsistente con lite+codemode: %+v", st)
 			}
 
-			// Al apagar lite, codegraph y codebase-memory se restauran en perfil codemode.
+			// Al apagar lite, codegraph se restaura y codebase-memory no aparece.
 			if err := SetLiteMode(opts, false); err != nil {
 				t.Fatal(err)
 			}
 			full := hcd052Servers(t, opts.PiAgentDir)
-			wantCBM, _ := json.Marshal(CodemodeMCPServers()["codebase-memory"])
-			if !sameJSON(full["codebase-memory"], wantCBM) {
-				t.Fatalf("C-002: lite off no restauró codebase-memory en codemode: %s", full["codebase-memory"])
+			if _, ok := full["codebase-memory"]; ok {
+				t.Fatalf("C-002: lite off no debe registrar codebase-memory: %s", full["codebase-memory"])
 			}
 			if _, ok := full["codegraph"]; !ok {
 				t.Fatal("C-002: lite off no restauró codegraph")

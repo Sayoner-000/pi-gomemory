@@ -15,6 +15,29 @@ import (
 //go:embed legacy/mcp-hybrid-v1.14.0.json
 var legacyHybridV1140 []byte
 
+// legacyCodebaseMemoryDefs son las definiciones exacta directa e híbrida que
+// escribía pi-gomemory hasta v1.27.0, antes de retirar codebase-memory. Se
+// conservan en managedMCPProfiles para que install/update/uninstall retiren
+// la entrada gestionada sin tocar definiciones personalizadas (C-003).
+var legacyCodebaseMemoryDefs = []MCPServerDef{
+	{
+		Command:     "codebase-memory-mcp",
+		Exposure:    "direct",
+		Description: "Codebase memory knowledge graph for deep structural queries and call tracing",
+	},
+	{
+		Command:     "codebase-memory-mcp",
+		Exposure:    "codemode",
+		ToolExposure: map[string]string{
+			"search_graph":         "direct",
+			"trace_path":           "direct",
+			"get_code_snippet":     "direct",
+			"check_index_coverage": "direct",
+		},
+		Description: "Codebase memory knowledge graph for deep structural queries and call tracing",
+	},
+}
+
 // managedMCPProfiles devuelve, por servidor, las definiciones exactas que
 // pi-gomemory ha escrito: directa, híbrida vigente e híbridas publicadas.
 func managedMCPProfiles() map[string][]json.RawMessage {
@@ -24,6 +47,10 @@ func managedMCPProfiles() map[string][]json.RawMessage {
 			raw, _ := json.Marshal(def)
 			profiles[name] = append(profiles[name], raw)
 		}
+	}
+	for _, def := range legacyCodebaseMemoryDefs {
+		raw, _ := json.Marshal(def)
+		profiles["codebase-memory"] = append(profiles["codebase-memory"], raw)
 	}
 	var legacy map[string]json.RawMessage
 	_ = json.Unmarshal(legacyHybridV1140, &legacy)
@@ -45,14 +72,15 @@ func isManagedMCPServer(name string, cur json.RawMessage) bool {
 }
 
 // resolveMCPProfile compone de forma centralizada la exposición (codemode) y
-// el subconjunto de servidores propios (lite).
+// el subconjunto de servidores propios (lite). Retira siempre cualquier entrada
+// gestionada heredada de codebase-memory.
 func resolveMCPProfile(codemodeEnabled, liteEnabled bool) (present map[string]MCPServerDef, absent []string) {
 	base := DefaultMCPServers()
 	if codemodeEnabled {
 		base = CodemodeMCPServers()
 	}
 	if !liteEnabled {
-		return base, nil
+		return base, []string{"codebase-memory"}
 	}
 	return map[string]MCPServerDef{
 		"gomemory": base["gomemory"],
@@ -69,7 +97,7 @@ type MCPServerDef struct {
 	Description  string            `json:"description,omitempty"`
 }
 
-// DefaultMCPServers devuelve los tres servidores requeridos: gomemory, codegraph y codebase-memory.
+// DefaultMCPServers devuelve los dos servidores requeridos: gomemory y codegraph.
 func DefaultMCPServers() map[string]MCPServerDef {
 	return map[string]MCPServerDef{
 		"gomemory": {
@@ -84,20 +112,15 @@ func DefaultMCPServers() map[string]MCPServerDef {
 			Exposure:    "direct",
 			Description: "CodeGraph SQLite AST code intelligence and structural exploration",
 		},
-		"codebase-memory": {
-			Command:     "codebase-memory-mcp",
-			Exposure:    "direct",
-			Description: "Codebase memory knowledge graph for deep structural queries and call tracing",
-		},
 	}
 }
 
 // CodemodeMCPServers devuelve la configuración MCP en modo codemode híbrido:
-// gomemory y codebase-memory pasan a exposure "codemode" manteniendo como "direct"
-// únicamente las herramientas de protocolo y consulta diaria, mientras codegraph
-// permanece "direct" por tener una sola herramienta. El bloque Pi de
-// gomemory-context.ts nombra las directas a partir de las tools efectivas
-// de cada ejecución, así que no hay lista que mantener sincronizada (HCD-045).
+// gomemory pasa a exposure "codemode" manteniendo como "direct" únicamente las
+// herramientas de protocolo y consulta diaria, mientras codegraph permanece
+// "direct" por tener una sola herramienta. El bloque Pi de gomemory-context.ts
+// nombra las directas a partir de las tools efectivas de cada ejecución, así
+// que no hay lista que mantener sincronizada (HCD-045).
 func CodemodeMCPServers() map[string]MCPServerDef {
 	servers := DefaultMCPServers()
 
@@ -118,16 +141,6 @@ func CodemodeMCPServers() map[string]MCPServerDef {
 		"judge_memories":       "direct",
 	}
 	servers["gomemory"] = gm
-
-	cbm := servers["codebase-memory"]
-	cbm.Exposure = "codemode"
-	cbm.ToolExposure = map[string]string{
-		"search_graph":         "direct",
-		"trace_path":           "direct",
-		"get_code_snippet":     "direct",
-		"check_index_coverage": "direct",
-	}
-	servers["codebase-memory"] = cbm
 
 	return servers
 }

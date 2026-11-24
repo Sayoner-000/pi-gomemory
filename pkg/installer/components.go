@@ -108,19 +108,6 @@ func Catalog() []Component {
 			},
 		},
 		{
-			Name: cbmBinary, Kind: KindTool, Release: true,
-			Manual:    "pi-gomemory-setup deps-install " + cbmBinary,
-			Uninstall: cbmBinary + " uninstall",
-			probe: func(string, string) DepProbe {
-				return DepProbe{
-					Current: versionFromCmd(cbmBinary, "--version"),
-					Latest:  githubLatest(CodebaseMemoryReleasesURL + "/latest"),
-					// HCD-062: mismo canal verificado que la instalación (release + SHA-256).
-					Update: []string{"pi-gomemory-setup", "deps-install", cbmBinary},
-				}
-			},
-		},
-		{
 			Name: "herdr", Kind: KindTool,
 			Script: HerdrInstallScriptURL, Interp: "sh", Env: herdrEnv,
 			Manual:    "curl -fsSL " + HerdrInstallScriptURL + " | sh",

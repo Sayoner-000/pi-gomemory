@@ -98,7 +98,7 @@ func main() {
 		if installer.IsLiteMode(opts.HomeDir) {
 			fmt.Println("✓ Servidor MCP gomemory registrado en Pi (modo lite activo).")
 		} else {
-			fmt.Println("✓ Servidores MCP gomemory, codegraph y codebase-memory registrados en Pi.")
+			fmt.Println("✓ Servidores MCP gomemory y codegraph registrados en Pi.")
 		}
 	case "codemode":
 		if err := runCodemode(opts, os.Args[2:], os.Stdout); err != nil {
@@ -116,13 +116,13 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Error activando modo lite: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Println("✓ Modo liviano activado: solo gomemory queda en mcp.json (sin codegraph ni codebase-memory).")
+			fmt.Println("✓ Modo liviano activado: solo gomemory queda en mcp.json (sin codegraph).")
 		case "off":
 			if err := installer.SetLiteMode(opts, false); err != nil {
 				fmt.Fprintf(os.Stderr, "Error desactivando modo lite: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Println("✓ Modo liviano desactivado: gomemory, codegraph y codebase-memory restaurados en mcp.json.")
+			fmt.Println("✓ Modo liviano desactivado: gomemory y codegraph restaurados en mcp.json.")
 		case "status":
 			enabled, err := installer.GetLiteStatus(opts.HomeDir)
 			if err != nil {

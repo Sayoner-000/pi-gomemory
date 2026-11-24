@@ -1,25 +1,19 @@
 package installer
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 )
 
-// HCD-062: instalar pi, mem, codegraph y codebase-memory-mcp desde sus
-// canales oficiales cuando faltan.
+// HCD-062: instalar pi, mem y codegraph desde sus canales oficiales cuando faltan.
 
 // toolSandbox prepara un HOME y un PATH con solo los directorios del sistema,
 // y devuelve las opciones de instalación.
@@ -369,166 +363,5 @@ func TestHCD062EnsureSkipAndLite(t *testing.T) {
 	}
 	if err := EnsureTools(opts, &bytes.Buffer{}); err != nil || len(*hits) != 0 {
 		t.Fatalf("en lite no se instala codegraph: %v %v", err, *hits)
-	}
-}
-
-// cbmRelease arma un release falso de codebase-memory-mcp.
-func cbmRelease(t *testing.T, tag string, binScript string, extra map[string]string) (asset string, tgz []byte, sums string) {
-	t.Helper()
-	asset, err := cbmAsset(runtime.GOOS, runtime.GOARCH)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	tw := tar.NewWriter(gz)
-	files := map[string]string{"codebase-memory-mcp": binScript, "LICENSE": "x", "install.sh": "x", "THIRD_PARTY_NOTICES.md": "x"}
-	for k, v := range extra {
-		files[k] = v
-	}
-	for name, body := range files {
-		mode := int64(0o644)
-		if name == "codebase-memory-mcp" {
-			mode = 0o755
-		}
-		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
-			t.Fatal(err)
-		}
-		_, _ = tw.Write([]byte(body))
-	}
-	_ = tw.Close()
-	_ = gz.Close()
-	sum := sha256.Sum256(buf.Bytes())
-	return asset, buf.Bytes(), hex.EncodeToString(sum[:]) + "  " + asset + "\n"
-}
-
-func cbmServer(t *testing.T, tag, asset string, tgz []byte, sums string) (*httptest.Server, *[]string) {
-	t.Helper()
-	var hits []string
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hits = append(hits, r.URL.Path)
-		switch r.URL.Path {
-		case "/releases/latest":
-			http.Redirect(w, r, "/releases/tag/"+tag, http.StatusFound)
-		case "/releases/download/" + tag + "/checksums.txt":
-			_, _ = w.Write([]byte(sums))
-		case "/releases/download/" + tag + "/" + asset:
-			_, _ = w.Write(tgz)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	t.Cleanup(srv.Close)
-	return srv, &hits
-}
-
-const cbmFakeBin = `#!/bin/sh
-case "$1" in
---version) echo "codebase-memory-mcp 0.12.1" ;;
-install)
-  for a in "$@"; do case "$a" in --dir=*) d="${a#--dir=}" ;; esac; done
-  echo "$@" > "$d/cbm-install-args"
-  cp "$0" "$d/codebase-memory-mcp" ;;
-esac
-`
-
-// T5 · C-04: release verificado, solo el binario, install --skip-config.
-func TestHCD062CodebaseMemoryFromRelease(t *testing.T) {
-	opts := toolSandbox(t)
-	extendToolPath(opts)
-	asset, tgz, sums := cbmRelease(t, "v0.12.1", cbmFakeBin, nil)
-	srv, _ := cbmServer(t, "v0.12.1", asset, tgz, sums)
-	h := testHooks(srv)
-	h.CBMReleases = srv.URL + "/releases"
-	withToolHooks(t, h)
-	if err := installCodebaseMemory(opts, &bytes.Buffer{}); err != nil {
-		t.Fatalf("installCodebaseMemory: %v", err)
-	}
-	args, err := os.ReadFile(filepath.Join(opts.LocalBinDir, "cbm-install-args"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := "install -y --force --dir=" + opts.LocalBinDir + " --skip-config"; strings.TrimSpace(string(args)) != want {
-		t.Fatalf("args = %q, quiero %q", args, want)
-	}
-	if _, err := os.Stat(filepath.Join(opts.LocalBinDir, "codebase-memory-mcp")); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// T5 · C-04, N-2: SHA-256 incorrecto, etiqueta inválida o tarball con rutas
-// peligrosas no ejecutan nada.
-func TestHCD062CodebaseMemoryRejects(t *testing.T) {
-	marker := "#!/bin/sh\ntouch \"$HOME/EJECUTADO\"\n"
-	cases := map[string]func(t *testing.T) (*httptest.Server, string){
-		"sha": func(t *testing.T) (*httptest.Server, string) {
-			asset, tgz, _ := cbmRelease(t, "v0.12.1", marker, nil)
-			srv, _ := cbmServer(t, "v0.12.1", asset, tgz, strings.Repeat("0", 64)+"  "+asset+"\n")
-			return srv, "checksum"
-		},
-		"sin-entrada": func(t *testing.T) (*httptest.Server, string) {
-			asset, tgz, _ := cbmRelease(t, "v0.12.1", marker, nil)
-			srv, _ := cbmServer(t, "v0.12.1", asset, tgz, "abc  otro.tar.gz\n")
-			return srv, "no encontrado"
-		},
-		"etiqueta": func(t *testing.T) (*httptest.Server, string) {
-			asset, tgz, sums := cbmRelease(t, "v0.12.1", marker, nil)
-			srv, _ := cbmServer(t, "../../x", asset, tgz, sums)
-			return srv, "etiqueta"
-		},
-		"ruta": func(t *testing.T) (*httptest.Server, string) {
-			asset, tgz, sums := cbmRelease(t, "v0.12.1", "#!/bin/sh\necho no\n", map[string]string{"../codebase-memory-mcp": marker})
-			_ = asset
-			srv, _ := cbmServer(t, "v0.12.1", asset, tgz, sums)
-			return srv, "tarball"
-		},
-	}
-	for name, mk := range cases {
-		t.Run(name, func(t *testing.T) {
-			opts := toolSandbox(t)
-			extendToolPath(opts)
-			srv, want := mk(t)
-			h := testHooks(srv)
-			h.CBMReleases = srv.URL + "/releases"
-			withToolHooks(t, h)
-			err := installCodebaseMemory(opts, &bytes.Buffer{})
-			if err == nil || !strings.Contains(err.Error(), want) {
-				t.Fatalf("error = %v, quiero %q", err, want)
-			}
-			if _, err := os.Stat(filepath.Join(opts.HomeDir, "EJECUTADO")); err == nil {
-				t.Fatal("se ejecutó contenido no verificado")
-			}
-		})
-	}
-}
-
-// Hallazgo de la validación real: el binario de v0.12.1 descomprimido ocupa
-// ~335 MB; el límite propio lo admite y sigue rechazando lo desmedido.
-func TestHCD062CodebaseBinaryLimit(t *testing.T) {
-	if cbmMaxBinaryBytes < 335_000_000 {
-		t.Fatalf("el límite %d no admite el binario real (~335 MB)", cbmMaxBinaryBytes)
-	}
-	_, tgz, _ := cbmRelease(t, "v0.12.1", strings.Repeat("x", 2048), nil)
-	if _, err := extractExact(tgz, cbmBinary, 1024); err == nil || !strings.Contains(err.Error(), "fuera de rango") {
-		t.Fatalf("debe rechazar un binario mayor que el límite: %v", err)
-	}
-	if bin, err := extractExact(tgz, cbmBinary, 4096); err != nil || len(bin) != 2048 {
-		t.Fatalf("extractExact = %d %v", len(bin), err)
-	}
-}
-
-func TestHCD062CodebaseAssetNames(t *testing.T) {
-	for _, c := range []struct{ os, arch, want string }{
-		{"darwin", "arm64", "codebase-memory-mcp-darwin-arm64.tar.gz"},
-		{"darwin", "amd64", "codebase-memory-mcp-darwin-amd64.tar.gz"},
-		{"linux", "amd64", "codebase-memory-mcp-linux-amd64-portable.tar.gz"},
-		{"linux", "arm64", "codebase-memory-mcp-linux-arm64-portable.tar.gz"},
-	} {
-		if got, err := cbmAsset(c.os, c.arch); err != nil || got != c.want {
-			t.Errorf("cbmAsset(%s,%s) = %q %v", c.os, c.arch, got, err)
-		}
-	}
-	if _, err := cbmAsset("windows", "amd64"); err == nil {
-		t.Error("windows no está soportado")
 	}
 }

@@ -110,21 +110,14 @@ test("off no deja que una carga tardía vuelva a activar el modo", async () => {
 	assert.deepEqual(pi.messages, []);
 });
 
-test("modo plan permite lecturas de codegraph/codebase-memory e index_repository externo, y bloquea mutaciones HCD o persistentes", async () => {
+test("modo plan permite lecturas de codegraph y bloquea mutaciones HCD o de índice", async () => {
 	const pi = setup();
 	await pi.plan("on");
 
-	// Permitidas: consultas de grafos e index_repository sin persistence en el repo (3B).
+	// Permitidas: consultas de solo lectura de codegraph y HCD.
 	for (const [tool, input] of [
 		["codegraph_explore", { query: "InstallAll" }],
 		["mcp__codegraph__codegraph_explore", { query: "InstallAll" }],
-		["search_graph", { project: "p", name_pattern: "Install.*" }],
-		["mcp__codebase_memory__trace_path", { project: "p", function_name: "InstallAll", direction: "both" }],
-		["check_index_coverage", { project: "p", paths: ["main.go"] }],
-		["index_repository", { repo_path: ".", mode: "moderate" }],
-		["mcp__codebase_memory__index_repository", { repo_path: ".", mode: "moderate", persistence: false }],
-		["manage_adr", { project: "p", mode: "outline" }],
-		["mcp__codebase_memory__manage_adr", { project: "p", mode: "get" }],
 		["bash", { command: "mem hcd show --json" }],
 		["bash", { command: "mem hcd history --file main.go" }],
 		["bash", { command: "mem hcd analyze --json" }],
@@ -135,12 +128,6 @@ test("modo plan permite lecturas de codegraph/codebase-memory e index_repository
 
 	// Bloqueadas: mutaciones de código, HCD o escritura en el repo.
 	for (const [tool, input] of [
-		["delete_project", { project: "p" }],
-		["mcp__codebase_memory__delete_project", { project: "p" }],
-		["index_repository", { repo_path: ".", persistence: true }],
-		["mcp__codebase_memory__index_repository", { repo_path: ".", persistence: true }],
-		["manage_adr", { project: "p", mode: "update", content: "x" }],
-		["mcp__codebase_memory__manage_adr", { project: "p", mode: "set_sections", section_updates: {} }],
 		["hcd_rename", { title: "nuevo" }],
 		["mcp__gomemory__hcd_rename", { title: "nuevo" }],
 		["bash", { command: "mem hcd start --kind fix --title x" }],

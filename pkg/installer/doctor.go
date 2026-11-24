@@ -105,7 +105,7 @@ func RunDoctor(opts *Options) []CheckItem {
 		for _, s := range listResp.Servers {
 			states[s.Name] = s.State
 		}
-		for _, req := range []string{"gomemory", "codegraph", "codebase-memory"} {
+		for _, req := range []string{"gomemory", "codegraph"} {
 			st, found := states[req]
 			if found && st == "connected" {
 				items = append(items, CheckItem{

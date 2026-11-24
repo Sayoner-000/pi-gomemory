@@ -228,11 +228,6 @@ const call = (toolName, input) => hooks.get("tool_call")({ toolName, input });
 
 for (const [tool, input] of [
 	["codegraph_explore", { query: "InstallAll" }],
-	["search_graph", { project: "p", name_pattern: "Foo" }],
-	["trace_path", { project: "p", function_name: "Foo", direction: "both" }],
-	["check_index_coverage", { project: "p", paths: ["main.go"] }],
-	["index_repository", { repo_path: ".", mode: "moderate", persistence: false }],
-	["manage_adr", { project: "p", mode: "get" }],
 	["bash", { command: "mem hcd show --json" }],
 	["bash", { command: "codegraph explore Foo" }],
 ]) {
@@ -240,12 +235,8 @@ for (const [tool, input] of [
 }
 
 for (const [tool, input] of [
-	["delete_project", { project: "p" }],
-	["mcp__codebase_memory__delete_project", { project: "p" }],
-	["index_repository", { repo_path: ".", persistence: true }],
-	["mcp__codebase_memory__index_repository", { repo_path: ".", persistence: true }],
-	["manage_adr", { project: "p", mode: "update", content: "x" }],
-	["mcp__codebase_memory__manage_adr", { project: "p", mode: "set_sections", section_updates: {} }],
+	["hcd_rename", { title: "nuevo" }],
+	["mcp__gomemory__hcd_rename", { title: "nuevo" }],
 	["bash", { command: "mem hcd start --kind fix --title x" }],
 	["bash", { command: "mem hcd verify --task 1 -- go test" }],
 	["bash", { command: "mem hcd close --quote ok" }],

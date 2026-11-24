@@ -63,13 +63,9 @@ ${IMPACT_PROTOCOL}`;
 export const PLAN_SECTION = "gomemory-plan";
 
 const REASON = "Modo plan activo: no se permiten modificaciones. Usa /plan off para salir.";
-const PERSISTENCE_REASON =
-	"Modo plan activo: index_repository con persistence=true escribe en el repositorio. Usa persistence=false para refrescar solo el índice externo.";
 const INACTIVE = "El modo plan no está activo";
 
 const BLOCKED_MCP_TOOLS = new Set([
-	"delete_project",
-	"mcp__codebase_memory__delete_project",
 	"hcd_rename",
 	"mcp__gomemory__hcd_rename",
 ]);
@@ -79,15 +75,6 @@ export function toolBlocked(toolName: string, input: any): string | undefined {
 		return REASON;
 	}
 	if (toolName === "bash" && bashBlocked(String(input?.command ?? ""))) {
-		return REASON;
-	}
-	if ((toolName === "index_repository" || toolName === "mcp__codebase_memory__index_repository") && input?.persistence === true) {
-		return PERSISTENCE_REASON;
-	}
-	if (
-		(toolName === "manage_adr" || toolName === "mcp__codebase_memory__manage_adr") &&
-		(input?.mode === "update" || input?.mode === "set_sections")
-	) {
 		return REASON;
 	}
 	return undefined;

@@ -62,7 +62,7 @@ func InstallAll(assets fs.FS, opts *Options) error {
 		return fmt.Errorf("retirar marca de desinstalado: %w", err)
 	}
 	// Codemode híbrido es el valor por defecto, salvo `codemode off` (HCD-071).
-	fmt.Printf("%s==> [2/9] Registrando servidores MCP (gomemory, codegraph, codebase-memory) en modo codemode híbrido (codemode off para directo)...%s\n", ColorCyan, ColorReset)
+	fmt.Printf("%s==> [2/9] Registrando servidores MCP (gomemory, codegraph) en modo codemode híbrido (codemode off para directo)...%s\n", ColorCyan, ColorReset)
 	if err := applyCodemodeDefault(opts, os.Stdout); err != nil {
 		return fmt.Errorf("paso MCP: %w", err)
 	}

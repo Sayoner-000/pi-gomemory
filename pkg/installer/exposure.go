@@ -98,15 +98,12 @@ func duplicateExtensionsHint(dups []string) string {
 		strings.Join(dups, ", "), strings.Join(dups, " "))
 }
 
-// warnExposure avisa en install/update del estado parcial de codemode y de
-// las tools de codebase-memory duplicadas. No cambia nada (HCD-070).
+// warnExposure avisa en install/update del estado parcial de codemode. No
+// cambia nada (HCD-070).
 func warnExposure(piAgentDir string, w io.Writer) {
 	if st, err := GetCodemodeStatus(piAgentDir); err == nil && st.Partial {
 		fmt.Fprintf(w, "%s    ⚠ codemode parcial (settings=%v, mcp=%v): Pi expone las tools MCP directas y además codemode. %s%s\n",
 			ColorWarning, st.SettingsEnabled, st.MCPEnabled, CodemodePartialHint(), ColorReset)
-	}
-	if dups, err := DuplicateCodebaseMemoryExtensions(piAgentDir); err == nil && len(dups) > 0 {
-		fmt.Fprintf(w, "%s    ⚠ %s%s\n", ColorWarning, duplicateExtensionsHint(dups), ColorReset)
 	}
 }
 
@@ -125,13 +122,6 @@ func exposureDoctorItems(piAgentDir string) []CheckItem {
 		default:
 			items = append(items, CheckItem{Name: "Modo codemode", Status: "OK", Details: "directo (codemode off)"})
 		}
-	}
-	if dups, err := DuplicateCodebaseMemoryExtensions(piAgentDir); err != nil {
-		items = append(items, CheckItem{Name: "Tools de codebase-memory", Status: "WARN", Details: err.Error()})
-	} else if len(dups) > 0 {
-		items = append(items, CheckItem{Name: "Tools de codebase-memory", Status: "WARN", Details: duplicateExtensionsHint(dups)})
-	} else {
-		items = append(items, CheckItem{Name: "Tools de codebase-memory", Status: "OK", Details: "sin extensiones que dupliquen el servidor MCP"})
 	}
 	return items
 }

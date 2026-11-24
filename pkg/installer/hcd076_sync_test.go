@@ -331,7 +331,7 @@ func TestHCD076SyncFlags(t *testing.T) {
 	if got := sel(parse("--only=codegraph"), false); got != "codegraph,mem,pi" {
 		t.Fatalf("--only=codegraph → %s", got)
 	}
-	if got := sel(parse("--skip=herdr"), false); got != "codebase-memory-mcp,codegraph,mem,pi" {
+	if got := sel(parse("--skip=herdr"), false); got != "codegraph,mem,pi" {
 		t.Fatalf("--skip=herdr → %s", got)
 	}
 	if got := sel(parse("--skip=pi"), false); !strings.Contains(got, "pi") {

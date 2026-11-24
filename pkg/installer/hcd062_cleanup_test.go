@@ -88,12 +88,12 @@ func TestHCD062UninstallKeepsToolsAndCleansTemps(t *testing.T) {
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
 		t.Fatalf("debe retirarse %s: %v", stale, err)
 	}
-	for _, n := range []string{"pi", "mem", "codegraph", "codebase-memory-mcp"} {
+	for _, n := range []string{"pi", "mem", "codegraph"} {
 		if _, err := os.Stat(filepath.Join(opts.LocalBinDir, n)); err != nil {
 			t.Fatalf("%s debe conservarse: %v", n, err)
 		}
 	}
-	for _, want := range []string{"Se conservan pi, mem, codegraph, codebase-memory-mcp y herdr", "codebase-memory-mcp uninstall", "gomemory/main/scripts/install.sh | bash -s -- --uninstall"} {
+	for _, want := range []string{"Se conservan pi, mem, codegraph y herdr", "codegraph/main/install.sh | sh -s -- --uninstall", "gomemory/main/scripts/install.sh | bash -s -- --uninstall"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("falta %q en:\n%s", want, out.String())
 		}

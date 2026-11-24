@@ -36,17 +36,8 @@ func TestCodemodeMCP(t *testing.T) {
 		}
 	}
 
-	cbm, ok := hybrid["codebase-memory"]
-	if !ok {
-		t.Fatal("CodemodeMCPServers missing codebase-memory")
-	}
-	if cbm.Exposure != "codemode" {
-		t.Fatalf("codebase-memory exposure = %q, want codemode", cbm.Exposure)
-	}
-	for _, tool := range []string{"search_graph", "trace_path", "get_code_snippet", "check_index_coverage"} {
-		if cbm.ToolExposure[tool] != "direct" {
-			t.Errorf("codebase-memory ToolExposure[%q] = %q, want direct", tool, cbm.ToolExposure[tool])
-		}
+	if _, ok := hybrid["codebase-memory"]; ok {
+		t.Fatal("CodemodeMCPServers must not include codebase-memory")
 	}
 
 	cg := hybrid["codegraph"]

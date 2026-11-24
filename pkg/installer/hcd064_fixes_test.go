@@ -1,9 +1,7 @@
 package installer
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -257,74 +255,4 @@ func TestHCD064TTYTimeoutKillsDescendants(t *testing.T) {
 	t.Fatalf("el proceso nieto (pid %d) siguió vivo tras vencer el timeout con TTY", gcPID)
 }
 
-// HCD-064 T6 (H-06 / C-006): extractExact debe aceptar tarballs estándar con
-// entradas de directorio ./ o dir/ y nombres benignos con "..", manteniendo el
-// rechazo de traversal (../) y enlaces simbólicos.
-func TestHCD064ExtractExactDirEntries(t *testing.T) {
-	makeTarGz := func(entries []struct {
-		hdr  tar.Header
-		body []byte
-	}) []byte {
-		var buf bytes.Buffer
-		gz := gzip.NewWriter(&buf)
-		tw := tar.NewWriter(gz)
-		for _, e := range entries {
-			h := e.hdr
-			h.Size = int64(len(e.body))
-			if err := tw.WriteHeader(&h); err != nil {
-				t.Fatal(err)
-			}
-			if len(e.body) > 0 {
-				if _, err := tw.Write(e.body); err != nil {
-					t.Fatal(err)
-				}
-			}
-		}
-		if err := tw.Close(); err != nil {
-			t.Fatal(err)
-		}
-		if err := gz.Close(); err != nil {
-			t.Fatal(err)
-		}
-		return buf.Bytes()
-	}
 
-	good := makeTarGz([]struct {
-		hdr  tar.Header
-		body []byte
-	}{
-		{hdr: tar.Header{Name: "./", Mode: 0o755, Typeflag: tar.TypeDir}},
-		{hdr: tar.Header{Name: "docs/", Mode: 0o755, Typeflag: tar.TypeDir}},
-		{hdr: tar.Header{Name: "docs/NOTES..md", Mode: 0o644, Typeflag: tar.TypeReg}, body: []byte("nota")},
-		{hdr: tar.Header{Name: "./codebase-memory-mcp", Mode: 0o755, Typeflag: tar.TypeReg}, body: []byte("BIN-OK")},
-	})
-	got, err := extractExact(good, "codebase-memory-mcp", 1<<20)
-	if err != nil {
-		t.Fatalf("extractExact rechazó un tarball válido con ./, dir/ y NOTES..md: %v", err)
-	}
-	if string(got) != "BIN-OK" {
-		t.Fatalf("contenido = %q, se esperaba BIN-OK", string(got))
-	}
-
-	traversal := makeTarGz([]struct {
-		hdr  tar.Header
-		body []byte
-	}{
-		{hdr: tar.Header{Name: "../evil", Mode: 0o644, Typeflag: tar.TypeReg}, body: []byte("x")},
-		{hdr: tar.Header{Name: "codebase-memory-mcp", Mode: 0o755, Typeflag: tar.TypeReg}, body: []byte("BIN")},
-	})
-	if _, err := extractExact(traversal, "codebase-memory-mcp", 1<<20); err == nil {
-		t.Fatal("extractExact debe seguir rechazando rutas con segmento ..")
-	}
-
-	symlink := makeTarGz([]struct {
-		hdr  tar.Header
-		body []byte
-	}{
-		{hdr: tar.Header{Name: "link", Linkname: "/etc/passwd", Mode: 0o777, Typeflag: tar.TypeSymlink}},
-		{hdr: tar.Header{Name: "codebase-memory-mcp", Mode: 0o755, Typeflag: tar.TypeReg}, body: []byte("BIN")},
-	})
-	if _, err := extractExact(symlink, "codebase-memory-mcp", 1<<20); err == nil {
-		t.Fatal("extractExact debe seguir rechazando enlaces simbólicos")
-	}
-}

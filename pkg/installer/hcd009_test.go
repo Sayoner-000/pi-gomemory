@@ -45,7 +45,7 @@ func TestNoGitHubAPI(t *testing.T) {
 		t.Fatalf("DefaultReleasesAPI = %s", DefaultReleasesAPI)
 	}
 	// HCD-062: también el paso de herramientas.
-	for _, f := range []string{"deps.go", "tools.go", "tools_cbm.go", "tools_exec.go"} {
+	for _, f := range []string{"deps.go", "tools.go", "tools_exec.go"} {
 		src, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatal(err)

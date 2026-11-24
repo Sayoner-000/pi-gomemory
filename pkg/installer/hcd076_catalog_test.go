@@ -33,7 +33,6 @@ func TestHCD076CatalogOrder(t *testing.T) {
 		{"pi", KindTool, true},
 		{"mem", KindTool, true},
 		{"codegraph", KindTool, false},
-		{"codebase-memory-mcp", KindTool, false},
 		{"herdr", KindTool, false},
 		{"pi-antigravity", KindPackage, false},
 		{"pi-cc-extensions", KindPackage, false},
@@ -48,7 +47,7 @@ func TestHCD076CatalogOrder(t *testing.T) {
 			t.Fatalf("componente %d = %s/%s/%v, quiero %s/%s/%v", i, c.Name, c.Kind, c.Required, w.name, w.kind, w.required)
 		}
 	}
-	h := got[5]
+	h := got[4]
 	if h.Script != HerdrInstallScriptURL || HerdrInstallScriptURL != "https://herdr.dev/install.sh" || h.Interp != "sh" {
 		t.Fatalf("canal de herdr: %+v", h)
 	}
@@ -72,7 +71,7 @@ func TestHCD076ToolsFromCatalog(t *testing.T) {
 		t.Fatalf("productionTools = %v, quiero %v", got, want)
 	}
 	text := ToolNamesText()
-	if text != "pi, mem, codegraph, codebase-memory-mcp y herdr" {
+	if text != "pi, mem, codegraph y herdr" {
 		t.Fatalf("ToolNamesText = %q", text)
 	}
 	t.Setenv(skipDepsEnv, "1")

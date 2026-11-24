@@ -24,7 +24,6 @@ const (
 	PiInstallScriptURL        = "https://pi.dev/install.sh"
 	MemInstallScriptURL       = "https://raw.githubusercontent.com/Sayoner-000/gomemory/main/scripts/install.sh"
 	CodegraphInstallScriptURL = "https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh"
-	CodebaseMemoryReleasesURL = "https://github.com/DeusData/codebase-memory-mcp/releases"
 )
 
 // Tool describe una herramienta y su canal oficial. Una herramienta con
@@ -70,7 +69,6 @@ type toolHooks struct {
 	TTY             func() bool
 	ScriptTimeout   time.Duration
 	DownloadTimeout time.Duration
-	CBMReleases     string
 	GOOS, GOARCH    string
 	// SystemDirs son los directorios del sistema de la lista conocida.
 	SystemDirs []string
@@ -82,7 +80,6 @@ func defaultToolHooks() toolHooks {
 		TTY:             ttyAvailable,
 		ScriptTimeout:   10 * time.Minute,
 		DownloadTimeout: 2 * time.Minute,
-		CBMReleases:     CodebaseMemoryReleasesURL,
 		SystemDirs:      []string{"/usr/local/bin"},
 	}
 }
@@ -154,8 +151,8 @@ func toolPresent(name string) bool {
 
 // EnsureTools instala desde su canal oficial las herramientas que faltan.
 // pi y mem son obligatorias: si fallan se devuelve un error con el comando
-// manual. codegraph y codebase-memory-mcp son opcionales: se avisa y se sigue;
-// con el modo lite no se comprueban.
+// manual. codegraph y herdr son opcionales: se avisa y se sigue; con el modo
+// lite no se comprueban.
 func EnsureTools(opts *Options, out io.Writer) error {
 	if SkipDepsRequested() {
 		fmt.Fprintf(out, "%s    · %s: no se comprueban %s%s\n", ColorMuted, skipDepsEnv, ToolNamesText(), ColorReset)
@@ -197,42 +194,15 @@ func EnsureTools(opts *Options, out io.Writer) error {
 	return nil
 }
 
-const depsInstallUsage = "Uso: pi-gomemory-setup deps-install codebase-memory-mcp"
-
-// RunDepsInstall implementa `pi-gomemory-setup deps-install`: instala el
-// último release verificado de codebase-memory-mcp en el directorio de
-// binarios de la instalación (PI_GOMEMORY_BIN_DIR, si no el del manifiesto,
-// si no el de opts). Las demás herramientas se actualizan con su propio
-// comando oficial. Devuelve el código de salida (HCD-062, C-08, C-13).
-func RunDepsInstall(opts *Options, args []string, stdout, stderr io.Writer) int {
-	if len(args) != 1 || args[0] != cbmBinary {
-		fmt.Fprintln(stderr, depsInstallUsage)
-		fmt.Fprintf(stderr, "%s se actualizan con su propio comando (%s).\n", scriptToolNamesText(), scriptToolUpdates())
-		return 2
-	}
-	o := *opts
-	if os.Getenv("PI_GOMEMORY_BIN_DIR") == "" {
-		if m, err := ReadManifest(o.HomeDir); err == nil && m != nil && m.BinDir != "" {
-			o.LocalBinDir = m.BinDir
-		}
-	}
-	other, _ := exec.LookPath(cbmBinary)
-	extendToolPath(&o)
-	if err := installCodebaseMemory(&o, stdout); err != nil {
-		fmt.Fprintf(stderr, "%s✗ %s: %v%s\n", ColorError, cbmBinary, err, ColorReset)
-		return 1
-	}
-	if other != "" && filepath.Dir(other) != filepath.Clean(o.LocalBinDir) {
-		fmt.Fprintf(stdout, "%s⚠ Hay otra copia en %s: fuera de pi-gomemory tu shell puede seguir usando esa.%s\n", ColorWarning, other, ColorReset)
-	}
-	fmt.Fprintf(stdout, "✓ %s instalado en %s\n", cbmBinary, o.LocalBinDir)
-	return 0
+// RunDepsInstall informa que codebase-memory-mcp fue retirado y las herramientas
+// actuales se actualizan por su propio canal oficial.
+func RunDepsInstall(_ *Options, _ []string, _, stderr io.Writer) int {
+	fmt.Fprintln(stderr, "codebase-memory-mcp fue retirado; CodeGraph es el único grafo externo.")
+	fmt.Fprintf(stderr, "%s se actualizan con su propio comando (%s).\n", scriptToolNamesText(), scriptToolUpdates())
+	return 2
 }
 
 func installTool(t Tool, opts *Options, out io.Writer) error {
-	if t.Release {
-		return installCodebaseMemory(opts, out)
-	}
 	return installByScript(t, opts, out)
 }
 

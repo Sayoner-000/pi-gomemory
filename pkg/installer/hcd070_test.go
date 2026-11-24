@@ -2,7 +2,6 @@ package installer
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -65,35 +64,8 @@ func TestHCD070PartialWarning(t *testing.T) {
 	}
 }
 
-// Tarea 2: se detectan extensiones de codebase-memory-mcp que duplican el
-// servidor MCP y install avisa sin tocarlas.
+// Tarea 2: sin servidor MCP codebase-memory no se reportan duplicados.
 func TestHCD070DuplicateExtension(t *testing.T) {
-	t.Run("detecta y avisa sin tocar el archivo", func(t *testing.T) {
-		opts := sandbox(t)
-		ext := filepath.Join(opts.PiAgentDir, "extensions", "cbmem.ts")
-		writeFile(t, ext, cbmemHeader)
-		writeFile(t, filepath.Join(opts.PiAgentDir, "extensions", "mia.ts"), "export default function (pi) {}\n")
-		var out bytes.Buffer
-		if err := applyCodemodeDefault(opts, &out); err != nil {
-			t.Fatal(err)
-		}
-		dups, err := DuplicateCodebaseMemoryExtensions(opts.PiAgentDir)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(dups) != 1 || dups[0] != ext {
-			t.Fatalf("duplicados = %v, se esperaba [%s]", dups, ext)
-		}
-		got := out.String()
-		for _, want := range []string{ext, "codebase-memory", "--clients"} {
-			if !strings.Contains(got, want) {
-				t.Fatalf("falta %q en el aviso de install:\n%s", want, got)
-			}
-		}
-		if data, err := os.ReadFile(ext); err != nil || string(data) != cbmemHeader {
-			t.Fatalf("install modificó la extensión ajena: %q, %v", data, err)
-		}
-	})
 	t.Run("sin servidor MCP codebase-memory no hay duplicado", func(t *testing.T) {
 		opts := sandbox(t)
 		writeFile(t, filepath.Join(opts.PiAgentDir, "extensions", "cbmem.ts"), cbmemHeader)
@@ -115,7 +87,7 @@ func TestHCD070DuplicateExtension(t *testing.T) {
 	})
 }
 
-// Tarea 3: doctor informa del modo codemode y de las tools duplicadas.
+// Tarea 3: doctor informa del modo codemode.
 func TestHCD070Doctor(t *testing.T) {
 	find := func(items []CheckItem, name string) CheckItem {
 		t.Helper()
@@ -139,25 +111,17 @@ func TestHCD070Doctor(t *testing.T) {
 		if it := find(items, "Modo codemode"); it.Status != "OK" || !strings.Contains(it.Details, "directo") {
 			t.Fatalf("modo codemode: %+v", it)
 		}
-		if it := find(items, "Tools de codebase-memory"); it.Status != "OK" {
-			t.Fatalf("tools de codebase-memory: %+v", it)
-		}
 	})
-	t.Run("parcial y duplicado", func(t *testing.T) {
+	t.Run("parcial", func(t *testing.T) {
 		opts := sandbox(t)
 		writeFile(t, CodemodeStatePath(opts.HomeDir), `{"preference":"off"}`)
 		writeFile(t, filepath.Join(opts.PiAgentDir, "settings.json"), `{"defaultTools":["+codemode"]}`)
-		ext := filepath.Join(opts.PiAgentDir, "extensions", "cbmem.ts")
-		writeFile(t, ext, cbmemHeader)
 		if err := applyCodemodeDefault(opts, &bytes.Buffer{}); err != nil {
 			t.Fatal(err)
 		}
 		items := exposureDoctorItems(opts.PiAgentDir)
 		if it := find(items, "Modo codemode"); it.Status != "WARN" || !strings.Contains(it.Details, "codemode on") {
 			t.Fatalf("modo codemode: %+v", it)
-		}
-		if it := find(items, "Tools de codebase-memory"); it.Status != "WARN" || !strings.Contains(it.Details, ext) {
-			t.Fatalf("tools de codebase-memory: %+v", it)
 		}
 	})
 	t.Run("híbrido", func(t *testing.T) {

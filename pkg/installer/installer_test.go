@@ -81,10 +81,13 @@ func TestInstallMCPServersPreservesForeignServers(t *testing.T) {
 	if len(got.Settings) == 0 {
 		t.Error("se perdió la clave de nivel superior 'settings'")
 	}
-	for _, name := range []string{"gomemory", "codegraph", "codebase-memory"} {
+	for _, name := range []string{"gomemory", "codegraph"} {
 		if _, ok := got.MCPServers[name]; !ok {
 			t.Errorf("falta el servidor %s", name)
 		}
+	}
+	if _, ok := got.MCPServers["codebase-memory"]; ok {
+		t.Error("codebase-memory no debe registrarse en mcp.json")
 	}
 }
 
