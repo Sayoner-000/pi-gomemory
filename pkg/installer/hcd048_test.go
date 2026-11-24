@@ -135,6 +135,10 @@ process.exit(0);
 
 func TestHCD048H03UninstallMarkerOnFail(t *testing.T) {
 	t.Parallel()
+	// Como root, chmod 0500 no impide escribir y Uninstall no puede fallar (HCD-079, Q1).
+	if os.Geteuid() == 0 {
+		t.Skip("como root los permisos de solo lectura no bloquean la escritura")
+	}
 
 	home := t.TempDir()
 	opts := &Options{

@@ -146,7 +146,8 @@ La cabecera indica el estado en todo momento: `◆ MODO PLAN ON · Alt+P` en ám
 | `○` | pendiente |
 | `●` (parpadea) | en curso: la tarea activa, aunque no haya ninguna llamada en marcha; alterna `●` y `○` cada medio segundo |
 | `●` | verificada |
-| `↻` | estuvo verificada, pero el código cambió y hay que volver a verificarla |
+| `●` (atenuado) | caducada mientras la unidad sigue en `implement`: con gomemory ≥ 2.59.0 cuenta como progreso y no hace falta reverificarla todavía |
+| `↻` | caducada en `verify`/`close`: el código cambió y hay que revalidarla con `mem hcd verify --stale` |
 | `✗` | fallida |
 
 Cada estado tiene también su color; el glifo se mantiene para quien no distingue colores o usa un tema monocromo. Debajo de cada tarea, el árbol (`├─`, `└─`) muestra las llamadas de la sesión con su estado y duración; la que está en marcha usa el mismo spinner que `/tdd`.

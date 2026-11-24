@@ -86,12 +86,17 @@ const HEARTBEAT_MS = 10_000;
 /**
  * Círculo que se llena (HCD-057, Q5): ○ pendiente → parpadea ●/○ en curso (HCD-060) → ● verificada;
  * ↻ verificada pero caducada (hay que volver a verificar, HCD-068); ✗ fallida.
+ * Con gomemory ≥ 2.59.0 (HCD-079, Regla A) una caducada cuenta como progreso mientras
+ * el motor sigue en `implement`: ● atenuado, sin alerta; solo en verify/close es ↻ warning.
  */
-function taskVisual(status: string, active: boolean, now: number): { glyph: string; tone: LineTone } {
+function taskVisual(status: string, active: boolean, now: number, stage = ""): { glyph: string; tone: LineTone } {
 	if (status === "verified") return { glyph: "●", tone: "success" };
 	if (active) return { glyph: TASK_FRAMES[Math.floor(now / TASK_FRAME_MS) % TASK_FRAMES.length], tone: "accent" };
 	if (status === "failed" || status === "red") return { glyph: "✗", tone: "error" };
-	if (status === "stale" || status === "unverified") return { glyph: "↻", tone: "warning" }; // tenía evidencia y caducó
+	// Tenía evidencia y caducó. `stale` (gomemory ≥ 2.57) es progreso durante implement;
+	// `unverified` (motores anteriores, sin Regla A) sigue siendo alerta.
+	if (status === "stale" && stage === "implement") return { glyph: "●", tone: "dim" };
+	if (status === "stale" || status === "unverified") return { glyph: "↻", tone: "warning" };
 	return { glyph: "○", tone: "dim" };
 }
 
@@ -150,7 +155,8 @@ export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Da
 	if (!u?.ok || !u.unit_id || u.state !== "active" || !Array.isArray(u.tasks) || u.tasks.length === 0) {
 		return undefined;
 	}
-	const done = u.tasks.filter((t) => t.status === "verified").length;
+	// En implement una caducada sigue contando como hecha (HCD-079); después solo cuenta la vigente.
+	const done = u.tasks.filter((t) => t.status === "verified" || (u.stage === "implement" && t.status === "stale")).length;
 	const activeTaskId = tracker ? resolveActiveTaskId(u, tracker.getFocus()) : null;
 	const out: RenderedTaskLine[] = [
 		{ text: `${u.unit_id} · ${u.kind} · paso ${u.stage} · ${progressBar(done, u.tasks.length)}`, tone: "accent" },
@@ -168,7 +174,7 @@ export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Da
 		const hasCalls = (activity?.totalCalls ?? 0) > 0;
 		const running = Boolean(activity?.calls.some((c) => c.status === "running"));
 		const isActive = running || t.id === currentId;
-		const { glyph, tone } = taskVisual(t.status, isActive, now);
+		const { glyph, tone } = taskVisual(t.status, isActive, now, u.stage);
 		const workTag = isActive && (running || agentBusy) ? " · en curso" : "";
 
 		if (!tracker || !activity || !hasCalls) {

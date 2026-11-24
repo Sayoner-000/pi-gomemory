@@ -109,7 +109,8 @@ func TestHCD036C01(t *testing.T) {
 	assertLink(t, path, target)
 	servers := map[string]json.RawMessage{}
 	_ = json.Unmarshal(jsonKeys(t, target)["mcpServers"], &servers)
-	for _, name := range []string{"ajeno", "gomemory", "codegraph", "codebase-memory"} {
+	// codebase-memory se retiró en v1.28.0 (HCD-079, Q2).
+	for _, name := range []string{"ajeno", "gomemory", "codegraph"} {
 		if _, ok := servers[name]; !ok {
 			t.Fatalf("C-01: falta %s en el destino: %s", name, readFile(t, target))
 		}

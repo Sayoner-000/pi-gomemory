@@ -19,7 +19,8 @@ func TestHCD072EmbeddedScheduling(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, rule := range []string{"No revalides tareas anteriores solo por caducidad", "No ejecutes la misma comprobación fuera y dentro del motor", "Antes del cierre"} {
+		// HCD-079: reglas de gomemory 2.59.0 (stale como progreso con pendientes; --stale sin comando).
+		for _, rule := range []string{"No revalides tareas anteriores solo por caducidad", "No ejecutes la misma comprobación fuera y dentro del motor", "Antes del cierre", "cuentan como progreso", "en una sola llamada", "mem hcd verify --stale --json --client <agente>"} {
 			if !strings.Contains(string(b), rule) {
 				t.Errorf("%s missing %s", name, rule)
 			}

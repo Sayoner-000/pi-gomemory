@@ -348,8 +348,9 @@ func TestHCD051LiteModeAndCodegraphGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	serversFull := string(mcpFull["mcpServers"])
-	if !containsAll(serversFull, "gomemory", "codegraph", "codebase-memory") {
-		t.Fatalf("tras SetLiteMode(false) deben restaurarse los 3 servidores, obtenido: %s", serversFull)
+	// Desde v1.28.0 son 2: codebase-memory se retiró (HCD-079, Q2).
+	if !containsAll(serversFull, "gomemory", "codegraph") || containsAny(serversFull, "codebase-memory") {
+		t.Fatalf("tras SetLiteMode(false) deben restaurarse los 2 servidores, obtenido: %s", serversFull)
 	}
 }
 

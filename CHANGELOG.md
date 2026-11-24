@@ -4,6 +4,22 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.29.0] - 2026-11-24
+
+Adaptación a los cambios de HCD de gomemory 2.59.0 (HCD-064): una tarea caducada cuenta como progreso mientras quedan pendientes y `mem hcd verify --stale` sin comando revalida todas las caducadas (HCD-079).
+
+### Changed
+- `/tasks` (`extensions/gomemory-tasks.ts`): `taskVisual` recibe el `stage` de la unidad. En `implement`, una tarea `stale` se pinta como `●` atenuado sin tono `warning` y la barra de progreso la cuenta como hecha; en `verify`/`close` conserva `↻` en tono `warning`. `resolveActiveTaskId` no cambia.
+- Skills `hcd-verify` y `hcd-implement` sincronizadas con las plantillas de gomemory 2.59.0: las caducadas cuentan como progreso con tareas pendientes y, antes del cierre, se revalidan en una sola llamada con `mem hcd verify --stale --json --client <agente>` sin comando.
+- El protocolo HCD que inyecta `extensions/gomemory-context.ts` indica que una tarea caducada con pendientes no se reverifica y que al cierre se usa `mem hcd verify --stale` sin comando.
+
+### Added
+- Prueba de integración en `tests/gomemory-tasks.test.mjs` contra el binario real `mem` ≥ 2.59.0 (repo y `HOME` temporales; se omite sin él), y aserciones nuevas en `hcd072_skills_test.go` y `TestHCD079ContextProtocol`.
+
+### Fixed
+- Tests que quedaron desactualizados en v1.28.0 tras retirar `codebase-memory`: `installer_test.go` espera 20 skills, y `TestHCD036C01`, `TestHCD046Uninstall` y `TestHCD051LiteModeAndCodegraphGate` ya no esperan el servidor `codebase-memory`.
+- `TestHCD048H03UninstallMarkerOnFail` se omite cuando se ejecuta como root, porque ahí `chmod 0500` no impide escribir.
+
 ## [v1.28.0] - 2026-11-24
 
 ### Removed

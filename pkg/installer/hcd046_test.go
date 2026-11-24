@@ -152,8 +152,7 @@ func TestHCD046Uninstall(t *testing.T) {
 		mcp := filepath.Join(opts.PiAgentDir, "mcp.json")
 		settings := filepath.Join(opts.PiAgentDir, "settings.json")
 		for _, target := range []string{
-			mcp + " › mcpServers.gomemory",
-			mcp + " › mcpServers.codebase-memory",
+			mcp + " › mcpServers.gomemory", // codebase-memory ya no se instala desde v1.28.0 (HCD-079, Q2)
 			settings + " › defaultTools (+codemode)",
 			CodemodeStatePath(opts.HomeDir),
 		} {
