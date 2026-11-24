@@ -4,6 +4,11 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.26.1] - 2026-11-24
+
+### Changed
+- `pi-cc-extensions` pasa de 1.0.21 a 1.0.22, la versión que publica npm. Cumple el contrato que pi-gomemory usa de ella y se instala con Pi sin errores. `uninstall --packages` retira también la entrada 1.0.21 que dejaron versiones anteriores. ([HCD-078](hcd/HCD-078-subir-el-pin-de-pi-cc-extensions-a-1-0-2.md))
+
 ## [v1.26.0] - 2026-11-24
 
 ### Added

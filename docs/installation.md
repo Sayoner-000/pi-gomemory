@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/instal
 Desde v1.26.0 el script no lleva una versión fija. Lee la etiqueta de la redirección de `https://github.com/Sayoner-000/pi-gomemory/releases/latest` y verifica el binario con `SHA256SUMS`, como antes. Para instalar una versión concreta:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | PI_GOMEMORY_VERSION=v1.26.0 bash
+curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | PI_GOMEMORY_VERSION=v1.26.1 bash
 ```
 
 Si la etiqueta no se puede resolver, el script se detiene y sugiere `PI_GOMEMORY_VERSION`. Al compilar desde el código fuente no consulta la red.
@@ -78,22 +78,22 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.26.0_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.26.0_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.26.0_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.26.0_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.26.1_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.26.1_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.26.1_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.26.1_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.26.0_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.26.1_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar, comprueba que `pi-gomemory-setup version` devuelve `v1.26.0` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas. Desde `v1.22.0`, `install` también activa `hideThinkingBlock: true` (`Ctrl+T`) en `~/.pi/agent/settings.json` cuando esa clave no existe, respetando cualquier preferencia previa del usuario.
+Después de instalar, comprueba que `pi-gomemory-setup version` devuelve `v1.26.1` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas. Desde `v1.22.0`, `install` también activa `hideThinkingBlock: true` (`Ctrl+T`) en `~/.pi/agent/settings.json` cuando esa clave no existe, respetando cualquier preferencia previa del usuario.
 
 Si vienes de v1.12.0 o anterior, revisa los permisos de `~/.pi/agent` y los [problemas conocidos](known-issues.md). Desde v1.15.0, `install` no crea un protocolo en `AGENTS.md`: retira el bloque heredado sin modificar el texto propio. Conserva los permisos y los enlaces; si solo había protocolo, borra el archivo normal o vacía el destino enlazado. Desde v1.15.1, lo retira solo después de instalar `gomemory-context.ts`, quita a la vez el bloque marcado y las copias históricas sin marcas, y si los marcadores de pi-gomemory son ambiguos (huérfanos, repetidos o invertidos) conserva el archivo completo y avisa.
 

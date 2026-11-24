@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.26.0"><img src="https://img.shields.io/badge/version-1.26.0-blue" alt="Version 1.26.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.26.1"><img src="https://img.shields.io/badge/version-1.26.1-blue" alt="Version 1.26.1"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -37,7 +37,7 @@ En macOS o Linux:
 curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | bash
 ```
 
-El script resuelve la última release, descarga el binario de tu plataforma, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Para instalar una versión concreta, exporta antes `PI_GOMEMORY_VERSION=v1.26.0`.
+El script resuelve la última release, descarga el binario de tu plataforma, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Para instalar una versión concreta, exporta antes `PI_GOMEMORY_VERSION=v1.26.1`.
 
 El primer paso deja cada herramienta del meta-harness instalada y en su última versión. Si falta, la trae de su canal oficial; si está vieja, la actualiza con su propio comando, sin preguntar una por una:
 
@@ -221,7 +221,7 @@ Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo
 
 `pi-gomemory-setup sync` es la forma directa de dejar las herramientas al día. `update` lo ejecuta al terminar, y `deps-update` le pasa las herramientas desactualizadas en una sola llamada, así que ninguna se actualiza dos veces.
 
-`pi-antigravity` y `pi-cc-extensions` se instalan fijados a una versión exacta (`npm:pi-antigravity@0.15.0`, `npm:pi-cc-extensions@1.0.21`); cambian solo con una release nueva de pi-gomemory, que antes valida cada versión candidata contra lo que pi-gomemory necesita de ella. Si npm publica una versión más nueva que todavía no se ha validado, `pi-gomemory-setup doctor` lo avisa con `⚠`, pero `deps-update` sigue instalando solo la versión fijada.
+`pi-antigravity` y `pi-cc-extensions` se instalan fijados a una versión exacta (`npm:pi-antigravity@0.15.0`, `npm:pi-cc-extensions@1.0.22`); cambian solo con una release nueva de pi-gomemory, que antes valida cada versión candidata contra lo que pi-gomemory necesita de ella. Si npm publica una versión más nueva que todavía no se ha validado, `pi-gomemory-setup doctor` lo avisa con `⚠`, pero `deps-update` sigue instalando solo la versión fijada.
 
 ### Cuota de OpenAI Codex
 
@@ -248,6 +248,7 @@ La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.j
 ## Documentación
 
 - [Guía HTML v1.15](docs/Guia-PI-GOMEMORY-v1.15.html): instalación, contexto por sesión y referencia de comandos
+- [Notas de v1.26.1](docs/releases/v1.26.1.md): `pi-cc-extensions` fijado en 1.0.22 (HCD-078)
 - [Notas de v1.26.0](docs/releases/v1.26.0.md): catálogo único de componentes, `sync`, herdr opcional, selector en la terminal, `/componentes` en Pi e `install.sh` sobre la última release (HCD-076)
 - [Notas de v1.25.1](docs/releases/v1.25.1.md): correcciones del ACR de v1.25.0 en launcher, doctor, caché de dependencias y modo plan (HCD-075)
 - [Notas de v1.25.0](docs/releases/v1.25.0.md): sincronización de skills desde `mem`, aviso de desfase en `doctor` y `codegraph` como grafo principal (HCD-073)
