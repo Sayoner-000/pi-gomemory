@@ -134,7 +134,8 @@ func TestHCD040HistoricPins(t *testing.T) {
 // HCD-040: subida de los pins a pi-antigravity 0.14.0 y pi-cc-extensions 1.0.20.
 
 // Tarea 1: los pins y sus fuentes apuntan a las versiones validadas. HCD-063
-// sube pi-antigravity a 0.15.0 tras probarlo con la cuenta real.
+// sube pi-antigravity a 0.15.0 tras probarlo con la cuenta real; HCD-078 sube
+// pi-cc-extensions a 1.0.22 tras validarla con pins-validate.
 func TestHCD040PinsBumped(t *testing.T) {
 	t.Parallel()
 
@@ -144,7 +145,10 @@ func TestHCD040PinsBumped(t *testing.T) {
 	if !isHistoricPin("pi-antigravity", "npm:pi-antigravity@0.14.0") {
 		t.Error("0.14.0 debe quedar como pin histórico para que uninstall --packages lo retire")
 	}
-	if CCExtensionsVersion != "1.0.21" || CCExtensionsSource != "npm:pi-cc-extensions@1.0.21" {
-		t.Errorf("pi-cc-extensions: %s / %s, se espera 1.0.21", CCExtensionsVersion, CCExtensionsSource)
+	if CCExtensionsVersion != "1.0.22" || CCExtensionsSource != "npm:pi-cc-extensions@1.0.22" {
+		t.Errorf("pi-cc-extensions: %s / %s, se espera 1.0.22", CCExtensionsVersion, CCExtensionsSource)
+	}
+	if !isHistoricPin("pi-cc-extensions", "npm:pi-cc-extensions@1.0.21") {
+		t.Error("1.0.21 debe quedar como pin histórico para que uninstall --packages lo retire")
 	}
 }

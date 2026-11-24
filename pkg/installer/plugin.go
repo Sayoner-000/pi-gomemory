@@ -14,7 +14,7 @@ import (
 // Pi (pi.dev/packages). Pi no reinstala un paquete fijado a una versión exacta.
 const (
 	AntigravityVersion       = "0.15.0"
-	CCExtensionsVersion      = "1.0.21"
+	CCExtensionsVersion      = "1.0.22"
 	AntigravityPackageSource = "npm:pi-antigravity@" + AntigravityVersion
 	CCExtensionsSource       = "npm:pi-cc-extensions@" + CCExtensionsVersion
 )
@@ -28,6 +28,7 @@ var historicPins = []struct{ name, source string }{
 	{"pi-antigravity", "npm:pi-antigravity@0.14.0"},
 	{"pi-cc-extensions", "npm:pi-cc-extensions@1.0.16"},
 	{"pi-cc-extensions", "npm:pi-cc-extensions@1.0.20"},
+	{"pi-cc-extensions", "npm:pi-cc-extensions@1.0.21"},
 }
 
 // isHistoricPin indica si source es un pin anterior de pi-gomemory para name.
