@@ -4,6 +4,16 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.28.0] - 2026-11-24
+
+### Removed
+- Retirado `codebase-memory-mcp` del catálogo de componentes (`pkg/installer/components.go`), del instalador (`pkg/installer/tools_cbm.go`) y de las skills embebidas (`skills/codebase-memory/`).
+- Retiradas las comprobaciones de `codebase-memory` en `doctor`, los avisos de extensiones duplicadas en `exposure.go` y las reglas específicas de `mcp__codebase_memory__*` en `extensions/gomemory-plan.ts`.
+
+### Changed
+- `DefaultMCPServers` y `CodemodeMCPServers` registran únicamente `gomemory` y `codegraph` en `~/.pi/agent/mcp.json`. Al ejecutar `install`, `update`, `mcp` o `codemode`, `pi-gomemory` retira automáticamente la entrada heredada de `codebase-memory` si fue creada por el instalador y conserva cualquier definición personalizada del usuario.
+- `pi-gomemory-setup deps-install` informa que `codebase-memory-mcp` fue retirado y lista los comandos oficiales de actualización de `pi`, `mem`, `codegraph` y `herdr`.
+
 ## [v1.27.0] - 2026-11-24
 
 ### Added

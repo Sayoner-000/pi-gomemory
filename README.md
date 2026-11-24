@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.27.0"><img src="https://img.shields.io/badge/version-1.27.0-blue" alt="Version 1.27.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.28.0"><img src="https://img.shields.io/badge/version-1.28.0-blue" alt="Version 1.28.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -46,7 +46,6 @@ El primer paso deja cada herramienta del meta-harness instalada y en su última 
 | `pi` | `https://pi.dev/install.sh` (antes comprueba Node.js 22.19+ y npm) | `pi update --self` | si no se puede instalar, se detiene la instalación |
 | `mem` (gomemory) | `scripts/install.sh` de gomemory, con `GOMEMORY_BIN_DIR` = tu directorio de binarios | `mem update -y` | si no se puede instalar, se detiene la instalación |
 | `codegraph` | `install.sh` de colbymchenry/codegraph | `codegraph upgrade` | avisa y sigue |
-| `codebase-memory-mcp` | último release de DeusData, verificado con su `checksums.txt` (SHA-256) e instalado con `install --skip-config` | se reinstala desde el release verificado | avisa y sigue |
 | `herdr` | `https://herdr.dev/install.sh`, con `HERDR_INSTALL_DIR` = tu directorio de binarios | `herdr update` | avisa y sigue |
 
 Si lo ejecutas desde una terminal, antes de empezar ves la lista con la versión instalada y la publicada de cada una. Escribe los números de las opcionales que no quieras y pulsa Enter; `pi` y `mem` no se pueden desmarcar. Sin terminal, o si solo pulsas Enter, se tratan todas.
@@ -79,9 +78,9 @@ make install
 | Pieza | Qué hace en Pi | Dónde queda |
 |---|---|---|
 | **Memoria persistente** | `gomemory` guarda decisiones, bugs y convenciones y las devuelve en cada sesión | `~/.pi/agent/mcp.json` |
-| **Grafo de código** | `codegraph` y `codebase-memory` responden quién llama a qué y qué rompe un cambio, sin recorrer archivos a ciegas | `~/.pi/agent/mcp.json` |
-| **21 skills** | El ciclo HCD completo (`hcd`, `hcd-define` … `hcd-close`), verificación (`verify-loop`, `search-first`), revisión adversarial y auditoría defensiva | `~/.pi-gomemory/skills/` |
-| **Contexto y protocolo** | Carga `mem context` por sesión y exige medir impacto con `codegraph` y `codebase-memory` antes de editar o abrir un HCD | `~/.pi/agent/extensions/gomemory-context.ts` |
+| **Grafo de código** | `codegraph` responde quién llama a qué y qué rompe un cambio, sin recorrer archivos a ciegas | `~/.pi/agent/mcp.json` |
+| **20 skills** | El ciclo HCD completo (`hcd`, `hcd-define` … `hcd-close`), verificación (`verify-loop`, `search-first`), revisión adversarial y auditoría defensiva | `~/.pi-gomemory/skills/` |
+| **Contexto y protocolo** | Carga `mem context` por sesión y exige medir impacto con `codegraph` antes de editar o abrir un HCD | `~/.pi/agent/extensions/gomemory-context.ts` |
 | **Modelos de Google AI Pro** | Plugin `pi-antigravity` y el comando `pi-gomemory usage`, que consulta la cuota real de tu cuenta | `~/.pi/agent/settings.json` |
 | **Interfaz** | `pi-cc-extensions` (diffs laterales, `/context`), thinking colapsado por defecto (`Ctrl+T`) con indicador animado y etiqueta `(thinking...)`, barra de tokens y coste (`/tokens`), paneles `/tasks` y `/tdd`, sugerencia en el input (`Tab`) y el tema gomemory en Truecolor | `~/.pi/agent/` |
 | **Launcher** | `pi-gomemory` prepara el entorno de Herdr y carga el contexto del proyecto | `~/.local/bin/` |
@@ -110,7 +109,7 @@ flowchart LR
 
 El instalador fusiona tu configuración en lugar de reemplazarla:
 
-- En `mcp.json` solo cambia sus tres entradas. Tus otros servidores se conservan tal cual, con todos sus campos.
+- En `mcp.json` solo cambia sus dos entradas (`gomemory` y `codegraph`) y retira la entrada heredada de `codebase-memory` si fue gestionada por pi-gomemory. Tus otros servidores se conservan tal cual, con todos sus campos.
 - En `pi-cc-extensions.json` conserva tus claves; `showStartupHeader` se desactiva para evitar que tape el banner de gomemory.
 - En `AGENTS.md` retira el bloque heredado de pi-gomemory, después de instalar la extensión que lo sustituye, y conserva tu texto, permisos y enlaces. Si solo había protocolo, elimina el archivo normal o vacía el destino del enlace. Si los marcadores de pi-gomemory son ambiguos, conserva el archivo completo y avisa.
 - Si un JSON existente es inválido, la instalación se detiene sin modificarlo.
@@ -126,11 +125,9 @@ mem setup-mcp --scope global --agents claude,codex,agy,opencode
 
 | | Pi | Claude Code | Codex | agy | OpenCode |
 |---|:-:|:-:|:-:|:-:|:-:|
-| MCP gomemory, codegraph, codebase-memory | pi-gomemory | gomemory | gomemory | gomemory | gomemory |
-| Skills | pi-gomemory | gomemory | gomemory | gomemory¹ | gomemory |
+| MCP gomemory y codegraph | pi-gomemory | gomemory | gomemory | gomemory | gomemory |
+| Skills | pi-gomemory | gomemory | gomemory | gomemory | gomemory |
 | Tema, launcher y `usage` | pi-gomemory | no aplica | no aplica | no aplica | no aplica |
-
-¹ En agy, las skills van a `~/.gemini/config/skills`. Hoy llegan 20 de las 21: falta `codebase-memory`.
 
 `pi-gomemory-setup doctor` detecta qué agentes tienes instalados y te muestra el comando que corresponde a cada uno.
 
@@ -151,12 +148,11 @@ pi-gomemory-setup version     Versión instalada
 pi-gomemory-setup check-update  Avisa si hay una release nueva (caché de 24 h)
 pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala; después ejecuta sync
 pi-gomemory-setup sync [--yes] [--json] [--only=a,b | --skip=c]
-                              Instala lo que falta y actualiza lo desactualizado de pi, mem, codegraph, codebase-memory-mcp y herdr
+                              Instala lo que falta y actualiza lo desactualizado de pi, mem, codegraph y herdr
 pi-gomemory-setup components --names | --json  Lista los componentes del meta-harness y su estado
 pi-gomemory-setup deps-refresh  Consulta las últimas versiones de pi-gomemory y sus dependencias
 pi-gomemory-setup deps-status   Componentes desactualizados según la última consulta (sale con 10)
 pi-gomemory-setup deps-update   Actualiza los componentes desactualizados
-pi-gomemory-setup deps-install codebase-memory-mcp  Instala el último release verificado (SHA-256) de codebase-memory-mcp
 pi-gomemory-setup claude-usage  Consumo de tokens de Claude Code en JSON (lo usa /sidebar)
 pi-gomemory-setup anthropic-usage  Límites del plan de Anthropic (sesión de 5 h y semana) en JSON (lo usa /sidebar)
 pi-gomemory-setup codex-usage      Límites del plan de OpenAI Codex (ventanas primaria y secundaria) en JSON
@@ -168,7 +164,7 @@ Con `usage`, si la API no responde o el token caducó, el comando termina con un
 
 ### Codemode y contexto por sesión
 
-Desde v1.24.0, `install` y `update` dejan Pi en modo **codemode híbrido**. El modelo recibe directas solo las tools que usa a diario (contexto y memoria de gomemory, `search_graph`, `trace_path`, `get_code_snippet`, `check_index_coverage` y `codegraph_explore`) y llega al resto desde `codemode`. En una instalación típica son 27 tools por turno en lugar de unas 80. Si prefieres todas directas:
+Desde v1.24.0, `install` y `update` dejan Pi en modo **codemode híbrido**. El modelo recibe directas solo las tools que usa a diario (contexto y memoria de gomemory y `codegraph_explore`) y llega al resto desde `codemode`. Si prefieres todas directas:
 
 ```bash
 pi-gomemory-setup codemode off
@@ -177,7 +173,7 @@ pi-gomemory-setup codemode status
 
 La elección queda en `~/.pi-gomemory/codemode.json` y se respeta al reinstalar o actualizar. `codemode on` vuelve al híbrido. En modo híbrido se conservan herramientas MCP de consulta frecuente como directas y las demás siguen disponibles desde `codemode` mediante `tools.<nombre>(args)`. CodeGraph permanece siempre directo.
 
-Si `codemode status` responde `parcial`, Pi tiene `+codemode` activo pero los servidores siguen en directo (o al revés) y carga las dos cosas a la vez. Elige un modo con `codemode on` u `codemode off`. `doctor` también avisa cuando `codebase-memory-mcp install` dejó una extensión para Pi (`cbmem.ts`) que repite las tools del servidor MCP `codebase-memory`; bórrala y, si reinstalas codebase-memory-mcp, pásale `--clients` sin `pi`.
+Si `codemode status` responde `parcial`, Pi tiene `+codemode` activo pero los servidores siguen en directo (o al revés) y carga las dos cosas a la vez. Elige un modo con `codemode on` u `codemode off`.
 
 La extensión de contexto ejecuta `mem context` una vez por sesión con un timeout de tres segundos. Conserva hasta 24 576 bytes de texto UTF-8 y añade un aviso si lo recorta. Si la consulta falla, muestra una advertencia y carga solo el bloque específico de Pi. `/plan` añade su método en una sección separada del prompt.
 
@@ -211,11 +207,11 @@ El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo c
 - **Banner:** al abrir Pi, la cabecera muestra el logo de pi-gomemory en caracteres de color de alta resolución, «HCD · pi - gomemory», la versión de pi-gomemory (`PI_GOMEMORY_RUNNING_VERSION`) y la de gomemory instalada (`GOMEMORY_INSTALLED_VERSION`, leída de `mem --version`), junto con el lema HCD. Con `NO_COLOR` se dibuja sin colores.
 - **`/plan`:** activa el modo plan. Bloquea `edit`, `write` y los comandos de consola que modifican archivos (lista en `~/.pi/agent/extensions/gomemory-plan-patterns.json`), añade al contexto el método de `mem plan-context` y muestra «PLAN» en la barra. Usa `/plan on` para activarlo, `/plan off` para salir y `/plan status` para consultar el estado. `/plan` sin argumentos lo alterna y `/plan run` sigue desactivándolo sin ejecutar el plan. Con `/plan <petición>` activa el modo y envía la petición en el mismo paso. `Alt+P` lo alterna desde el teclado (`Ctrl+Alt+P` si la terminal de macOS no envía Option como Alt; en Windows y WSL solo `Ctrl+Alt+P`, porque Pi usa allí `Alt+P`). La cabecera muestra el estado: `◆ MODO PLAN ON · Alt+P` en ámbar o `○ plan off · Alt+P` atenuado. Es un bloqueo de las modificaciones comunes, no un aislamiento completo.
 - **Panel de tareas (`/tasks`):** encima del editor muestra las tareas de la unidad HCD activa, leídas de `mem hcd show --json`: `○` pendiente, `●`/`○` parpadeando en curso, `●` verificada, `↻` verificación caducada, `✗` con fallo. La cabecera lleva una barra continua `━━━───` con el avance. El árbol de actividad muestra el estado y la duración de las llamadas de esta sesión. En `/tdd`, las verificaciones Bash tienen sus propias filas y Watch no las borra.
-- **Repositorio de skills:** `~/.pi-gomemory/skills` reúne las 21 skills de gomemory (copias adaptadas para Pi, que siempre ganan) y enlaces a las skills de los demás agentes, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. Pi carga solo ese repositorio, así que no hay avisos de colisión. Se sincroniza al instalar y en cada arranque de `pi-gomemory`. Nunca modifica las carpetas de otros agentes ni las skills tuyas.
+- **Repositorio de skills:** `~/.pi-gomemory/skills` reúne las 20 skills de gomemory (copias adaptadas para Pi, que siempre ganan) y enlaces a las skills de los demás agentes, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. Pi carga solo ese repositorio, así que no hay avisos de colisión. Se sincroniza al instalar y en cada arranque de `pi-gomemory`. Nunca modifica las carpetas de otros agentes ni las skills tuyas.
 
 ### Actualizaciones del meta-harness
 
-Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `herdr`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa la última publicada según la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`) y, desde v1.13.0, compara con la versión que tienes instalada ahora, así que no anuncia algo que ya actualizaste por otra vía. Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar.
+Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `herdr`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa la última publicada según la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`) y, desde v1.13.0, compara con la versión que tienes instalada ahora, así que no anuncia algo que ya actualizaste por otra vía. Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar.
 
 Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano si la última consulta en red tiene más de una hora y vuelve a consultar, de modo que una release se anuncia como mucho una hora después de publicarse. El aviso solo informa: para instalar, responde a la pregunta del launcher, ejecuta `pi-gomemory-setup deps-update` o usa `/componentes` sin salir de Pi. Si se actualizó `pi`, `/componentes` te pide reiniciar Pi. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Vacía, `0` o `false` la dejan activa. `sync`, `update` y `/componentes` consultan igualmente, porque los pides tú.
 
@@ -243,7 +239,7 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 
 La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.js; requiere `node` en el PATH y falla si falta. No accede a credenciales ni a Google. Puedes ejecutarlas por separado con `node --test tests/antigravity-prompt-guard/guard.test.mjs`.
 
-`install.sh` acepta `PI_GOMEMORY_VERSION`, `PI_GOMEMORY_BIN_DIR`, `PI_GOMEMORY_BASE_URL`, `PI_GOMEMORY_LATEST_URL` y `PI_GOMEMORY_SKIP_DEPS`. Sin `PI_GOMEMORY_VERSION` lee la etiqueta de la redirección de `PI_GOMEMORY_LATEST_URL` (por defecto, `releases/latest` del repositorio); si no la obtiene, se detiene y sugiere fijar la versión. `PI_GOMEMORY_BASE_URL` permite probar el instalador contra un `dist/` local, por ejemplo `file://$PWD/dist`. Al compilar desde el código fuente no consulta la red. `bash scripts/clean-install-check.sh` ejecuta la instalación completa en un HOME temporal con compilación local y comprueba que `pi`, `mem`, `codegraph`, `codebase-memory-mcp` y `herdr` respondan (requiere red).
+`install.sh` acepta `PI_GOMEMORY_VERSION`, `PI_GOMEMORY_BIN_DIR`, `PI_GOMEMORY_BASE_URL`, `PI_GOMEMORY_LATEST_URL` y `PI_GOMEMORY_SKIP_DEPS`. Sin `PI_GOMEMORY_VERSION` lee la etiqueta de la redirección de `PI_GOMEMORY_LATEST_URL` (por defecto, `releases/latest` del repositorio); si no la obtiene, se detiene y sugiere fijar la versión. `PI_GOMEMORY_BASE_URL` permite probar el instalador contra un `dist/` local, por ejemplo `file://$PWD/dist`. Al compilar desde el código fuente no consulta la red. `bash scripts/clean-install-check.sh` ejecuta la instalación completa en un HOME temporal con compilación local y comprueba que `pi`, `mem`, `codegraph` y `herdr` respondan (requiere red).
 
 ## Documentación
 
@@ -280,7 +276,6 @@ La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.j
 
 - [gomemory](https://github.com/Sayoner-000/gomemory): memoria colectiva para agentes, sinapsis entre memorias y protocolo HCD.
 - [CodeGraph](https://github.com/colbymchenry/codegraph): grafo AST en SQLite para más de 30 lenguajes.
-- [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp): grafo de conocimiento estructural y trazado de llamadas.
 
 ## Licencia
 
