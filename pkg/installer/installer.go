@@ -38,14 +38,23 @@ func DefaultOptions() (*Options, error) {
 	}, nil
 }
 
+// InstallSyncOptions son las opciones del sync de install. `update` relanza
+// install con PI_GOMEMORY_SYNC_YES=1 para que no muestre el selector (HCD-076).
+var InstallSyncOptions = SyncOptions{Yes: os.Getenv("PI_GOMEMORY_SYNC_YES") == "1"}
+
 // InstallAll orquesta la instalación completa a partir de los recursos
 // embebidos en el binario. No escribe nada en el directorio actual.
 func InstallAll(assets fs.FS, opts *Options) error {
 	// Las herramientas van primero: sin pi no se puede configurar nada, y si
 	// una obligatoria falla no se toca ni la marca de desinstalado (HCD-062).
-	fmt.Printf("%s==> [1/9] Comprobando pi, mem, codegraph y codebase-memory-mcp (se instala lo que falte desde su canal oficial)...%s\n", ColorCyan, ColorReset)
+	fmt.Printf("%s%s%s\n", ColorCyan, InstallStepToolsText(), ColorReset)
 	RemoveStaleDepsTemps(opts.LocalBinDir)
-	if err := EnsureTools(opts, os.Stdout); err != nil {
+	// HCD-076: sync instala lo que falta y actualiza lo desactualizado. Con
+	// terminal y sin InstallSyncOptions.Yes muestra el selector.
+	in, done := syncTerminal(InstallSyncOptions)
+	_, err := Sync(opts, InstallSyncOptions, in, os.Stdout)
+	done()
+	if err != nil {
 		return fmt.Errorf("paso Herramientas: %w", err)
 	}
 

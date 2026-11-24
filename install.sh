@@ -15,7 +15,10 @@ C_SUCCESS="\033[38;2;46;204;113m"
 
 REPO="Sayoner-000/pi-gomemory"
 INSTALL_DIR="${PI_GOMEMORY_BIN_DIR:-${HOME}/.local/bin}"
-VERSION="${PI_GOMEMORY_VERSION:-v1.25.1}"
+# Sin PI_GOMEMORY_VERSION se instala la última release (HCD-076): la etiqueta
+# concreta se resuelve solo al descargar y se verifica con SHA256SUMS.
+VERSION="${PI_GOMEMORY_VERSION:-}"
+LATEST_URL="${PI_GOMEMORY_LATEST_URL:-https://github.com/${REPO}/releases/latest}"
 
 echo -e "${C_CYAN}╔════════════════════════════════════════════════════════════════════╗${C_RESET}"
 echo -e "${C_BRILLO}║         INSTALADOR DE PI-GOMEMORY PARA PI CODING AGENT             ║${C_RESET}"
@@ -65,6 +68,22 @@ if [ -f "./go.mod" ] && grep -q '^module pi-gomemory$' ./go.mod && command -v go
   echo -e "${C_SUCCESS}✓ Binario ${LOCAL_VERSION} compilado en: ${SETUP_BIN}${C_RESET}"
 else
   # Opción B: Descargar release desde GitHub (o desde PI_GOMEMORY_BASE_URL)
+  if [ -z "${VERSION}" ]; then
+    echo -e "${C_MUTED}==> Resolviendo la última release desde ${LATEST_URL}...${C_RESET}"
+    LOCATION=""
+    if command -v curl &>/dev/null; then
+      LOCATION="$(curl -sS -o /dev/null -w '%{redirect_url}' "${LATEST_URL}" 2>/dev/null || true)"
+    elif command -v wget &>/dev/null; then
+      LOCATION="$(wget --max-redirect=0 -S -O /dev/null "${LATEST_URL}" 2>&1 | awk 'tolower($1) == "location:" {print $2}' | tail -n 1 | tr -d '\r' || true)"
+    fi
+    VERSION="${LOCATION##*/releases/tag/}"
+    VERSION="${VERSION%/}"
+    if ! [[ "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.+-][0-9A-Za-z.+-]*)?$ ]]; then
+      echo -e "${C_ERROR}✗ No se pudo resolver la última release desde ${LATEST_URL}. Fija una versión con PI_GOMEMORY_VERSION=vX.Y.Z y repite.${C_RESET}" >&2
+      exit 1
+    fi
+    echo -e "${C_MUTED}    Última release: ${VERSION}${C_RESET}"
+  fi
   TARBALL="pi-gomemory-setup_${VERSION}_${OS}_${ARCH}.tar.gz"
   BASE_URL="${PI_GOMEMORY_BASE_URL:-https://github.com/${REPO}/releases/download/${VERSION}}"
   TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t 'pi-gomemory')"
@@ -126,9 +145,12 @@ PI_GOMEMORY_BIN_DIR="${INSTALL_DIR}" "${SETUP_BIN}" install </dev/null || INSTAL
 #    conocidos donde quedó alguna herramienta y que el shell no tiene.
 echo ""
 MISSING_DIRS=()
+# Los tool salen del catálogo único del binario (HCD-076).
+TOOLS="$("${SETUP_BIN}" components --names </dev/null 2>/dev/null || true)"
 for dir in "${INSTALL_DIR}" "${HOME}/.local/bin" "${HOME}/.pi/agent/bin" "${HOME}/.gomemory/bin"; do
   [[ ":${PATH}:" == *":${dir}:"* ]] && continue
-  for tool in pi-gomemory-setup pi-gomemory pi mem codegraph codebase-memory-mcp; do
+  # shellcheck disable=SC2086 # TOOLS es una lista de nombres separados por líneas
+  for tool in pi-gomemory-setup pi-gomemory ${TOOLS}; do
     if [ -x "${dir}/${tool}" ]; then
       case " ${MISSING_DIRS[*]:-} " in *" ${dir} "*) ;; *) MISSING_DIRS+=("${dir}") ;; esac
       break

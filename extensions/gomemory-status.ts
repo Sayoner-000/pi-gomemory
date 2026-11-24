@@ -15,6 +15,35 @@ const UPDATES_STATUS_KEY = "gomemory-updates";
 /** `pi-gomemory-setup deps-status` sale con 10 cuando hay algo desactualizado. */
 const DEPS_OUTDATED_EXIT = 10;
 
+/** Plazo de `/componentes` para `sync`: hasta cinco instaladores de 10 min (HCD-076, N4). */
+export const COMPONENTS_SYNC_TIMEOUT_MS = 60 * 60 * 1000;
+
+type ComponentRow = {
+	name: string;
+	kind: "self" | "tool" | "package";
+	required: boolean;
+	installed: boolean;
+	current: string;
+	latest: string;
+	outdated: boolean;
+	error: string;
+};
+type SyncRow = { name: string; action: string; from: string; to: string; error?: string };
+
+function componentVersion(c: ComponentRow): string {
+	if (!c.installed) return c.latest ? `no instalado → ${c.latest}` : "no instalado";
+	if (c.outdated) return `${c.current} → ${c.latest}`;
+	return c.current || "versión desconocida";
+}
+
+const SYNC_ACTIONS: Record<string, string> = {
+	installed: "instalado",
+	updated: "actualizado",
+	current: "al día",
+	failed: "falló",
+	skipped: "omitido",
+};
+
 /** Etiqueta para bloques de razonamiento colapsados (HCD-066, 2A). */
 export const HIDDEN_THINKING_LABEL = "(thinking...)";
 /** Ola de gotitas en glifos de texto puro (sin emojis, HCD-020 Q3 / HCD-066 2A). */
@@ -202,6 +231,75 @@ export default function (pi: ExtensionAPI) {
 		ui?.setHiddenThinkingLabel?.();
 		activeUi = null;
 		requestRender = null;
+	});
+
+	// HCD-076: ver y reconciliar los componentes del meta-harness desde Pi.
+	pi.registerCommand("componentes", {
+		description: "Ver y actualizar los componentes del meta-harness (pi, mem, codegraph, codebase-memory-mcp, herdr)",
+		handler: async (_args, ctx) => {
+			let rows: ComponentRow[];
+			try {
+				const r = await pi.exec("pi-gomemory-setup", ["components", "--json"], { timeout: 120_000 });
+				if (r.code !== 0) throw new Error(r.stderr.trim() || `código ${r.code}`);
+				rows = JSON.parse(r.stdout);
+			} catch (e) {
+				ctx.ui.notify(`No se pudo leer el estado de los componentes: ${(e as Error).message}`, "error");
+				return;
+			}
+			const tools = rows.filter((c) => c.kind === "tool");
+			const others = rows.filter((c) => c.kind !== "tool");
+			const selected = new Map(tools.map((c) => [c.name, true]));
+			const APPLY = "✓ Aplicar (instala lo que falta y actualiza lo marcado)";
+			const CANCEL = "✗ Cancelar";
+			const toolLabel = (c: ComponentRow) =>
+				`${selected.get(c.name) ? "[x]" : "[ ]"} ${c.name} ${componentVersion(c)} · ${c.required ? "obligatorio" : "opcional"}`;
+			const otherLabel = (c: ComponentRow) =>
+				`· ${c.name} ${componentVersion(c)} · ${c.kind === "self" ? "se actualiza con pi-gomemory-setup update" : "paquete fijado (install)"}`;
+			for (;;) {
+				const toolOpts = tools.map(toolLabel);
+				const options = [...toolOpts, ...others.map(otherLabel), APPLY, CANCEL];
+				const choice = await ctx.ui.select("Componentes del meta-harness: elige para marcar o desmarcar", options);
+				if (!choice || choice === CANCEL) return;
+				if (choice === APPLY) break;
+				const i = toolOpts.indexOf(choice);
+				if (i < 0) continue;
+				const c = tools[i];
+				if (c.required) {
+					ctx.ui.notify(`${c.name} es obligatorio: no se puede desmarcar`, "warning");
+					continue;
+				}
+				selected.set(c.name, !selected.get(c.name));
+			}
+			const only = tools.filter((c) => selected.get(c.name)).map((c) => c.name);
+			ctx.ui.notify(`Reconciliando ${only.join(", ")}…`, "info");
+			const r = await pi.exec("pi-gomemory-setup", ["sync", "--json", `--only=${only.join(",")}`], {
+				timeout: COMPONENTS_SYNC_TIMEOUT_MS,
+			});
+			if (r.killed) {
+				ctx.ui.notify("sync no terminó en el plazo; ejecuta pi-gomemory-setup sync en la terminal", "error");
+				return;
+			}
+			let results: SyncRow[] = [];
+			try {
+				results = JSON.parse(r.stdout || "[]");
+			} catch {
+				// sin JSON: se informa el código y stderr abajo
+			}
+			if (results.length > 0) {
+				const summary = results
+					.map((s) => `${s.name} ${SYNC_ACTIONS[s.action] ?? s.action}${s.action === "updated" ? ` (${s.from} → ${s.to})` : ""}`)
+					.join("; ");
+				ctx.ui.notify(summary, results.some((s) => s.action === "failed") ? "warning" : "info");
+			}
+			if (r.code !== 0) {
+				const tail = r.stderr.trim().split("\n").slice(-3).join(" ");
+				ctx.ui.notify(`sync terminó con código ${r.code}: ${tail}`, "error");
+			}
+			// pi se reconcilia siempre (obligatorio): el aviso depende de lo que pasó.
+			if (results.some((s) => s.name === "pi" && (s.action === "updated" || s.action === "installed"))) {
+				ctx.ui.notify("Reinicia Pi para usar la versión nueva de pi.", "warning");
+			}
+		},
 	});
 
 	// Comando para alternar la barra de tokens y TUI gomemory

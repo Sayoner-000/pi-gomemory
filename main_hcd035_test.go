@@ -71,6 +71,7 @@ type updateHarness struct {
 	runEnv  []string
 	runExe  string
 	release *fakeReleases
+	syncs   int
 }
 
 func newUpdateHarness(t *testing.T, current, latest string) *updateHarness {
@@ -99,7 +100,8 @@ func (h *updateHarness) deps() updateDeps {
 			h.ran, h.runExe, h.runEnv = true, exe, env
 			return nil
 		},
-		out: &h.out,
+		sync: func() error { h.syncs++; return nil },
+		out:  &h.out,
 	}
 }
 

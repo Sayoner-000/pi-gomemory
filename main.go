@@ -182,6 +182,14 @@ func main() {
 			installer.DefaultDepProbes(version, opts.PiAgentDir), os.Stdout, os.Stderr); code != 0 {
 			os.Exit(code)
 		}
+	case "sync":
+		if code := installer.RunSync(opts, os.Args[2:], os.Stdout, os.Stderr); code != 0 {
+			os.Exit(code)
+		}
+	case "components":
+		if code := runComponents(opts, os.Args[2:], os.Stdout, os.Stderr); code != 0 {
+			os.Exit(code)
+		}
 	case "deps-install":
 		if code := installer.RunDepsInstall(opts, os.Args[2:], os.Stdout, os.Stderr); code != 0 {
 			os.Exit(code)
@@ -230,6 +238,29 @@ func main() {
 	}
 }
 
+// runComponents implementa `components --names | --json` (HCD-076): --names
+// lista los tool del catálogo sin red; --json refresca a la fuerza y
+// devuelve el estado de todo el catálogo.
+func runComponents(opts *installer.Options, args []string, stdout, stderr io.Writer) int {
+	if len(args) != 1 || (args[0] != "--names" && args[0] != "--json") {
+		fmt.Fprintln(stderr, "Uso: pi-gomemory-setup components --names | --json")
+		return 2
+	}
+	if args[0] == "--names" {
+		for _, n := range installer.ToolNames() {
+			fmt.Fprintln(stdout, n)
+		}
+		return 0
+	}
+	installer.PrependToolDirs(opts)
+	if err := installer.WriteComponentsJSON(stdout, installer.DefaultDepProbes(version, opts.PiAgentDir),
+		installer.DefaultDepsCachePath(opts.PiAgentDir), time.Now()); err != nil {
+		fmt.Fprintf(stderr, "✗ %v\n", err)
+		return 1
+	}
+	return 0
+}
+
 func printHelp() {
 	fmt.Printf("%spi-gomemory-setup%s — Instalador de pi-gomemory para Pi Coding Agent\n\n", installer.ColorBrillo, installer.ColorReset)
 	fmt.Println("Uso:")
@@ -247,7 +278,10 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup harness     Instala el launcher pi-gomemory en ~/.local/bin")
 	fmt.Println("  pi-gomemory-setup version     Muestra la versión instalada")
 	fmt.Println("  pi-gomemory-setup check-update  Avisa si hay una release nueva (caché de 24 h)")
-	fmt.Println("  pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala")
+	fmt.Println("  pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala (con sync)")
+	fmt.Println("  pi-gomemory-setup sync [--yes] [--json] [--only=a,b | --skip=c]")
+	fmt.Println("                                Instala lo que falta y actualiza lo desactualizado de " + installer.ToolNamesText())
+	fmt.Println("  pi-gomemory-setup components --names | --json  Lista los componentes del meta-harness y su estado")
 	fmt.Println("  pi-gomemory-setup deps-refresh  Consulta las últimas versiones de pi-gomemory y sus dependencias")
 	fmt.Println("  pi-gomemory-setup deps-status   Muestra lo desactualizado según la última consulta (sale con 10)")
 	fmt.Println("  pi-gomemory-setup deps-update   Actualiza los componentes desactualizados")
@@ -323,16 +357,24 @@ type updateDeps struct {
 	apiURL     string
 	baseURL    string
 	run        func(exe string, env []string) error
-	out        io.Writer
+	// sync reconcilia los tool cuando pi-gomemory ya está al día (HCD-076).
+	sync func() error
+	out  io.Writer
 }
 
-func defaultUpdateDeps() updateDeps {
+func defaultUpdateDeps(opts *installer.Options) updateDeps {
 	return updateDeps{
 		executable: os.Executable,
 		apiURL:     installer.DefaultReleasesAPI,
 		baseURL:    installer.DefaultReleasesBaseURL,
 		run: func(exe string, env []string) error {
 			return installChildCmd(exe, env).Run()
+		},
+		sync: func() error {
+			if code := installer.RunSync(opts, []string{"--yes"}, os.Stdout, os.Stderr); code != 0 {
+				return fmt.Errorf("sync terminó con código %d", code)
+			}
+			return nil
 		},
 		out: os.Stdout,
 	}
@@ -349,22 +391,24 @@ func installChildCmd(exe string, env []string) *exec.Cmd {
 
 // runUpdate reemplaza el binario por la última release verificada y relanza la instalación con él.
 func runUpdate(opts *installer.Options) error {
-	return runUpdateWith(opts, defaultUpdateDeps())
+	return runUpdateWith(opts, defaultUpdateDeps(opts))
 }
 
 func runUpdateWith(opts *installer.Options, d updateDeps) error {
 	res := installer.CheckUpdate(version, installer.UpdateCheckConfig{APIURL: d.apiURL, Timeout: 10 * time.Second, Force: true})
 	if res.Err != nil {
-		return fmt.Errorf("consultar la última release: %w", res.Err)
+		return fmt.Errorf("consultar la última release: %w (para reconciliar solo las herramientas: pi-gomemory-setup sync)", res.Err)
 	}
 	if !res.Newer {
-		fmt.Fprintf(d.out, "✓ pi-gomemory-setup ya está al día (%s).\n", version)
-		return nil
+		fmt.Fprintf(d.out, "✓ pi-gomemory-setup ya está al día (%s). Reconciliando herramientas...\n", version)
+		return d.sync()
 	}
 	env, err := childInstallEnv(opts.HomeDir)
 	if err != nil {
 		return err
 	}
+	// El install relanzado hace un solo sync, sin selector (HCD-076, M3).
+	env = append(env, "PI_GOMEMORY_SYNC_YES=1")
 	exe, err := d.executable()
 	if err != nil {
 		return err

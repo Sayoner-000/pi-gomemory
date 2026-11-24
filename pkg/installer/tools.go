@@ -53,13 +53,13 @@ func codegraphEnv(o *Options) []string { return []string{"CODEGRAPH_BIN_DIR=" + 
 // para que las pruebas la sustituyan.
 var installTools = productionTools()
 
+// productionTools deriva del catálogo los componentes de tipo tool (HCD-076).
 func productionTools() []Tool {
-	return []Tool{
-		{Name: "pi", Required: true, Script: PiInstallScriptURL, Interp: "sh", Env: piEnv, Manual: "curl -fsSL " + PiInstallScriptURL + " | sh", Hint: "pi necesita Node.js 22.19 o superior y npm: instálalos si faltan"},
-		{Name: "mem", Required: true, Script: MemInstallScriptURL, Interp: "bash", Env: memEnv, Manual: "curl -fsSL " + MemInstallScriptURL + " | bash"},
-		{Name: "codegraph", Script: CodegraphInstallScriptURL, Interp: "sh", Env: codegraphEnv, Manual: "curl -fsSL " + CodegraphInstallScriptURL + " | sh"},
-		{Name: "codebase-memory-mcp", Release: true, Manual: "pi-gomemory-setup deps-install codebase-memory-mcp"},
+	var out []Tool
+	for _, c := range catalogTools() {
+		out = append(out, Tool{Name: c.Name, Required: c.Required, Script: c.Script, Interp: c.Interp, Env: c.Env, Manual: c.Manual, Hint: c.Hint, Release: c.Release})
 	}
+	return out
 }
 
 // toolHooks son los puntos de sustitución del paso (HCD-062, «Pruebas»).
@@ -123,7 +123,11 @@ func extendToolPath(opts *Options) {
 	prependToolDirs(opts)
 }
 
-// prependToolDirs es extendToolPath sin crear nada: la usa doctor.
+// PrependToolDirs antepone al PATH del proceso los directorios conocidos de
+// herramientas que aún no estén, sin crear directorios en disco (HCD-077, C-001).
+func PrependToolDirs(opts *Options) { prependToolDirs(opts) }
+
+// prependToolDirs es extendToolPath sin crear nada: la usa doctor y components.
 func prependToolDirs(opts *Options) {
 	current := filepath.SplitList(os.Getenv("PATH"))
 	have := map[string]bool{}
@@ -154,7 +158,7 @@ func toolPresent(name string) bool {
 // con el modo lite no se comprueban.
 func EnsureTools(opts *Options, out io.Writer) error {
 	if SkipDepsRequested() {
-		fmt.Fprintf(out, "%s    · %s: no se comprueban pi, mem, codegraph ni codebase-memory-mcp%s\n", ColorMuted, skipDepsEnv, ColorReset)
+		fmt.Fprintf(out, "%s    · %s: no se comprueban %s%s\n", ColorMuted, skipDepsEnv, ToolNamesText(), ColorReset)
 		return nil
 	}
 	extendToolPath(opts)
@@ -203,7 +207,7 @@ const depsInstallUsage = "Uso: pi-gomemory-setup deps-install codebase-memory-mc
 func RunDepsInstall(opts *Options, args []string, stdout, stderr io.Writer) int {
 	if len(args) != 1 || args[0] != cbmBinary {
 		fmt.Fprintln(stderr, depsInstallUsage)
-		fmt.Fprintln(stderr, "pi, mem y codegraph se actualizan con su propio comando (pi update --self, mem update, codegraph upgrade).")
+		fmt.Fprintf(stderr, "%s se actualizan con su propio comando (%s).\n", scriptToolNamesText(), scriptToolUpdates())
 		return 2
 	}
 	o := *opts

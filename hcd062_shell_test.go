@@ -23,7 +23,9 @@ import (
 // directorios donde quedó alguna herramienta.
 func TestHCD062ShellInstallScript(t *testing.T) {
 	home := t.TempDir()
+	// HCD-076: install.sh pide los tool a `components --names`.
 	setup := `#!/bin/sh
+if [ "$1" = components ]; then printf 'pi\nmem\n'; exit 0; fi
 if read line; then echo "stdin:$line" > "$HOME/stdin.txt"; else echo "stdin:eof" > "$HOME/stdin.txt"; fi
 mkdir -p "$HOME/.pi/agent/bin" && printf '#!/bin/sh\n' > "$HOME/.pi/agent/bin/pi" && chmod +x "$HOME/.pi/agent/bin/pi"
 exit 7
@@ -99,16 +101,17 @@ func TestHCD064CleanInstallCheckDynamicVersion(t *testing.T) {
 	if strings.Contains(src, "v1.20.0") {
 		t.Fatalf("scripts/clean-install-check.sh no debe fijar literalmente v1.20.0")
 	}
-	if !strings.Contains(src, "PINNED_VER") {
-		t.Fatalf("scripts/clean-install-check.sh debe derivar PINNED_VER desde install.sh")
-	}
-	out, err := exec.Command("bash", "-c", `sed -n 's/^VERSION="${PI_GOMEMORY_VERSION:-\([^}]*\)}"/\1/p' install.sh`).Output()
+	// HCD-076: install.sh ya no fija versión (usa la última release), así que
+	// el script no puede depender de un pin: rechaza cualquier descarga.
+	inst, err := os.ReadFile("install.sh")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ver := strings.TrimSpace(string(out))
-	if !strings.HasPrefix(ver, "v") {
-		t.Fatalf("no se pudo extraer VERSION de install.sh: %q", ver)
+	if !strings.Contains(string(inst), `VERSION="${PI_GOMEMORY_VERSION:-}"`) {
+		t.Fatalf("install.sh no debe fijar una versión por defecto")
+	}
+	if strings.Contains(src, "PINNED_VER") {
+		t.Fatalf("scripts/clean-install-check.sh no debe depender de un pin de install.sh")
 	}
 }
 
@@ -124,7 +127,7 @@ func TestHCD065CleanInstallCheckTaggedCommit(t *testing.T) {
 	if strings.Contains(src, "Binario ${PINNED_VER} compilado") {
 		t.Fatalf("scripts/clean-install-check.sh no debe rechazar 'Binario ${PINNED_VER} compilado' porque install.sh imprime ese mensaje al compilar localmente en un commit etiquetado")
 	}
-	if !strings.Contains(src, "Descargando pi-gomemory-setup_${PINNED_VER}") {
-		t.Fatalf("scripts/clean-install-check.sh debe seguir rechazando la descarga de la release fijada")
+	if !strings.Contains(src, `grep -q "Descargando pi-gomemory-setup_"`) {
+		t.Fatalf("scripts/clean-install-check.sh debe seguir rechazando la descarga de una release")
 	}
 }

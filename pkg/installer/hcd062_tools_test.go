@@ -28,6 +28,9 @@ func toolSandbox(t *testing.T) *Options {
 	opts := sandbox(t)
 	t.Setenv("PATH", "/usr/bin:/bin")
 	t.Setenv(skipDepsEnv, "")
+	// HCD-076: sync no sale a la red en las pruebas ni depende del Node local.
+	withSyncProbes(t, offlineProbes)
+	withNode(t, "v"+minNodeVersion, true)
 	return opts
 }
 

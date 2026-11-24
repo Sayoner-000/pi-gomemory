@@ -2,6 +2,7 @@ package installer
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -30,5 +31,9 @@ func TestMain(m *testing.M) {
 	installTools = nil
 	hooks.SystemDirs = nil
 	hooks.Client = &http.Client{Transport: blockedTransport{}}
+	// HCD-076: sync no consulta versiones en red ni abre /dev/tty en las
+	// pruebas; las que lo necesitan sustituyen syncProbes u openTTY.
+	syncProbes = offlineProbes
+	openTTY = func() io.ReadCloser { return nil }
 	os.Exit(m.Run())
 }

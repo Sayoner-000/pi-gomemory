@@ -52,21 +52,17 @@ func RunDoctor(opts *Options) []CheckItem {
 	// 1. Binarios, con el PATH ampliado por los directorios conocidos, como
 	// el launcher (HCD-062).
 	prependToolDirs(opts)
-	bins := []string{"pi", "mem", "codegraph", "codebase-memory-mcp"}
-	for _, b := range bins {
+	// Los binarios salen del catálogo; un opcional ausente es WARN (HCD-076).
+	for _, c := range catalogTools() {
+		b := c.Name
 		path, err := exec.LookPath(b)
-		if err == nil {
-			items = append(items, CheckItem{
-				Name:    fmt.Sprintf("Binario %s", b),
-				Status:  "OK",
-				Details: path,
-			})
-		} else {
-			items = append(items, CheckItem{
-				Name:    fmt.Sprintf("Binario %s", b),
-				Status:  "FAIL",
-				Details: "no encontrado en PATH",
-			})
+		switch {
+		case err == nil:
+			items = append(items, CheckItem{Name: fmt.Sprintf("Binario %s", b), Status: "OK", Details: path})
+		case c.Required:
+			items = append(items, CheckItem{Name: fmt.Sprintf("Binario %s", b), Status: "FAIL", Details: "no encontrado en PATH"})
+		default:
+			items = append(items, CheckItem{Name: fmt.Sprintf("Binario %s", b), Status: "WARN", Details: "opcional, no instalado (" + c.Manual + ")"})
 		}
 	}
 

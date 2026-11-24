@@ -216,60 +216,32 @@ func fixedVersion(v string) func(context.Context) (string, error) {
 // DefaultDepProbes devuelve los componentes del meta-harness con los comandos
 // oficiales de actualización de cada uno.
 func DefaultDepProbes(version, piAgentDir string) []DepProbe {
-	return []DepProbe{
-		{
-			Name:    "pi-gomemory",
-			Current: func(context.Context) (string, error) { return version, nil },
-			Latest:  githubLatest(DefaultReleasesAPI),
-			Update:  []string{"pi-gomemory-setup", "update"},
-		},
-		{
-			Name:    "pi",
-			Current: versionFromCmd("pi", "--version"),
-			Latest:  npmLatest("@earendil-works/pi-coding-agent"),
-			Update:  []string{"pi", "update", "--self"},
-		},
-		{
-			Name:    "mem",
-			Current: versionFromCmd("mem", "version"),
-			Latest:  latestFromCmd(regexp.MustCompile(`Disponible:\s*v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)`), "mem", "update", "-check"),
-			Update:  []string{"mem", "update", "-y"},
-		},
-		{
-			Name:    "codegraph",
-			Current: versionFromCmd("codegraph", "--version"),
-			Latest:  latestFromCmd(regexp.MustCompile(`latest\s+v?(\d+\.\d+\.\d+[0-9A-Za-z.+-]*)`), "codegraph", "upgrade", "--check"),
-			Update:  []string{"codegraph", "upgrade"},
-		},
-		{
-			Name:    "codebase-memory-mcp",
-			Current: versionFromCmd("codebase-memory-mcp", "--version"),
-			Latest:  githubLatest("https://github.com/DeusData/codebase-memory-mcp/releases/latest"),
-			// HCD-062: mismo canal verificado que la instalación (release + SHA-256).
-			Update: []string{"pi-gomemory-setup", "deps-install", "codebase-memory-mcp"},
-		},
-		{
-			Name:      "pi-antigravity",
-			Current:   npmPackageVersion(piAgentDir, "pi-antigravity"),
-			Latest:    fixedVersion(AntigravityVersion),
-			Update:    []string{"pi", "install", AntigravityPackageSource},
-			Published: npmPublished("pi-antigravity", AntigravityVersion),
-		},
-		{
-			Name:      "pi-cc-extensions",
-			Current:   npmPackageVersion(piAgentDir, "pi-cc-extensions"),
-			Latest:    fixedVersion(CCExtensionsVersion),
-			Update:    []string{"pi", "install", CCExtensionsSource},
-			Published: npmPublished("pi-cc-extensions", CCExtensionsVersion),
-		},
+	// HCD-076: las sondas se derivan del catálogo único, en su orden.
+	var out []DepProbe
+	for _, c := range Catalog() {
+		p := c.probe(version, piAgentDir)
+		p.Name = c.Name
+		out = append(out, p)
 	}
+	return out
 }
 
 // RefreshDeps consulta en paralelo cada componente y guarda el resultado en
 // cachePath. Si la caché existe y tiene menos de depsCacheTTL (una hora), se
 // omite la consulta en red para no saturar en cada arranque.
 func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState {
-	if cachePath != "" {
+	return refreshDeps(probes, cachePath, now, false)
+}
+
+// ForceRefreshDeps consulta siempre la red y reescribe la caché, aunque sea
+// reciente o la comprobación esté desactivada: la usan las acciones
+// explícitas, como sync y components --json (HCD-076, como HCD-035).
+func ForceRefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState {
+	return refreshDeps(probes, cachePath, now, true)
+}
+
+func refreshDeps(probes []DepProbe, cachePath string, now time.Time, force bool) []DepState {
+	if cachePath != "" && !force {
 		if data, err := os.ReadFile(cachePath); err == nil {
 			var c depsCache
 			if json.Unmarshal(data, &c) == nil && !c.CheckedAt.IsZero() {
@@ -282,7 +254,7 @@ func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState 
 			}
 		}
 	}
-	if UpdateCheckDisabled() {
+	if !force && UpdateCheckDisabled() {
 		return nil
 	}
 
@@ -307,15 +279,19 @@ func RefreshDeps(probes []DepProbe, cachePath string, now time.Time) []DepState 
 			cur, err := p.Current(ctx)
 			if err != nil {
 				st.Error = err.Error()
-				states[i] = st
-				return
+			} else {
+				st.Current = cur
 			}
-			st.Current = cur
-			latest, err := p.Latest(ctx)
-			if err != nil {
-				st.Error = err.Error()
+			// Se consulta también cuando Current falla (herramienta ausente),
+			// para mostrar la última versión en selector/components y no dejar
+			// incompleta la caché tras instalar (HCD-076 C-09, HCD-077 C-004).
+			if p.Latest != nil {
+				latest, lerr := p.Latest(ctx)
+				if lerr != nil && st.Error == "" {
+					st.Error = lerr.Error()
+				}
+				st.Latest = latest
 			}
-			st.Latest = latest
 			states[i] = st
 		}(i, p)
 	}
@@ -523,7 +499,7 @@ func RunDepsUpdate(cachePath string, probes []DepProbe, stdout, stderr io.Writer
 			manual = append(manual, d.Name)
 		}
 	}
-	failed := UpdateDeps(outdated, stdout, stderr)
+	failed := UpdateDeps(delegateOutdated(outdated), stdout, stderr)
 	_ = os.Remove(cachePath)
 	if len(failed) > 0 {
 		fmt.Fprintf(stderr, "✗ No se pudieron actualizar: %v\n", failed)
@@ -539,6 +515,41 @@ func RunDepsUpdate(cachePath string, probes []DepProbe, stdout, stderr io.Writer
 	}
 	fmt.Fprintln(stdout, "✓ Dependencias actualizadas.")
 	return 0
+}
+
+// delegateOutdated evita actualizar dos veces (HCD-076, C-17): si
+// pi-gomemory está desactualizado solo se ejecuta su update, que relanza
+// install y con él un sync; si no, los tool desactualizados se delegan en un
+// único `sync --yes --only=…` y el resto (pins) sigue como hasta ahora.
+func delegateOutdated(outdated []DepState) []DepState {
+	kinds := map[string]ComponentKind{}
+	for _, c := range Catalog() {
+		kinds[c.Name] = c.Kind
+	}
+	for _, d := range outdated {
+		if kinds[d.Name] == KindSelf {
+			return []DepState{d}
+		}
+	}
+	var tools []string
+	var out []DepState
+	for _, d := range outdated {
+		if kinds[d.Name] == KindTool {
+			tools = append(tools, d.Name)
+			continue
+		}
+		out = append(out, d)
+	}
+	if len(tools) == 0 {
+		return out
+	}
+	sync := DepState{
+		Name:    strings.Join(tools, ", "),
+		Current: "desactualizado",
+		Latest:  "última",
+		Update:  []string{"pi-gomemory-setup", "sync", "--yes", "--only=" + strings.Join(tools, ",")},
+	}
+	return append([]DepState{sync}, out...)
 }
 
 // FormatDepsNotice compone el aviso de componentes desactualizados.

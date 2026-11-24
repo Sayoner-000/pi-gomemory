@@ -1223,11 +1223,10 @@ func Uninstall(assets fs.FS, opts *Options, flags UninstallFlags, w io.Writer) (
 // printToolsKept explica que las herramientas instaladas por el paso de
 // HCD-062 se conservan y cómo retirar cada una con su propio comando.
 func printToolsKept(w io.Writer) {
-	fmt.Fprintln(w, "Se conservan pi, mem, codegraph y codebase-memory-mcp: son herramientas independientes que otros agentes pueden usar. Para quitarlas:")
-	fmt.Fprintln(w, "  pi:                  rm -rf ~/.pi/agent/install ~/.pi/agent/bin/pi (y su enlace en ~/.local/bin)")
-	fmt.Fprintln(w, "  mem:                 curl -fsSL "+MemInstallScriptURL+" | bash -s -- --uninstall")
-	fmt.Fprintln(w, "  codegraph:           curl -fsSL "+CodegraphInstallScriptURL+" | sh -s -- --uninstall")
-	fmt.Fprintln(w, "  codebase-memory-mcp: codebase-memory-mcp uninstall")
+	fmt.Fprintf(w, "Se conservan %s: son herramientas independientes que otros agentes pueden usar. Para quitarlas:\n", ToolNamesText())
+	for _, c := range catalogTools() {
+		fmt.Fprintf(w, "  %-20s %s\n", c.Name+":", c.Uninstall)
+	}
 }
 
 // UninstallLogPath es el log de --verbose; vive junto a la marca de desinstalado.
