@@ -336,7 +336,7 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup anthropic-usage  Límites del plan de Anthropic (sesión y semana) en JSON")
 	fmt.Println("  pi-gomemory-setup codex-usage      Límites del plan de OpenAI Codex (5 horas y semana) en JSON")
 	fmt.Println("  pi-gomemory-setup doctor      Diagnóstico de Pi, MCP, plugins, launcher y otros agentes")
-	fmt.Println("  pi-gomemory-setup mcp         Registra los servidores MCP (gomemory, codegraph, codebase-memory)")
+	fmt.Println("  pi-gomemory-setup mcp         Registra los servidores MCP (gomemory y codegraph)")
 	fmt.Println("  pi-gomemory-setup codemode <on|off|status>  Activa/desactiva el modo codemode híbrido en Pi y MCP")
 	fmt.Println("  pi-gomemory-setup theme       Instala y activa el tema gomemory en Pi")
 	fmt.Println("  pi-gomemory-setup plugin      Configura pi-antigravity y pi-cc-extensions")
@@ -363,10 +363,8 @@ func printHelp() {
 func codemodeNote() string {
 	servers := installer.CodemodeMCPServers()
 	var direct []string
-	for _, name := range []string{"gomemory", "codebase-memory"} {
-		direct = append(direct, slices.Sorted(maps.Keys(servers[name].ToolExposure))...)
-	}
-	return "Nota: el modo por defecto de install y update es codemode híbrido; `codemode off` vuelve al modo directo (gomemory, codegraph y codebase-memory en exposure \"direct\") y la elección se recuerda en install y update. En modo codemode híbrido, Pi habilita +codemode (sandbox QuickJS para paralelizar llamadas y filtrar salidas >20 KB antes de entrar al contexto) y pasa gomemory y codebase-memory a exposure \"codemode\", manteniendo direct las herramientas de protocolo y consulta diaria (" +
+	direct = append(direct, slices.Sorted(maps.Keys(servers["gomemory"].ToolExposure))...)
+	return "Nota: el modo por defecto de install y update es codemode híbrido; `codemode off` vuelve al modo directo (gomemory y codegraph en exposure \"direct\") y la elección se recuerda en install y update. En modo codemode híbrido, Pi habilita +codemode (sandbox QuickJS para paralelizar llamadas y filtrar salidas >20 KB antes de entrar al contexto) y pasa gomemory a exposure \"codemode\", manteniendo direct las herramientas de protocolo y consulta diaria (" +
 		strings.Join(direct, ", ") + "). El resto sigue disponible a través de la tool codemode."
 }
 

@@ -61,7 +61,7 @@ Comandos:
   anthropic-usage  Devuelve los límites del plan de Anthropic en JSON
   codex-usage   Devuelve los límites del plan de OpenAI Codex en JSON
   doctor        Verifica binarios, tema, MCP, plugins, launcher y otros agentes detectados
-  mcp           Registra gomemory, codegraph y codebase-memory en mcp.json
+  mcp           Registra gomemory y codegraph en mcp.json
   codemode      Activa, desactiva o consulta el modo codemode híbrido (on | off | status)
   theme         Instala la paleta gomemory en ~/.pi/agent/themes/
   plugin        Configura pi-antigravity y pi-cc-extensions en settings.json
@@ -73,9 +73,9 @@ Comandos:
   version       Muestra la versión instalada
   deps-status   Lista los componentes desactualizados frente a la versión instalada real (sale con 10)
   deps-update   Actualiza los componentes desactualizados (las herramientas, en un solo sync)
-  deps-install  Instala el último release verificado de codebase-memory-mcp (deps-install codebase-memory-mcp)
-  sync          Instala lo que falta y actualiza lo desactualizado de pi, mem, codegraph,
-                codebase-memory-mcp y herdr ([--yes] [--json] [--only=a,b | --skip=c])
+  deps-install  Ya no instala nada: codebase-memory-mcp se retiró en v1.28.0 (sale con 2)
+  sync          Instala lo que falta y actualiza lo desactualizado de pi, mem, codegraph
+                y herdr ([--yes] [--json] [--only=a,b | --skip=c])
   components    Lista los componentes del meta-harness (--names sin red; --json con su estado)
   update        Actualiza pi-gomemory desde la última release verificada y después ejecuta sync
   uninstall     Retira lo instalado por pi-gomemory (ver «Desinstalar» en installation.md)
@@ -84,7 +84,7 @@ Comandos:
 
 ## Codemode y contexto vivo
 
-`install` y `update` dejan Pi en modo **codemode híbrido** por defecto: `gomemory` y `codebase-memory` declaran directas solo sus tools de protocolo y consulta diaria, `codegraph` sigue directo y el resto se llama desde `codemode`. Con `codemode off` vuelves al modo directo, y esa elección se respeta en las siguientes instalaciones:
+`install` y `update` dejan Pi en modo **codemode híbrido** por defecto: `gomemory` declara directas solo sus tools de protocolo y consulta diaria, `codegraph` sigue directo y el resto se llama desde `codemode`. Con `codemode off` vuelves al modo directo, y esa elección se respeta en las siguientes instalaciones:
 
 ```bash
 pi-gomemory-setup codemode on
@@ -98,7 +98,7 @@ Si una skill nombra una tool que el modelo no ve declarada (por ejemplo `socrati
 
 Cuando `settings.json` tiene `+codemode` y `mcp.json` sigue en directo, o al revés, `codemode status` responde `parcial`. Con el híbrido por defecto solo pasa si elegiste `codemode off` y otra herramienta añadió `+codemode`. En ese estado Pi carga todas las tools directas y además `codemode`, así que pagas las dos cosas en cada turno. `install`, `update` y `doctor` lo avisan. Para salir, elige un modo con `codemode on` u `codemode off`.
 
-Los mismos comandos avisan si `codebase-memory-mcp install` dejó una extensión para Pi, normalmente `~/.pi/agent/extensions/cbmem.ts`. Esa extensión registra las tools de codebase-memory sin prefijo y Pi las ve dos veces, una por la extensión y otra por el servidor MCP. pi-gomemory no la borra porque no la instaló. Bórrala tú y, si reinstalas codebase-memory-mcp, usa `--clients` sin `pi`. `codebase-memory-mcp uninstall` no sirve para esto: quita la integración de todos los agentes.
+pi-gomemory ya no instala codebase-memory-mcp desde v1.28.0, y al instalar retira la entrada heredada `codebase-memory` de `mcp.json` si la había escrito él. Si la registraste tú y además `codebase-memory-mcp install` dejó una extensión para Pi (normalmente `~/.pi/agent/extensions/cbmem.ts`), Pi ve esas tools dos veces. pi-gomemory ya no lo avisa desde v1.28.0 ni borra la extensión, porque no la instaló. Bórrala tú y, si reinstalas codebase-memory-mcp, usa `--clients` sin `pi`; `codebase-memory-mcp uninstall` quita la integración de todos los agentes.
 
 `pi-gomemory-setup lite on` retira los servidores de grafo gestionados por pi-gomemory y conserva los personalizados. El modo se mantiene al ejecutar `install`, `update`, `mcp` o cambiar codemode. Usa `lite status` para consultarlo y `lite off` para restaurar los servidores gestionados que falten.
 
@@ -129,7 +129,7 @@ Pi solo admite una cabecera. Si pi-cc-extensions tiene `showStartupHeader: true`
 Desde `v1.22.0`, la instalación activa `hideThinkingBlock: true` en `~/.pi/agent/settings.json` si el usuario no había fijado otro valor, de modo que Pi inicia con los bloques de razonamiento colapsados (`Ctrl+T` los expande o colapsa en cualquier momento). `gomemory-status.ts` muestra la etiqueta `(thinking...)` y una secuencia animada de puntos (`· • ●`) en el indicador de carga, sin interferir con el texto de `pi-cc-extensions`.
 
 ### Modo plan (`/plan`)
-Mientras el modo plan está activo, Pi bloquea las modificaciones comunes del agente (`edit`, `write`, `powershell`, comandos destructivos en `bash`), las mutaciones de estado HCD (`mem hcd start`, `clarify`, `approve`, `verify`, `close`, `cancel`, `promote`, `rename`), `codegraph index`, `delete_project`, `manage_adr` en escritura e `index_repository` con `persistence: true`. Las consultas de solo lectura de `codegraph` y `codebase-memory`, así como `index_repository` con `persistence: false` sobre el índice externo, permanecen permitidos. Antes de proponer tareas o abrir un HCD, el protocolo exige entregar un Mapa de impacto con símbolos, llamadores, archivos afectados y cobertura.
+Mientras el modo plan está activo, Pi bloquea las modificaciones comunes del agente (`edit`, `write`, `powershell`, comandos destructivos en `bash`), las mutaciones de estado HCD (`mem hcd start`, `clarify`, `approve`, `verify`, `close`, `cancel`, `promote`, `rename`, también la tool `hcd_rename`) y `codegraph index`. Las consultas de solo lectura de `codegraph` y de gomemory siguen permitidas. Antes de proponer tareas o abrir un HCD, el protocolo exige entregar un Mapa de impacto con símbolos, llamadores, archivos afectados y cobertura.
 
 - `/plan on` activa el modo sin enviar una petición.
 - `/plan off` lo desactiva sin iniciar un turno. El siguiente turno ya no recibe las instrucciones de modo plan.
@@ -241,7 +241,7 @@ Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens d
 Desde v1.13.0, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho, delante del modelo y la rama, cuando `pi-gomemory-setup deps-status` sale con 10. Al iniciar la sesión consulta el estado, ejecuta `deps-refresh` en segundo plano (solo vuelve a la red si la última consulta tiene más de una hora) y vuelve a consultar, así que una release se anuncia como mucho una hora después de publicarse, sin retrasar el arranque. Con `/tokens` apagado, el aviso se publica en el pie por defecto de Pi. Solo informa: para instalar, responde a la pregunta del launcher, ejecuta `pi-gomemory-setup deps-update` o usa `/componentes`. `PI_GOMEMORY_NO_UPDATE_CHECK=1` lo desactiva. Vacía, `0` o `false` lo dejan activo, igual que en el launcher y en `check-update`.
 
 ### Componentes del meta-harness (`/componentes`)
-Desde v1.26.0 lista pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `herdr` y los paquetes fijados, con la versión instalada y la publicada (lo lee de `pi-gomemory-setup components --json`). Elige una herramienta para marcarla o desmarcarla y luego **Aplicar**: se ejecuta `pi-gomemory-setup sync --only=…` con lo marcado y un plazo de 60 minutos, y al terminar ves qué se instaló, qué se actualizó y qué falló. `pi` y `mem` no se pueden desmarcar. pi-gomemory y los paquetes fijados aparecen solo como información: se actualizan con `update` e `install`. Si `pi` quedó actualizado, reinicia Pi para usar la versión nueva. Funciona aunque `PI_GOMEMORY_NO_UPDATE_CHECK` esté puesta.
+Lista pi-gomemory, `pi`, `mem`, `codegraph`, `herdr` y los paquetes fijados, con la versión instalada y la publicada (lo lee de `pi-gomemory-setup components --json`). Elige una herramienta para marcarla o desmarcarla y luego **Aplicar**: se ejecuta `pi-gomemory-setup sync --only=…` con lo marcado y un plazo de 60 minutos, y al terminar ves qué se instaló, qué se actualizó y qué falló. `pi` y `mem` no se pueden desmarcar. pi-gomemory y los paquetes fijados aparecen solo como información: se actualizan con `update` e `install`. Si `pi` quedó actualizado, reinicia Pi para usar la versión nueva. Funciona aunque `PI_GOMEMORY_NO_UPDATE_CHECK` esté puesta.
 
 ### Ventana de contexto (`/context`)
 Muestra el desglose de espacio ocupado en la ventana de contexto del modelo para identificar qué archivos o mensajes consumen más memoria.

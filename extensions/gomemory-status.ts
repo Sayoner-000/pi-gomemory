@@ -304,7 +304,7 @@ export default function (pi: ExtensionAPI) {
 
 	// HCD-076: ver y reconciliar los componentes del meta-harness desde Pi.
 	pi.registerCommand("componentes", {
-		description: "Ver y actualizar los componentes del meta-harness (pi, mem, codegraph, codebase-memory-mcp, herdr)",
+		description: "Ver y actualizar los componentes del meta-harness (pi, mem, codegraph, herdr)",
 		handler: async (_args, ctx) => {
 			let rows: ComponentRow[];
 			try {

@@ -19,6 +19,12 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.29.0](releases/v1.29.0.md)
+Adapta pi-gomemory a gomemory 2.59.0: en `/tasks`, una tarea `stale` cuenta como progreso mientras la unidad sigue en `implement`. Pi comprueba sus skills al iniciar la sesión y tras `mem update` (`skills-sync --check`), avisa de las copias editadas que se quedaron atrás y las repone con `skills-sync --restore`.
+
+[Notas de v1.28.0](releases/v1.28.0.md)
+Retira codebase-memory-mcp del catálogo, del instalador, de `mcp.json` y de las skills. CodeGraph queda como único grafo externo.
+
 [Notas de v1.27.0](releases/v1.27.0.md)
 Corrige el foco y el tono gris en `/tasks` (prioridad `pending` → `failed` → `stale`, indicador `· en curso`, llamadas terminadas en verde), unifica el protocolo de impacto a `codegraph` único y añade auto-refresh debounced de `mem code-refresh`.
 
@@ -150,4 +156,3 @@ pi-gomemory empaqueta todo ese proceso en un único binario compilado en Go. No 
 
 * [gomemory](https://github.com/Sayoner-000/gomemory) — Memoria colectiva persistente, sinapsis y protocolo de checkpoints y HCD.
 * [CodeGraph](https://github.com/colbymchenry/codegraph) — Inteligencia de código mediante grafo SQLite AST local para más de 30 lenguajes.
-* [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) — Servidor MCP para consultas profundas y análisis de impacto.

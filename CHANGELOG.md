@@ -6,21 +6,21 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
 ## [v1.29.0] - 2026-11-24
 
-Adaptación a los cambios de HCD de gomemory 2.59.0 (HCD-064): una tarea caducada cuenta como progreso mientras quedan pendientes y `mem hcd verify --stale` sin comando revalida todas las caducadas (HCD-079).
-
-### Changed
-- `/tasks` (`extensions/gomemory-tasks.ts`): `taskVisual` recibe el `stage` de la unidad. En `implement`, una tarea `stale` se pinta como `●` atenuado sin tono `warning` y la barra de progreso la cuenta como hecha; en `verify`/`close` conserva `↻` en tono `warning`. `resolveActiveTaskId` no cambia.
-- Skills `hcd-verify` y `hcd-implement` sincronizadas con las plantillas de gomemory 2.59.0: las caducadas cuentan como progreso con tareas pendientes y, antes del cierre, se revalidan en una sola llamada con `mem hcd verify --stale --json --client <agente>` sin comando.
-- El protocolo HCD que inyecta `extensions/gomemory-context.ts` indica que una tarea caducada con pendientes no se reverifica y que al cierre se usa `mem hcd verify --stale` sin comando.
+Pensada para gomemory 2.59.0. Si aún no lo tienes, ejecuta `mem update`.
 
 ### Added
-- Skills de Pi al día tras `mem update` (HCD-080): `pi-gomemory-setup skills-sync --check` compara `~/.pi-gomemory/skills` con la versión vigente (la copia de `mem` o la embebida) sin escribir y sale con 10 si hay skills desfasadas o editadas que difieren. `gomemory-status.ts` lo ejecuta en `session_start` y tras un bash con `mem update`: sincroniza las desfasadas y avisa de `/reload`. Las copias editadas a mano no se sobrescriben; se avisa en amarillo y `skills-sync --restore <skill>…` las repone (se niega si la carpeta tiene otros archivos).
-- `TestHCD080EmbeddedSkillsMatchMem` detecta en el repositorio que `skills/` se quedó por detrás de las copias que instaló `mem` (se omite sin ellas o con `PI_GOMEMORY_SKIP_SKILL_DRIFT=1`), y `make skills-embed` las copia.
-- Prueba de integración en `tests/gomemory-tasks.test.mjs` contra el binario real `mem` ≥ 2.59.0 (repo y `HOME` temporales; se omite sin él), y aserciones nuevas en `hcd072_skills_test.go` y `TestHCD079ContextProtocol`.
+- `pi-gomemory-setup skills-sync --check` compara las skills que carga Pi (`~/.pi-gomemory/skills`) con la versión vigente sin escribir nada. Sale con 10 si alguna está desfasada o si una copia editada a mano ya no coincide con la de `mem`.
+- `pi-gomemory-setup skills-sync --restore <skill>…` repone skills de gomemory editadas localmente. Se niega si la carpeta tiene otros archivos aparte de `SKILL.md`.
+- Pi comprueba las skills al iniciar la sesión y después de un `mem update` lanzado desde Pi. Sincroniza las desfasadas y avisa de que `/reload` las carga; de las editadas solo avisa, con el comando para reponerlas. `PI_GOMEMORY_NO_UPDATE_CHECK=1` también desactiva esta comprobación. (HCD-080)
+- `make skills-embed` copia en `skills/` las skills que instaló `mem`, y `TestHCD080EmbeddedSkillsMatchMem` falla si las embebidas se quedan atrás.
+
+### Changed
+- En `/tasks`, una tarea `stale` cuenta como progreso mientras la unidad está en `implement`: se ve como ● atenuado y suma en la barra. En `verify` y `close` sigue apareciendo ↻ en amarillo. (HCD-079)
+- Las skills `hcd-verify` y `hcd-implement` y el protocolo HCD que recibe el agente siguen a gomemory 2.59.0. Con tareas pendientes no se reverifica nada por caducidad, y al cierre `mem hcd verify --stale` sin comando revalida todas las caducadas. (HCD-079)
+- La ayuda del CLI, `/componentes` y la documentación dejan de presentar codebase-memory-mcp como componente instalado. (HCD-081)
 
 ### Fixed
-- Tests que quedaron desactualizados en v1.28.0 tras retirar `codebase-memory`: `installer_test.go` espera 20 skills, y `TestHCD036C01`, `TestHCD046Uninstall` y `TestHCD051LiteModeAndCodegraphGate` ya no esperan el servidor `codebase-memory`.
-- `TestHCD048H03UninstallMarkerOnFail` se omite cuando se ejecuta como root, porque ahí `chmod 0500` no impide escribir.
+- Cuatro tests seguían esperando codebase-memory o 21 skills después de v1.28.0. `TestHCD048H03UninstallMarkerOnFail` se omite al ejecutarse como root, porque ahí `chmod 0500` no impide escribir.
 
 ## [v1.28.0] - 2026-11-24
 
