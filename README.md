@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.25.1"><img src="https://img.shields.io/badge/version-1.25.1-blue" alt="Version 1.25.1"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.26.0"><img src="https://img.shields.io/badge/version-1.26.0-blue" alt="Version 1.26.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -37,16 +37,21 @@ En macOS o Linux:
 curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | bash
 ```
 
-El script descarga el binario de tu plataforma desde Releases, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Si falta alguna herramienta, la instalación la trae desde su canal oficial, sin que tengas que abrir ninguna página:
+El script resuelve la última release, descarga el binario de tu plataforma, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Para instalar una versión concreta, exporta antes `PI_GOMEMORY_VERSION=v1.26.0`.
 
-| Herramienta | Canal oficial | Si falla |
-|---|---|---|
-| `pi` | `https://pi.dev/install.sh` (pide Node.js 22.19+ y ofrece instalarlo) | se detiene la instalación |
-| `mem` (gomemory) | `scripts/install.sh` de gomemory, con `GOMEMORY_BIN_DIR` = tu directorio de binarios | se detiene la instalación |
-| `codegraph` | `install.sh` de colbymchenry/codegraph | avisa y sigue |
-| `codebase-memory-mcp` | último release de DeusData, verificado con su `checksums.txt` (SHA-256) e instalado con `install --skip-config`, sin tocar la configuración de otros agentes | avisa y sigue |
+El primer paso deja cada herramienta del meta-harness instalada y en su última versión. Si falta, la trae de su canal oficial; si está vieja, la actualiza con su propio comando, sin preguntar una por una:
 
-Lo que ya tienes no se reinstala. Los scripts se ejecutan con la entrada en `/dev/null` y un límite de 10 minutos; si necesitan preguntarte algo (por ejemplo, instalar Node.js), lo hacen por la terminal. Los instaladores oficiales pueden añadir su directorio al `PATH` en `~/.zshrc` o `~/.bashrc`. Para omitir este paso define `PI_GOMEMORY_SKIP_DEPS=1` (vacía, `0` o `false` lo dejan activo); con el modo lite solo se comprueban `pi` y `mem`. Los scripts de pi, gomemory y codegraph se toman de su canal oficial sin fijar versión, igual que sus propias actualizaciones. `uninstall` conserva estas cuatro herramientas y te dice cómo quitar cada una.
+| Herramienta | Canal oficial | Actualización | Si falla |
+|---|---|---|---|
+| `pi` | `https://pi.dev/install.sh` (antes comprueba Node.js 22.19+ y npm) | `pi update --self` | si no se puede instalar, se detiene la instalación |
+| `mem` (gomemory) | `scripts/install.sh` de gomemory, con `GOMEMORY_BIN_DIR` = tu directorio de binarios | `mem update -y` | si no se puede instalar, se detiene la instalación |
+| `codegraph` | `install.sh` de colbymchenry/codegraph | `codegraph upgrade` | avisa y sigue |
+| `codebase-memory-mcp` | último release de DeusData, verificado con su `checksums.txt` (SHA-256) e instalado con `install --skip-config` | se reinstala desde el release verificado | avisa y sigue |
+| `herdr` | `https://herdr.dev/install.sh`, con `HERDR_INSTALL_DIR` = tu directorio de binarios | `herdr update` | avisa y sigue |
+
+Si lo ejecutas desde una terminal, antes de empezar ves la lista con la versión instalada y la publicada de cada una. Escribe los números de las opcionales que no quieras y pulsa Enter; `pi` y `mem` no se pueden desmarcar. Sin terminal, o si solo pulsas Enter, se tratan todas.
+
+Si falta Node.js 22.19 o npm, la instalación se detiene antes de lanzar el instalador de Pi y te dice cómo instalarlos. Los scripts se ejecutan con la entrada en `/dev/null` y un límite de 10 minutos. Los instaladores oficiales pueden añadir su directorio al `PATH` en `~/.zshrc` o `~/.bashrc`. Para omitir este paso define `PI_GOMEMORY_SKIP_DEPS=1` (vacía, `0` o `false` lo dejan activo); con el modo lite las opcionales salen desmarcadas. `uninstall` conserva estas herramientas y te dice cómo quitar cada una.
 
 Después:
 
@@ -144,7 +149,10 @@ pi-gomemory-setup skills-sync Sincroniza el repositorio central de skills y purg
 pi-gomemory-setup harness     Solo el launcher
 pi-gomemory-setup version     Versión instalada
 pi-gomemory-setup check-update  Avisa si hay una release nueva (caché de 24 h)
-pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala
+pi-gomemory-setup update      Descarga la última release, verifica SHA256SUMS y reinstala; después ejecuta sync
+pi-gomemory-setup sync [--yes] [--json] [--only=a,b | --skip=c]
+                              Instala lo que falta y actualiza lo desactualizado de pi, mem, codegraph, codebase-memory-mcp y herdr
+pi-gomemory-setup components --names | --json  Lista los componentes del meta-harness y su estado
 pi-gomemory-setup deps-refresh  Consulta las últimas versiones de pi-gomemory y sus dependencias
 pi-gomemory-setup deps-status   Componentes desactualizados según la última consulta (sale con 10)
 pi-gomemory-setup deps-update   Actualiza los componentes desactualizados
@@ -194,6 +202,7 @@ La extensión de contexto ejecuta `mem context` una vez por sesión con un timeo
 | `/tdd watch` | Ejecuta las pruebas una vez cuando el agente termina, solo si cambió archivos (`edit`, `write` o `bash`); no bloquea al agente |
 | `/tdd report` | Publica en el chat, y en el contexto del modelo, el informe de la última ejecución con cada fallo |
 | `/tokens` | Muestra u oculta la barra de tokens y coste; el aviso de actualizaciones pasa al pie por defecto de Pi |
+| `/componentes` | Lista los componentes del meta-harness con su versión instalada y la publicada, y reconcilia los que marques |
 
 El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia. Los paneles `/sidebar` y `/tdd` se apilan en la columna derecha sin solaparse; el clic funciona en el modo `fullscreen` de Pi (el predeterminado). Detalle en [docs/usage.md](docs/usage.md).
 
@@ -206,9 +215,11 @@ El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo c
 
 ### Actualizaciones del meta-harness
 
-Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa la última publicada según la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`) y, desde v1.13.0, compara con la versión que tienes instalada ahora, así que no anuncia algo que ya actualizaste por otra vía. Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar.
+Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `herdr`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa la última publicada según la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`) y, desde v1.13.0, compara con la versión que tienes instalada ahora, así que no anuncia algo que ya actualizaste por otra vía. Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar.
 
-Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano si la última consulta en red tiene más de una hora y vuelve a consultar, de modo que una release se anuncia como mucho una hora después de publicarse. El aviso solo informa: para instalar, responde a la pregunta del launcher o ejecuta `pi-gomemory-setup deps-update`. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Vacía, `0` o `false` la dejan activa.
+Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano si la última consulta en red tiene más de una hora y vuelve a consultar, de modo que una release se anuncia como mucho una hora después de publicarse. El aviso solo informa: para instalar, responde a la pregunta del launcher, ejecuta `pi-gomemory-setup deps-update` o usa `/componentes` sin salir de Pi. Si se actualizó `pi`, `/componentes` te pide reiniciar Pi. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Vacía, `0` o `false` la dejan activa. `sync`, `update` y `/componentes` consultan igualmente, porque los pides tú.
+
+`pi-gomemory-setup sync` es la forma directa de dejar las herramientas al día. `update` lo ejecuta al terminar, y `deps-update` le pasa las herramientas desactualizadas en una sola llamada, así que ninguna se actualiza dos veces.
 
 `pi-antigravity` y `pi-cc-extensions` se instalan fijados a una versión exacta (`npm:pi-antigravity@0.15.0`, `npm:pi-cc-extensions@1.0.21`); cambian solo con una release nueva de pi-gomemory, que antes valida cada versión candidata contra lo que pi-gomemory necesita de ella. Si npm publica una versión más nueva que todavía no se ha validado, `pi-gomemory-setup doctor` lo avisa con `⚠`, pero `deps-update` sigue instalando solo la versión fijada.
 
@@ -232,11 +243,12 @@ make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 
 La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.js; requiere `node` en el PATH y falla si falta. No accede a credenciales ni a Google. Puedes ejecutarlas por separado con `node --test tests/antigravity-prompt-guard/guard.test.mjs`.
 
-`install.sh` acepta `PI_GOMEMORY_VERSION`, `PI_GOMEMORY_BIN_DIR`, `PI_GOMEMORY_BASE_URL` y `PI_GOMEMORY_SKIP_DEPS`. `bash scripts/clean-install-check.sh` ejecuta la instalación completa en un HOME temporal con compilación local y comprueba que `pi`, `mem`, `codegraph` y `codebase-memory-mcp` respondan (requiere red). Esta última permite probar el instalador contra un `dist/` local, por ejemplo `file://$PWD/dist`.
+`install.sh` acepta `PI_GOMEMORY_VERSION`, `PI_GOMEMORY_BIN_DIR`, `PI_GOMEMORY_BASE_URL`, `PI_GOMEMORY_LATEST_URL` y `PI_GOMEMORY_SKIP_DEPS`. Sin `PI_GOMEMORY_VERSION` lee la etiqueta de la redirección de `PI_GOMEMORY_LATEST_URL` (por defecto, `releases/latest` del repositorio); si no la obtiene, se detiene y sugiere fijar la versión. `PI_GOMEMORY_BASE_URL` permite probar el instalador contra un `dist/` local, por ejemplo `file://$PWD/dist`. Al compilar desde el código fuente no consulta la red. `bash scripts/clean-install-check.sh` ejecuta la instalación completa en un HOME temporal con compilación local y comprueba que `pi`, `mem`, `codegraph`, `codebase-memory-mcp` y `herdr` respondan (requiere red).
 
 ## Documentación
 
 - [Guía HTML v1.15](docs/Guia-PI-GOMEMORY-v1.15.html): instalación, contexto por sesión y referencia de comandos
+- [Notas de v1.26.0](docs/releases/v1.26.0.md): catálogo único de componentes, `sync`, herdr opcional, selector en la terminal, `/componentes` en Pi e `install.sh` sobre la última release (HCD-076)
 - [Notas de v1.25.1](docs/releases/v1.25.1.md): correcciones del ACR de v1.25.0 en launcher, doctor, caché de dependencias y modo plan (HCD-075)
 - [Notas de v1.25.0](docs/releases/v1.25.0.md): sincronización de skills desde `mem`, aviso de desfase en `doctor` y `codegraph` como grafo principal (HCD-073)
 - [Notas de v1.24.1](docs/releases/v1.24.1.md): actualización de las skills embebidas `hcd-implement` y `hcd-verify` para evitar revalidaciones innecesarias (HCD-072)

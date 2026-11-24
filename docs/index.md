@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.26.0](releases/v1.26.0.md)
+Un solo catálogo de componentes alimenta la instalación, `doctor`, `deps-*` y `uninstall`. El nuevo `sync` instala lo que falta y actualiza lo desactualizado (ahora también `herdr`, opcional), con una lista para elegir en la terminal y el comando `/componentes` dentro de Pi. `install.sh` instala siempre la última release.
+
 [Notas de v1.25.1](releases/v1.25.1.md)
 Cierra los cuatro hallazgos del ACR sobre `v1.25.0`: truncado de contexto por bytes UTF-8 en el launcher `pi-gomemory`, aviso en `doctor` si falla la lectura de `~/.pi-gomemory/skills`, detección de caché corrupta en `DepsCacheError` y respaldo seguro si falta `gomemory-plan-patterns.json`.
 

@@ -55,7 +55,7 @@ El binario `pi-gomemory-setup` acepta los siguientes argumentos:
 Uso: pi-gomemory-setup [comando]
 
 Comandos:
-  install       Ejecuta la instalación completa (opción por defecto); instala pi, mem, codegraph y codebase-memory-mcp si faltan
+  install       Ejecuta la instalación completa (opción por defecto); su primer paso es sync
   usage         Muestra cuotas y límites de consumo de Google AI Pro (--json disponible)
   claude-usage  Muestra telemetría agregada de tokens de Claude Code (hoy, semana, total)
   anthropic-usage  Devuelve los límites del plan de Anthropic en JSON
@@ -70,9 +70,12 @@ Comandos:
   harness       Genera el launcher pi-gomemory en ~/.local/bin (o PI_GOMEMORY_BIN_DIR)
   version       Muestra la versión instalada
   deps-status   Lista los componentes desactualizados frente a la versión instalada real (sale con 10)
-  deps-update   Actualiza los componentes desactualizados
+  deps-update   Actualiza los componentes desactualizados (las herramientas, en un solo sync)
   deps-install  Instala el último release verificado de codebase-memory-mcp (deps-install codebase-memory-mcp)
-  update        Actualiza pi-gomemory desde la última release verificada
+  sync          Instala lo que falta y actualiza lo desactualizado de pi, mem, codegraph,
+                codebase-memory-mcp y herdr ([--yes] [--json] [--only=a,b | --skip=c])
+  components    Lista los componentes del meta-harness (--names sin red; --json con su estado)
+  update        Actualiza pi-gomemory desde la última release verificada y después ejecuta sync
   uninstall     Retira lo instalado por pi-gomemory (ver «Desinstalar» en installation.md)
   help          Muestra este mensaje de ayuda
 ```
@@ -232,7 +235,10 @@ Las suites omitidas aparecen agrupadas al final, bajo «Omitidas (n)».
 Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens de entrada, salida, lecturas de caché y coste estimado.
 
 ### Aviso de actualizaciones
-Desde v1.13.0, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho, delante del modelo y la rama, cuando `pi-gomemory-setup deps-status` sale con 10. Al iniciar la sesión consulta el estado, ejecuta `deps-refresh` en segundo plano (solo vuelve a la red si la última consulta tiene más de una hora) y vuelve a consultar, así que una release se anuncia como mucho una hora después de publicarse, sin retrasar el arranque. Con `/tokens` apagado, el aviso se publica en el pie por defecto de Pi. Solo informa: para instalar, responde a la pregunta del launcher o ejecuta `pi-gomemory-setup deps-update`. `PI_GOMEMORY_NO_UPDATE_CHECK=1` lo desactiva. Vacía, `0` o `false` lo dejan activo, igual que en el launcher y en `check-update`.
+Desde v1.13.0, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho, delante del modelo y la rama, cuando `pi-gomemory-setup deps-status` sale con 10. Al iniciar la sesión consulta el estado, ejecuta `deps-refresh` en segundo plano (solo vuelve a la red si la última consulta tiene más de una hora) y vuelve a consultar, así que una release se anuncia como mucho una hora después de publicarse, sin retrasar el arranque. Con `/tokens` apagado, el aviso se publica en el pie por defecto de Pi. Solo informa: para instalar, responde a la pregunta del launcher, ejecuta `pi-gomemory-setup deps-update` o usa `/componentes`. `PI_GOMEMORY_NO_UPDATE_CHECK=1` lo desactiva. Vacía, `0` o `false` lo dejan activo, igual que en el launcher y en `check-update`.
+
+### Componentes del meta-harness (`/componentes`)
+Desde v1.26.0 lista pi-gomemory, `pi`, `mem`, `codegraph`, `codebase-memory-mcp`, `herdr` y los paquetes fijados, con la versión instalada y la publicada (lo lee de `pi-gomemory-setup components --json`). Elige una herramienta para marcarla o desmarcarla y luego **Aplicar**: se ejecuta `pi-gomemory-setup sync --only=…` con lo marcado y un plazo de 60 minutos, y al terminar ves qué se instaló, qué se actualizó y qué falló. `pi` y `mem` no se pueden desmarcar. pi-gomemory y los paquetes fijados aparecen solo como información: se actualizan con `update` e `install`. Si `pi` quedó actualizado, reinicia Pi para usar la versión nueva. Funciona aunque `PI_GOMEMORY_NO_UPDATE_CHECK` esté puesta.
 
 ### Ventana de contexto (`/context`)
 Muestra el desglose de espacio ocupado en la ventana de contexto del modelo para identificar qué archivos o mensajes consumen más memoria.

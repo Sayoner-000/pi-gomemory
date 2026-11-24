@@ -4,6 +4,23 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.26.0] - 2026-11-24
+
+### Added
+- `pi-gomemory-setup sync` instala las herramientas que faltan y actualiza las desactualizadas (`pi`, `mem`, `codegraph`, `codebase-memory-mcp` y `herdr`) con su comando oficial, sin preguntar una por una. Acepta `--yes`, `--json`, `--only=a,b` y `--skip=c`; `pi` y `mem` se tratan siempre. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- Lista numerada en la terminal para elegir qué herramientas opcionales tratar antes de `install` o `sync`. Se lee de `/dev/tty`, así que también aparece con `curl | bash`. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- `herdr` como herramienta opcional: se instala con `https://herdr.dev/install.sh` y se actualiza con `herdr update`. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- Comando `/componentes` en Pi para ver el estado del meta-harness y reconciliar las herramientas marcadas; avisa de reiniciar Pi si se actualizó `pi`. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- `pi-gomemory-setup components --names | --json` lista los componentes y su estado. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+
+### Changed
+- `install.sh` descarga la última release en lugar de una versión escrita en el script. `PI_GOMEMORY_VERSION` sigue fijando una versión y `PI_GOMEMORY_LATEST_URL` cambia de dónde se resuelve. Al compilar desde el código fuente no consulta la red. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- El primer paso de `install` ejecuta `sync`: ahora también actualiza las herramientas que ya estaban instaladas. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- `update` ejecuta `sync` una sola vez, también cuando pi-gomemory ya está al día, y `deps-update` pasa las herramientas desactualizadas a un único `sync`. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- Antes de instalar `pi` se comprueba Node.js 22.19+ y npm; si faltan, la instalación se detiene y explica cómo instalarlos. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- `doctor` marca una herramienta opcional ausente con `⚠` en vez de `✗`. ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+- Instalación, `deps-*`, `doctor` y `uninstall` leen los componentes de un único catálogo (`pkg/installer/components.go`). ([HCD-076](hcd/HCD-076-catalogo-unico-de-componentes-con-sync-s.md))
+
 ## [v1.25.1] - 2026-11-23
 
 ### Fixed
