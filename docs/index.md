@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.27.0](releases/v1.27.0.md)
+Corrige el foco y el tono gris en `/tasks` (prioridad `pending` → `failed` → `stale`, indicador `· en curso`, llamadas terminadas en verde), unifica el protocolo de impacto a `codegraph` único y añade auto-refresh debounced de `mem code-refresh`.
+
 [Notas de v1.26.1](releases/v1.26.1.md)
 Fija `pi-cc-extensions` en 1.0.22, la versión que publica npm, después de validarla contra lo que pi-gomemory usa de ella.
 

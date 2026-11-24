@@ -178,11 +178,6 @@ async function captureSection(execImpl) {
 
 const requiredTokens = [
 	"codegraph_explore",
-	"codebase-memory",
-	"search_graph",
-	"trace_path",
-	"check_index_coverage",
-	"index_repository",
 	"Mapa de impacto",
 ];
 
@@ -197,8 +192,8 @@ for (const tok of requiredTokens) {
 }
 
 const block = piBlock([]);
-if (!block.includes("codegraph") || !block.includes("codebase-memory") || !block.includes("impacto")) {
-	fails.push("piBlock no menciona validación de impacto con codegraph y codebase-memory en Modo plan");
+if (!block.includes("codegraph") || !block.includes("impacto")) {
+	fails.push("piBlock no menciona validación de impacto con codegraph en Modo plan");
 }
 
 console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
@@ -282,7 +277,7 @@ const impactLine = block.split("\n").find((l) => /impacto obligatorio/i.test(l))
 if (!impactLine) {
 	fails.push("falta viñeta dedicada de Impacto obligatorio independiente de /plan");
 } else {
-	for (const tok of ["con o sin /plan", "codegraph_explore", "codebase-memory", "search_graph", "trace_path", "check_index_coverage", "HCD"]) {
+	for (const tok of ["con o sin /plan", "codegraph_explore", "HCD"]) {
 		if (!impactLine.includes(tok)) fails.push("viñeta de impacto omite " + tok);
 	}
 }

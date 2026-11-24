@@ -50,17 +50,17 @@ export function piBlock(selectedTools: unknown[] = []): string {
 	const lines = [
 		"## Protocolo de pi-gomemory en Pi",
 		"",
-		"- Las tools de gomemory (mcp__gomemory__*) y codebase-memory (mcp__codebase_memory__*) declaradas en este prompt se llaman directamente.",
+		"- Las tools de gomemory (mcp__gomemory__*) y codegraph (codegraph_explore) declaradas en este prompt se llaman directamente.",
 	];
 	if (codemode) {
 		lines.push(
-			"- Codemode activo: el resto de tools de gomemory y codebase-memory (review_*, octopus_*, pack_*, hcd_history, socratica_flow, query_graph…) no se pierden; se llaman desde la tool 'codemode' con 'tools.<nombre>(args)'. No recurras a grep/find por no verlas como directas. Si una skill nombra una tool que no está declarada (por ejemplo socratica_flow), antes de concluir que una tool no existe búscala desde codemode con searchTools('<nombre>') y llámala por ahí.",
+			"- Codemode activo: el resto de tools de gomemory (review_*, octopus_*, pack_*, hcd_history, socratica_flow…) no se pierden; se llaman desde la tool 'codemode' con 'tools.<nombre>(args)'. No recurras a grep/find por no verlas como directas. Si una skill nombra una tool que no está declarada (por ejemplo socratica_flow), antes de concluir que una tool no existe búscala desde codemode con searchTools('<nombre>') y llámala por ahí.",
 		);
 	}
 	lines.push(
-		"- Impacto obligatorio (siempre, con o sin /plan): antes de editar código, proponer cambios o abrir una unidad HCD ante cualquier solicitud, valida el impacto completo del proyecto en solo lectura con codegraph como grafo principal (codegraph_explore si existe .codegraph/), identificando símbolos, llamadores y archivos afectados antes de tocar nada. Consulta codebase-memory solo si codegraph deja huecos o hace falta una traza que no da: search_graph, trace_path inbound/outbound y check_index_coverage sobre las rutas citadas.",
-		"- HCD: comprueba la unidad activa con 'mem hcd show'; mide primero el impacto del proyecto con codegraph (codebase-memory solo ante huecos); ejecuta las comprobaciones en bash para ver el rojo o el verde y registra la evidencia con 'mem hcd verify', una verificación por llamada Bash (sin bucles ni funciones que agrupen verificaciones) para permitir intervención entre comprobaciones y actualizar el panel de tareas de Pi.",
-		"- Modo plan: antes de redactar un plan o abrir un HCD, llama a get_plan_context() o 'mem plan-context', valida el impacto del proyecto en solo lectura con codegraph como grafo principal (codegraph_explore) y codebase-memory solo ante huecos de cobertura o trazas que codegraph no da (search_graph, trace_path, check_index_coverage), entrega el Mapa de impacto y el árbol de tareas atómicas y detente.",
+		"- Impacto obligatorio (siempre, con o sin /plan): antes de editar código, proponer cambios o abrir una unidad HCD ante cualquier solicitud, valida el impacto completo del proyecto en solo lectura con codegraph como grafo único (codegraph_explore), identificando símbolos, llamadores y archivos afectados antes de tocar nada.",
+		"- HCD: comprueba la unidad activa con 'mem hcd show'; mide primero el impacto del proyecto con codegraph; ejecuta las comprobaciones en bash para ver el rojo o el verde y registra la evidencia con 'mem hcd verify' (o 'mem hcd verify --stale' al cierre para revalidar caducadas en una sola llamada), una verificación por llamada Bash (sin bucles ni funciones que agrupen verificaciones) para permitir intervención entre comprobaciones y actualizar el panel de tareas de Pi.",
+		"- Modo plan: antes de redactar un plan o abrir un HCD, llama a get_plan_context() o 'mem plan-context', valida el impacto del proyecto en solo lectura con codegraph (codegraph_explore), entrega el Mapa de impacto y el árbol de tareas atómicas y detente.",
 		"- Splash: ejecuta la tool splash_review con la ruta del documento y una lente opcional. No le envíes historial ni memoria, no la sustituyas por una autoevaluación y no tomes un fallo de ejecución por una revisión aprobada.",
 		"- Si gomemory no respondió al iniciar la sesión, usa la CLI 'mem' (mem context, mem search) o get_context().",
 	);
@@ -81,6 +81,29 @@ export function buildSection(mem: MemContext | undefined, selectedTools: unknown
 export default function (pi: ExtensionAPI) {
 	let pending: Promise<MemContext> | undefined;
 	let warned = false;
+	let lastRefreshAt = 0;
+	let refreshInFlight = false;
+	const REFRESH_COOLDOWN_MS = 15_000;
+
+	/**
+	 * Heartbeat interno de auto-refresh (best-effort, no bloqueante):
+	 * dispara `mem code-refresh`, que bajo .code-refresh.lock mantiene al día
+	 * tanto CodeGraph (init autónomo si falta .codegraph/ o sync si hay cambios)
+	 * como el índice interno incremental de gomemory (`mem index`).
+	 */
+	function triggerAutoRefresh(cwd: string | undefined, force = false): void {
+		if (!cwd || refreshInFlight) return;
+		const now = Date.now();
+		if (!force && now - lastRefreshAt < REFRESH_COOLDOWN_MS) return;
+		lastRefreshAt = now;
+		refreshInFlight = true;
+		void pi
+			.exec("mem", ["code-refresh"], { cwd, timeout: 60_000 })
+			.catch(() => {})
+			.finally(() => {
+				refreshInFlight = false;
+			});
+	}
 
 	async function load(cwd: string | undefined): Promise<MemContext> {
 		try {
@@ -106,6 +129,17 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async (_event: any, ctx: any) => {
 		warned = false;
 		pending = load(cwdOf(ctx)); // no se espera: el arranque no se bloquea
+	});
+
+	pi.on("tool_execution_end", async (event: any, ctx: any) => {
+		const name = String(event?.toolName ?? "");
+		if (name === "edit" || name === "write" || name === "mcp__gomemory__save_memory") {
+			triggerAutoRefresh(cwdOf(ctx));
+		}
+	});
+
+	pi.on("agent_end", async (_event: any, ctx: any) => {
+		triggerAutoRefresh(cwdOf(ctx));
 	});
 
 	pi.on("before_agent_start", async (event: any, ctx: any) => {

@@ -47,8 +47,8 @@ const fails = [];
 const lines = piBlock([]).split("\n");
 const find = (re) => lines.find((l) => re.test(l)) || "";
 const principal = (where, text) => {
-	if (!/codegraph[^.]*principal/i.test(text)) fails.push(where + ": codegraph no figura como principal");
-	if (!/codebase-memory[^.]*solo/i.test(text)) fails.push(where + ": codebase-memory no queda como respaldo");
+	if (!/codegraph/i.test(text)) fails.push(where + ": falta codegraph");
+	if (/codebase-memory/i.test(text)) fails.push(where + ": no debe exigir codebase-memory");
 };
 principal("impacto", find(/impacto obligatorio/i));
 principal("plan", find(/^- Modo plan/));

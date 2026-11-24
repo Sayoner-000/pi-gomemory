@@ -48,10 +48,9 @@ export function bashBlocked(command: string): boolean {
 export const IMPACT_PROTOCOL = `## Validación obligatoria de impacto antes de HCD (solo lectura)
 
 Antes de proponer el árbol de tareas o abrir una unidad HCD, valida el impacto completo del proyecto sin modificar archivos del repositorio:
-1. **codegraph (grafo principal)**: si el proyecto tiene \`.codegraph/\`, consulta \`codegraph_explore\` sobre los símbolos y archivos implicados para inspeccionar fuentes, llamadores y llamadas dinámicas. Si no existe \`.codegraph/\`, decláralo sin ejecutar \`codegraph index\` y usa codebase-memory como grafo.
-2. **codebase-memory (solo ante huecos)**: consúltalo solo si codegraph no cubre una ruta o hace falta una traza que no da: \`search_graph\`, \`trace_path\` (\`direction="both"\`) y \`check_index_coverage\` sobre las rutas citadas. Si su índice falta o está desactualizado, puedes refrescarlo con \`index_repository(mode="moderate", persistence=false)\` (no escribe archivos en el repositorio; nunca uses \`persistence=true\` en modo plan).
-3. **Radio de impacto**: no afirmes qué archivos o contratos se ven afectados sin haber revisado sus llamadores y dependencias en el grafo.
-4. **Entregable**: incluye una sección explícita **«Mapa de impacto»** (símbolos, llamadores, archivos afectados y estado/huecos de cobertura) antes del árbol de tareas atómicas. No modifiques código ni abras/mutes unidades HCD mientras el modo plan esté activo.`;
+1. **codegraph (grafo principal)**: consulta \`codegraph_explore\` sobre los símbolos y archivos implicados para inspeccionar fuentes, llamadores y llamadas dinámicas. Si aún no existe \`.codegraph/\`, decláralo sin ejecutar \`codegraph index\` en modo plan (el auto-refresh interno de gomemory lo inicializa automáticamente fuera de modo plan).
+2. **Radio de impacto**: no afirmes qué archivos o contratos se ven afectados sin haber revisado sus llamadores y dependencias en el grafo.
+3. **Entregable**: incluye una sección explícita **«Mapa de impacto»** (símbolos, llamadores, archivos afectados y estado/huecos de cobertura) antes del árbol de tareas atómicas. No modifiques código ni abras/mutes unidades HCD mientras el modo plan esté activo.`;
 
 const FALLBACK = `[gomemory-plan:fallback]
 Estás en MODO PLAN (solo planificación). No modifiques archivos ni ejecutes comandos que cambien estado.

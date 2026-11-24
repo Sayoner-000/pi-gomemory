@@ -91,7 +91,7 @@ function taskVisual(status: string, active: boolean, now: number): { glyph: stri
 	if (status === "verified") return { glyph: "●", tone: "success" };
 	if (active) return { glyph: TASK_FRAMES[Math.floor(now / TASK_FRAME_MS) % TASK_FRAMES.length], tone: "accent" };
 	if (status === "failed" || status === "red") return { glyph: "✗", tone: "error" };
-	if (status === "unverified") return { glyph: "↻", tone: "warning" }; // tenía evidencia y caducó
+	if (status === "stale" || status === "unverified") return { glyph: "↻", tone: "warning" }; // tenía evidencia y caducó
 	return { glyph: "○", tone: "dim" };
 }
 
@@ -126,7 +126,7 @@ function formatDurationMs(ms: number): string {
 function callVisual(status: TaskCallEntry["status"], now: number): { glyph: string; tone: LineTone } {
 	if (status === "running") return { glyph: spinner(now), tone: "accent" };
 	if (status === "error") return { glyph: "✗", tone: "error" };
-	return { glyph: "✓", tone: "dim" };
+	return { glyph: "✓", tone: "success" };
 }
 
 const PROGRESS_CELLS = 10;
@@ -146,7 +146,7 @@ function callsWord(n: number): string {
 }
 
 /** Renderiza la unidad HCD y el árbol de llamadas por tarea (Q1: tarea activa expandida, completadas colapsadas). */
-export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Date.now()): RenderedTaskLine[] | undefined {
+export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Date.now(), agentBusy = false): RenderedTaskLine[] | undefined {
 	if (!u?.ok || !u.unit_id || u.state !== "active" || !Array.isArray(u.tasks) || u.tasks.length === 0) {
 		return undefined;
 	}
@@ -167,17 +167,19 @@ export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Da
 		const activity = tracker?.getTaskActivity(t.id);
 		const hasCalls = (activity?.totalCalls ?? 0) > 0;
 		const running = Boolean(activity?.calls.some((c) => c.status === "running"));
-		const { glyph, tone } = taskVisual(t.status, running || t.id === currentId, now);
+		const isActive = running || t.id === currentId;
+		const { glyph, tone } = taskVisual(t.status, isActive, now);
+		const workTag = isActive && (running || agentBusy) ? " · en curso" : "";
 
 		if (!tracker || !activity || !hasCalls) {
-			out.push({ text: `  ${glyph} ${t.id}. ${short(t.text)}`, tone });
+			out.push({ text: `  ${glyph} ${t.id}. ${short(t.text)}${workTag}`, tone });
 			continue;
 		}
 
 		const expanded = tracker.isTaskExpanded(t.id, activeTaskId);
 		if (!expanded) {
 			out.push({
-				text: `  ${glyph} ${t.id}. ${short(t.text)} · ${activity.totalCalls} ${callsWord(activity.totalCalls)} · ${activity.totalOutputLines} lines output · click to expand`,
+				text: `  ${glyph} ${t.id}. ${short(t.text)}${workTag} · ${activity.totalCalls} ${callsWord(activity.totalCalls)} · ${activity.totalOutputLines} lines output · click to expand`,
 				tone,
 				action: { kind: "toggle-task", taskId: t.id },
 			});
@@ -185,7 +187,7 @@ export function renderTasksTree(u: Unit, tracker?: TaskActivityTracker, now = Da
 		}
 
 		out.push({
-			text: `  ${glyph} ${t.id}. ${short(t.text)}`,
+			text: `  ${glyph} ${t.id}. ${short(t.text)}${workTag}`,
 			tone,
 			action: { kind: "toggle-task", taskId: t.id },
 		});
@@ -555,7 +557,11 @@ export function extractVerifyTaskIds(command: string): string[] {
 	return ids;
 }
 
-/** Resuelve la tarea HCD activa (foco manual si existe; si no, primera no verificada). */
+/**
+ * Resuelve la tarea HCD activa: foco manual si existe; si no, prioriza trabajo
+ * activo (failed/red → pending) sobre evidencia caducada (stale/unverified),
+ * para que editar la tarea N no haga saltar el foco atrás a la tarea 1.
+ */
 export function resolveActiveTaskId(unit: Unit | null, manualFocus: string | null): string | null {
 	if (!unit?.ok || unit.state !== "active" || !Array.isArray(unit.tasks) || unit.tasks.length === 0) {
 		return null;
@@ -563,6 +569,12 @@ export function resolveActiveTaskId(unit: Unit | null, manualFocus: string | nul
 	if (manualFocus && unit.tasks.some((t) => t.id === manualFocus)) {
 		return manualFocus;
 	}
+	const pending = unit.tasks.find((t) => t.status === "pending");
+	if (pending) return pending.id;
+	const failed = unit.tasks.find((t) => t.status === "failed" || t.status === "red");
+	if (failed) return failed.id;
+	const stale = unit.tasks.find((t) => t.status === "stale" || t.status === "unverified");
+	if (stale) return stale.id;
 	const next = unit.tasks.find((t) => t.status !== "verified");
 	return next ? next.id : null;
 }
@@ -781,6 +793,7 @@ export default function (pi: ExtensionAPI) {
 	let heartbeatCtx: any = null;
 	let disposed = false;
 	let sessionEpoch = 0;
+	let agentBusy = false;
 
 	/**
 	 * Latido del panel (HCD-061): mientras está visible, vuelve a consultar el motor
@@ -842,7 +855,7 @@ export default function (pi: ExtensionAPI) {
 
 	function syncWidget(ctx: any) {
 		if (disposed) return;
-		const hasView = Boolean(visible && currentUnit && renderTasksTree(currentUnit, tracker));
+		const hasView = Boolean(visible && currentUnit && renderTasksTree(currentUnit, tracker, Date.now(), agentBusy));
 		if (!hasView) {
 			mounted = false;
 			requestWidgetRender = null;
@@ -867,7 +880,7 @@ export default function (pi: ExtensionAPI) {
 						lastRendered = [];
 						return [];
 					}
-					lastRendered = renderTasksTree(currentUnit, tracker) ?? [];
+					lastRendered = renderTasksTree(currentUnit, tracker, Date.now(), agentBusy) ?? [];
 					const maxW = Math.max(10, width || 100);
 					return lastRendered.map((line) => truncateToWidth(styleTaskLine(line, theme), maxW, "…", false));
 				},
@@ -1031,7 +1044,13 @@ export default function (pi: ExtensionAPI) {
 		return undefined;
 	});
 
+	pi.on("agent_start", async (_event: any, ctx: any) => {
+		agentBusy = true;
+		if (currentUnit && visible) syncWidget(ctx);
+	});
+
 	pi.on("tool_execution_start", async (event: any, ctx: any) => {
+		agentBusy = true;
 		const args = event?.args ?? event?.input;
 		const toolName = String(event?.toolName ?? "");
 		if (currentUnit && toolName) {
@@ -1070,6 +1089,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("agent_end", async (_event: any, ctx: any) => {
+		agentBusy = false;
 		stopPolling();
 		await refresh(ctx);
 	});

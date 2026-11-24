@@ -4,6 +4,19 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.27.0] - 2026-11-24
+
+### Added
+- Heartbeat interno no bloqueante en `extensions/gomemory-context.ts` (cooldown de 15 s) que dispara `mem code-refresh` tras `edit`, `write`, `mcp__gomemory__save_memory` y `agent_end` para mantener actualizados el índice interno de gomemory y CodeGraph.
+- Pruebas unitarias en `tests/gomemory-tasks.test.mjs` para la prioridad de foco y el renderizado de tareas `stale` y activas en `/tasks`.
+
+### Changed
+- El protocolo de impacto en `gomemory-context.ts` y `gomemory-plan.ts` usa `codegraph` (`codegraph_explore`) como grafo único y retira las referencias a `codebase-memory`. El protocolo HCD incluye `mem hcd verify --stale` para revalidar tareas caducadas en una sola llamada.
+- En `/tasks`, las llamadas completadas (`done`) se muestran con `✓` en tono `success` en lugar de `dim`, y la tarea activa muestra `· en curso` mientras el agente trabaja.
+
+### Fixed
+- `resolveActiveTaskId` en `gomemory-tasks.ts` prioriza tareas `pending`, después `failed`/`red` y por último `stale`/`unverified`. Al editar código de una tarea posterior ya no salta el foco atrás a la primera tarea caducada ni queda en gris la tarea en curso.
+
 ## [v1.26.1] - 2026-11-24
 
 ### Changed
