@@ -4,6 +4,14 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.25.1] - 2026-11-23
+
+### Fixed
+- El launcher `pi-gomemory` trunca `CTX` por bytes (`wc -c` y `LC_ALL=C`) y retrocede sobre bytes de continuación UTF-8 antes de pasar `--append-system-prompt`, evitando partir secuencias multibyte o superar `MAX_ARG_STRLEN` en Linux con contextos largos. ([HCD-075](hcd/HCD-075-corregir-hallazgos-c-001-a-c-004-del-inf.md))
+- `doctor` comprueba el error de `os.ReadDir` en `skillDriftItem` y muestra `WARN` cuando `~/.pi-gomemory/skills` falta o no se puede leer. ([HCD-075](hcd/HCD-075-corregir-hallazgos-c-001-a-c-004-del-inf.md))
+- Añade `DepsCacheError` para distinguir una caché de dependencias ausente de un `pi-gomemory-deps.json` ilegible o con JSON corrupto. ([HCD-075](hcd/HCD-075-corregir-hallazgos-c-001-a-c-004-del-inf.md))
+- `gomemory-plan.ts` envuelve la carga de `gomemory-plan-patterns.json` en `try/catch` y usa un conjunto mínimo de patrones de respaldo si el archivo falta o está dañado. ([HCD-075](hcd/HCD-075-corregir-hallazgos-c-001-a-c-004-del-inf.md))
+
 ## [v1.25.0] - 2026-11-23
 
 ### Added
