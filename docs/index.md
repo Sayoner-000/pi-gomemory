@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.29.2](releases/v1.29.2.md)
+La skill ACR que instala `pi-gomemory-setup` usa finales de línea LF, igual que la de gomemory, y una prueba impide que una skill embebida vuelva a tener CRLF. El repositorio retira `constitution.md`, porque la Constitución Técnica de gomemory no aplica a pi-gomemory.
+
 [Notas de v1.29.1](releases/v1.29.1.md)
 Corrige dos fallos de estado de `v1.29.0`: `skills-sync --restore` ya no borra skills ni devuelve éxito cuando `pi-gomemory` está desinstalado, y `doctor` informa `MCP codegraph` como `INFO` cuando el modo `lite` está activo.
 

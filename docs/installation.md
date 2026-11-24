@@ -27,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/instal
 Desde v1.26.0 el script no lleva una versión fija. Lee la etiqueta de la redirección de `https://github.com/Sayoner-000/pi-gomemory/releases/latest` y verifica el binario con `SHA256SUMS`, como antes. Para instalar una versión concreta:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | PI_GOMEMORY_VERSION=v1.29.1 bash
+curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | PI_GOMEMORY_VERSION=v1.29.2 bash
 ```
 
 Si la etiqueta no se puede resolver, el script se detiene y sugiere `PI_GOMEMORY_VERSION`. Al compilar desde el código fuente no consulta la red.

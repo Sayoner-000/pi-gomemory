@@ -4,6 +4,14 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.29.2] - 2026-11-24
+
+### Fixed
+- La skill embebida `adversarial-consensus-review` usa finales de línea LF, igual que la versión de gomemory. Antes `pi-gomemory-setup` la instalaba con CRLF. `TestHCD074SkillsSinCR` impide que una skill embebida vuelva a tener retornos de carro (HCD-074).
+
+### Removed
+- `constitution.md`: la Constitución Técnica es una plantilla de gomemory para los proyectos que lo usan y no aplica a pi-gomemory.
+
 ## [v1.29.1] - 2026-11-24
 
 ### Fixed
