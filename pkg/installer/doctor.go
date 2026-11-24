@@ -105,7 +105,12 @@ func RunDoctor(opts *Options) []CheckItem {
 		for _, s := range listResp.Servers {
 			states[s.Name] = s.State
 		}
-		for _, req := range []string{"gomemory", "codegraph"} {
+		lite := IsLiteMode(opts.HomeDir)
+		requiredMCP := []string{"gomemory", "codegraph"}
+		if lite {
+			requiredMCP = []string{"gomemory"}
+		}
+		for _, req := range requiredMCP {
 			st, found := states[req]
 			if found && st == "connected" {
 				items = append(items, CheckItem{
@@ -126,6 +131,13 @@ func RunDoctor(opts *Options) []CheckItem {
 					Details: "no registrado en Pi",
 				})
 			}
+		}
+		if lite {
+			items = append(items, CheckItem{
+				Name:    "MCP codegraph",
+				Status:  "INFO",
+				Details: "desactivado por modo lite",
+			})
 		}
 	}
 

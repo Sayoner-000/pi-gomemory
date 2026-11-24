@@ -258,6 +258,9 @@ var ErrUnknownSkill = errors.New("no es una skill de gomemory")
 // Valida todos los nombres antes de tocar nada y se niega si una carpeta
 // contiene algo más que SKILL.md y la marca, para no borrar archivos propios.
 func RestoreSkills(assets fs.FS, opts *Options, names []string) error {
+	if IsUninstalled(opts.HomeDir) {
+		return errors.New("pi-gomemory está desinstalado; ejecuta `pi-gomemory-setup install` antes de reponer skills")
+	}
 	repo := SkillRepoDir(opts.HomeDir)
 	var dirs []string
 	for _, n := range names {
