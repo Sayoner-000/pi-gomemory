@@ -9,6 +9,12 @@ dist/
 # gomemory local cache and state
 .memory/
 
+# Configuración local de agentes generada por gomemory
+.claude/
+.cursor/
+.opencode/
+.mcp.json
+
 # OS specific files
 .DS_Store
 .DS_Store?
