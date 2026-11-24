@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.25.0](releases/v1.25.0.md)
+Sincroniza las skills de Pi desde la copia vigente de `mem` en el anfitrión, añade comprobación de desfase en `doctor`, corrige la ruta de Gemini a `~/.gemini/config/skills` y prioriza `codegraph` como grafo principal en el protocolo de impacto.
+
 [Notas de v1.24.1](releases/v1.24.1.md)
 Actualiza las skills embebidas `hcd-implement` y `hcd-verify` para que Pi evite revalidar tareas anteriores por caducidad durante la implementación y no duplique comprobaciones fuera y dentro de `mem hcd verify`.
 

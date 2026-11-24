@@ -4,6 +4,19 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.25.0] - 2026-11-23
+
+### Added
+- `SyncSkillRepo` toma las 21 skills HCD de la copia instalada por `mem` en el anfitrión (`~/.claude`, `~/.config/opencode`, `~/.codex` o `~/.gemini/config`) antes que el recurso embebido, y recurre al embebido si no hay copia de `mem` ni personalización del usuario. ([HCD-073](hcd/HCD-073-instalar-en-pi-las-skills-de-gomemory-de.md))
+- `doctor` comprueba si las skills de Pi coinciden con la copia instalada por `mem` y avisa con `⚠` indicando las que difieren. ([HCD-073](hcd/HCD-073-instalar-en-pi-las-skills-de-gomemory-de.md))
+
+### Changed
+- El protocolo de impacto en `gomemory-context.ts` y `gomemory-plan.ts` (`IMPACT_PROTOCOL`) usa `codegraph` como grafo principal y deja `codebase-memory` para huecos de cobertura o trazas que `codegraph` no cubre; la regla de una verificación por llamada Bash pasa al protocolo de Pi en `gomemory-context.ts`. ([HCD-073](hcd/HCD-073-instalar-en-pi-las-skills-de-gomemory-de.md))
+- Actualiza en `skills/` las 6 copias embebidas que diferían de `mem` (`hcd`, `hcd-approve`, `hcd-define`, `hcd-verify`, `adversarial-consensus-review` y `defensive-qa-audit`). ([HCD-073](hcd/HCD-073-instalar-en-pi-las-skills-de-gomemory-de.md))
+
+### Fixed
+- `hostSkillSources` apunta a `~/.gemini/config/skills`, donde instala `mem`, en lugar de `~/.gemini/skills`. ([HCD-073](hcd/HCD-073-instalar-en-pi-las-skills-de-gomemory-de.md))
+
 ## [v1.24.1] - 2026-11-23
 
 ### Fixed
