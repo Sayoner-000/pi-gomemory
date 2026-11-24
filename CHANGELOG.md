@@ -4,6 +4,12 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.29.1] - 2026-11-24
+
+### Fixed
+- `pi-gomemory-setup skills-sync --restore` (`RestoreSkills`) ya no elimina carpetas de skills ni devuelve éxito cuando `pi-gomemory` está desinstalado; falla antes de tocar el disco y pide ejecutar `install`.
+- `pi-gomemory-setup doctor` (`RunDoctor`) omite la exigencia de `MCP codegraph` cuando el modo `lite` está activo y lo informa como `INFO` en lugar de marcar `FAIL`.
+
 ## [v1.29.0] - 2026-11-24
 
 Pensada para gomemory 2.59.0. Si aún no lo tienes, ejecuta `mem update`.
