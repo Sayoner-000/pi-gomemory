@@ -364,6 +364,26 @@ func cachedDeps(cachePath string) []DepState {
 	return c.Deps
 }
 
+// DepsCacheError informa si la caché de dependencias existe pero no se puede leer
+// o contiene JSON inválido. Un archivo ausente devuelve nil.
+func DepsCacheError(cachePath string) error {
+	if cachePath == "" {
+		return nil
+	}
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	var c depsCache
+	if err := json.Unmarshal(data, &c); err != nil {
+		return fmt.Errorf("caché de dependencias corrupta (%s): %w", cachePath, err)
+	}
+	return nil
+}
+
 // pinnedFirst deja pi-gomemory delante del resto.
 func pinnedFirst(out []DepState) []DepState {
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Name == "pi-gomemory" && out[j].Name != "pi-gomemory" })

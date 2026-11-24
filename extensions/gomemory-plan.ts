@@ -18,9 +18,24 @@ interface Patterns {
 	block: string[];
 }
 
-const patterns: Patterns = JSON.parse(
-	readFileSync(new URL("./gomemory-plan-patterns.json", import.meta.url), "utf8"),
-);
+const DEFAULT_PATTERNS: Patterns = {
+	tools: ["edit", "write"],
+	strip: [],
+	block: ["\\brm\\b", "\\bmv\\b", "\\bcp\\b", "\\bchmod\\b", "\\bchown\\b", ">>?"],
+};
+
+function loadPatterns(): Patterns {
+	try {
+		return JSON.parse(
+			readFileSync(new URL("./gomemory-plan-patterns.json", import.meta.url), "utf8"),
+		);
+	} catch (err) {
+		console.warn(`[gomemory-plan] no se pudo cargar gomemory-plan-patterns.json, usando respaldo: ${err}`);
+		return DEFAULT_PATTERNS;
+	}
+}
+
+const patterns: Patterns = loadPatterns();
 const strip = patterns.strip.map((s) => new RegExp(s, "g"));
 const block = patterns.block.map((s) => new RegExp(s));
 

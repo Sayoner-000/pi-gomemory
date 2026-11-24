@@ -323,7 +323,10 @@ func isUnder(target, root string) bool {
 func skillDriftItem(home string) CheckItem {
 	const name = "Skills de gomemory al día"
 	repo := SkillRepoDir(home)
-	entries, _ := os.ReadDir(repo)
+	entries, err := os.ReadDir(repo)
+	if err != nil {
+		return CheckItem{Name: name, Status: "WARN", Details: fmt.Sprintf("no se pudo leer %s: %v", repo, err)}
+	}
 	var drift []string
 	compared := 0
 	for _, e := range entries {

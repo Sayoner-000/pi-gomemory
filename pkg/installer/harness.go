@@ -86,9 +86,27 @@ if [ -f ".gomemory/memories.db" ] && command -v mem &>/dev/null; then
   CTX="$(mem context 2>/dev/null || true)"
   if [ -n "${CTX}" ]; then
     # Evitar desbordar el límite de tamaño de argumentos del kernel (≈128 KiB).
-    # Si excede 64 KiB, se trunca de forma segura para no romper 'exec pi'.
-    if [ "${#CTX}" -gt 65536 ]; then
-      CTX="${CTX:0:65536}"
+    # Si excede 65536 bytes UTF-8, se trunca por bytes sin partir un carácter multibyte.
+    if [ "$(printf '%s' "${CTX}" | wc -c)" -gt 65536 ]; then
+      CTX="$(printf '%s' "${CTX}" | LC_ALL=C bash -c '
+        c="$(head -c 65537)"
+        if [ "${#c}" -gt 65536 ]; then
+          next="${c:65536:1}"
+          c="${c:0:65536}"
+          nb="$(printf "%s" "$next" | od -An -tu1 | tr -d "[:space:]")"
+          if [ "${nb:-0}" -ge 128 ] && [ "${nb:-0}" -lt 192 ]; then
+            while [ -n "$c" ]; do
+              last="${c:${#c}-1:1}"
+              lb="$(printf "%s" "$last" | od -An -tu1 | tr -d "[:space:]")"
+              c="${c:0:${#c}-1}"
+              if [ "${lb:-0}" -lt 128 ] || [ "${lb:-0}" -ge 192 ]; then
+                break
+              fi
+            done
+          fi
+        fi
+        printf "%s" "$c"
+      ')"
     fi
     GOMEMORY_ARGS+=(--append-system-prompt "${CTX}")
   fi
