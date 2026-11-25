@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.29.3](releases/v1.29.3.md)
+Corrige siete hallazgos de validación y robustez (HCD-083): retira `codebase-memory-mcp` de `scripts/clean-install-check.sh`, respeta el modo `/plan` en el auto-refresh de `gomemory-context.ts`, reintenta `mem context` tras fallos transitorios, añade timeout a `pi install`, evita un pánico en `Sync` sin sondas, propaga errores de `lite.json` corrupto y valida la versión en `scripts/build-release.sh`.
+
 [Notas de v1.29.2](releases/v1.29.2.md)
 La skill ACR que instala `pi-gomemory-setup` usa finales de línea LF, igual que la de gomemory, y una prueba impide que una skill embebida vuelva a tener CRLF. El repositorio retira `constitution.md`, porque la Constitución Técnica de gomemory no aplica a pi-gomemory.
 

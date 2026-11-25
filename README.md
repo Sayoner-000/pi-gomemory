@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.29.2"><img src="https://img.shields.io/badge/version-1.29.2-blue" alt="Version 1.29.2"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.29.3"><img src="https://img.shields.io/badge/version-1.29.3-blue" alt="Version 1.29.3"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -37,7 +37,7 @@ En macOS o Linux:
 curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | bash
 ```
 
-El script resuelve la última release, descarga el binario de tu plataforma, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Para instalar una versión concreta, exporta antes `PI_GOMEMORY_VERSION=v1.26.1`.
+El script resuelve la última release, descarga el binario de tu plataforma, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Para instalar una versión concreta, exporta antes `PI_GOMEMORY_VERSION=v1.29.3`.
 
 El primer paso deja cada herramienta del meta-harness instalada y en su última versión. Si falta, la trae de su canal oficial; si está vieja, la actualiza con su propio comando, sin preguntar una por una:
 

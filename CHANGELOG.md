@@ -4,6 +4,16 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.29.3] - 2026-11-25
+
+### Fixed
+- `scripts/clean-install-check.sh` deja de exigir `codebase-memory-mcp`, que salió del catálogo en v1.28.0. La prueba `TestHCD083CleanInstallCheckMatchesCatalog` comprueba que el script coincida con `Catalog()` (HCD-083).
+- `extensions/gomemory-context.ts` omite `mem code-refresh` al terminar un turno cuando el modo `/plan` está activo, y limpia el estado de error de `mem context` para reintentar en el turno siguiente si hubo un fallo transitorio (HCD-083).
+- `Sync` en `pkg/installer/sync.go` comprueba que la clave exista en `byState` antes de indexar `states`, evitando un pánico si el conjunto de sondas llega vacío (HCD-083).
+- `InstallAntigravityPlugin` e `InstallCCExtensions` en `pkg/installer/plugin.go` ejecutan `pi install` con `exec.CommandContext` (límite de dos minutos) y entrada estándar cerrada, para no bloquear la instalación ante cuelgues de red (HCD-083).
+- `Sync` y `EnsureTools` leen `~/.pi-gomemory/lite.json` con `GetLiteStatus` y devuelven error si el archivo está corrupto o es ilegible, en lugar de asumir modo completo (HCD-083).
+- `scripts/build-release.sh` ya no usa `v1.26.1` como versión por defecto; toma la etiqueta exacta del `HEAD` cuando no recibe argumento y rechaza versiones con formato inválido antes de compilar (HCD-083).
+
 ## [v1.29.2] - 2026-11-24
 
 ### Fixed
