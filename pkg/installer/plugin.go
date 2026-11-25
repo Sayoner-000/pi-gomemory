@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -8,7 +9,20 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
+
+// pluginInstallTimeout acota `pi install` para evitar bloqueos indefinidos ante
+// cuelgues de red o prompts interactivos (HCD-083, H-04). Es variable para tests.
+var pluginInstallTimeout = 2 * time.Minute
+
+func runPiInstall(piBin, pkgSource string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), pluginInstallTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, piBin, "install", pkgSource)
+	cmd.Stdin = nil
+	return cmd.CombinedOutput()
+}
 
 // Paquetes soportados, fijados a la versión publicada en el catálogo oficial de
 // Pi (pi.dev/packages). Pi no reinstala un paquete fijado a una versión exacta.
@@ -189,7 +203,7 @@ func InstallAntigravityPlugin(piAgentDir string) error {
 		return err
 	}
 	if piBin, err := exec.LookPath("pi"); err == nil {
-		if out, err := exec.Command(piBin, "install", AntigravityPackageSource).CombinedOutput(); err != nil {
+		if out, err := runPiInstall(piBin, AntigravityPackageSource); err != nil {
 			fmt.Printf("%s    ⚠ pi install %s falló; se registra en settings.json: %s%s\n", ColorWarning, AntigravityPackageSource, strings.TrimSpace(firstLine(string(out))), ColorReset)
 		}
 	}
@@ -230,7 +244,7 @@ func InstallCCExtensions(assets fs.FS, piAgentDir string) error {
 
 	// Instalar paquete vía pi install si pi está disponible
 	if piBin, err := exec.LookPath("pi"); err == nil {
-		if out, err := exec.Command(piBin, "install", CCExtensionsSource).CombinedOutput(); err != nil {
+		if out, err := runPiInstall(piBin, CCExtensionsSource); err != nil {
 			fmt.Printf("%s    ⚠ pi install %s falló; se registra en settings.json: %s%s\n", ColorWarning, CCExtensionsSource, strings.TrimSpace(firstLine(string(out))), ColorReset)
 		}
 	}

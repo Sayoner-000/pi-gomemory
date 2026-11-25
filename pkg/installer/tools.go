@@ -159,7 +159,10 @@ func EnsureTools(opts *Options, out io.Writer) error {
 		return nil
 	}
 	extendToolPath(opts)
-	lite := IsLiteMode(opts.HomeDir)
+	lite, err := GetLiteStatus(opts.HomeDir)
+	if err != nil {
+		return err
+	}
 	installed := false
 	for _, t := range installTools {
 		if lite && !t.Required {

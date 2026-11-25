@@ -4,7 +4,11 @@
 # ==============================================================================
 set -euo pipefail
 
-VERSION="${1:-v1.26.1}"
+VERSION="${1:-$(git describe --tags --exact-match 2>/dev/null || true)}"
+if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.+-][0-9A-Za-z.+-]*)?$ ]]; then
+  echo "✗ Indica una versión válida (ej. bash scripts/build-release.sh v1.29.2)." >&2
+  exit 1
+fi
 DIST_DIR="dist"
 
 echo "==> Ejecutando go vet y go test -race antes de empaquetar..."

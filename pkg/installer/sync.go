@@ -180,7 +180,11 @@ func Sync(opts *Options, so SyncOptions, in io.Reader, out io.Writer) ([]SyncRes
 		byProbe[p.Name] = p
 	}
 
-	sel := selectTools(installTools, so, IsLiteMode(opts.HomeDir))
+	lite, err := GetLiteStatus(opts.HomeDir)
+	if err != nil {
+		return nil, err
+	}
+	sel := selectTools(installTools, so, lite)
 	if !so.NonInteractive() && in != nil {
 		var err error
 		if sel, err = runSelector(installTools, sel, states, in, out); err != nil {
@@ -225,9 +229,9 @@ func Sync(opts *Options, so SyncOptions, in io.Reader, out io.Writer) ([]SyncRes
 			r.Action, r.To = "installed", liveVersion(p)
 			fmt.Fprintf(out, "%s    ✓ %s instalado %s%s\n", ColorMuted, t.Name, r.To, ColorReset)
 		default:
-			d := states[byState[t.Name]]
-			if _, ok := byState[t.Name]; ok {
-				d = effectiveDepState(d, p)
+			var d DepState
+			if i, ok := byState[t.Name]; ok {
+				d = effectiveDepState(states[i], p)
 			} else {
 				d = effectiveDepState(DepState{Name: t.Name}, p)
 			}

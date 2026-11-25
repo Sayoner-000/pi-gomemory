@@ -21,6 +21,11 @@ export const SECTION = "gomemory";
 export const MAX_CONTEXT_BYTES = 24576;
 export const MEM_TIMEOUT_MS = 3000;
 export const TRUNCATION_LINE = "… contexto recortado: llama get_context() para el resto";
+const PLAN_STATE_KEY = Symbol.for("pi-gomemory.plan");
+
+function isPlanModeActive(): boolean {
+	return Boolean((globalThis as any)[PLAN_STATE_KEY]?.on);
+}
 
 type MemContext = { text: string } | { error: string };
 
@@ -139,15 +144,19 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("agent_end", async (_event: any, ctx: any) => {
+		if (isPlanModeActive()) return;
 		triggerAutoRefresh(cwdOf(ctx));
 	});
 
 	pi.on("before_agent_start", async (event: any, ctx: any) => {
-		pending ??= load(cwdOf(ctx));
-		const mem = await pending;
-		if ("error" in mem && !warned) {
-			warned = true;
-			ctx?.ui?.notify?.(`gomemory: sin contexto en esta sesión (${mem.error})`, "warning");
+		const current = (pending ??= load(cwdOf(ctx)));
+		const mem = await current;
+		if ("error" in mem) {
+			if (pending === current) pending = undefined;
+			if (!warned) {
+				warned = true;
+				ctx?.ui?.notify?.(`gomemory: sin contexto en esta sesión (${mem.error})`, "warning");
+			}
 		}
 		const opts = event?.systemPromptOptions;
 		if (!opts) return;

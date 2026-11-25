@@ -6,8 +6,8 @@
 #     HOME temporal y PATH con solo los directorios del sistema más Go y Node.js
 #     (enlazados en un directorio propio, para no heredar herramientas del
 #     anfitrión). Ejecuta install.sh desde el repositorio (compilación local),
-#     comprueba que no se descargó ninguna release y que pi, mem, codegraph,
-#     codebase-memory-mcp y herdr responden con el PATH del launcher (HCD-076).
+#     comprueba que no se descargó ninguna release y que pi, mem, codegraph
+#     y herdr responden con el PATH del launcher (HCD-076).
 #
 #   bash scripts/clean-install-check.sh --no-node  (C-15)
 #     Igual pero sin Node.js y sin terminal: el paso debe fallar en segundos
@@ -46,7 +46,7 @@ export GOMODCACHE="${GOMODCACHE:-$(cd "${REPO}" && "${SANDBOX}/toolbin/go" env G
 export PI_GOMEMORY_NO_UPDATE_CHECK=1
 unset PI_GOMEMORY_SKIP_DEPS PI_GOMEMORY_BIN_DIR
 
-for tool in pi mem codegraph codebase-memory-mcp herdr; do
+for tool in pi mem codegraph herdr; do
   if command -v "${tool}" >/dev/null 2>&1; then
     echo "✗ ${tool} ya está en el PATH aislado: la validación no sería limpia." >&2
     exit 2
@@ -108,7 +108,7 @@ fi
 # PATH del launcher (harness.go) más el del sistema y Node.js.
 LAUNCHER_PATH="${HOME}/.local/bin:${HOME}/.pi/agent/bin:${HOME}/.gomemory/bin:${PATH}"
 FAILED=0
-for check in "pi --version" "mem version" "codegraph --version" "codebase-memory-mcp --version" "herdr --version"; do
+for check in "pi --version" "mem version" "codegraph --version" "herdr --version"; do
   if OUT="$(PATH="${LAUNCHER_PATH}" ${check} </dev/null 2>&1)"; then
     echo "✓ ${check}: $(printf '%s' "${OUT}" | head -n 1)"
   else
