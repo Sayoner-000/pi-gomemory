@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Version es la versión del binario en curso; la fija main al arrancar.
@@ -82,8 +83,10 @@ func InstallAll(assets fs.FS, opts *Options) error {
 		return fmt.Errorf("paso Plugin CC Extensions: %w", err)
 	}
 
-	fmt.Printf("%s==> [6/9] Reuniendo skills de gomemory y del anfitrión en %s...%s\n", ColorCyan, SkillRepoSetting, ColorReset)
-	res, err := InstallSkills(assets, opts)
+	fmt.Printf("%s==> [6/9] Reuniendo skills de gomemory, de skills.sh (%s) y del anfitrión en %s...%s\n", ColorCyan, strings.Join(externalSkillNames(), ", "), SkillRepoSetting, ColorReset)
+	// HCD-084: las skills externas se instalan o actualizan antes de reunir el
+	// repositorio, que las enlaza desde ~/.agents/skills.
+	res, err := installSkillsStep(assets, opts, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("paso Skills: %w", err)
 	}

@@ -152,6 +152,10 @@ func main() {
 		if code := runSkillsSync(opts, cmd, os.Args[2:], os.Stdout, os.Stderr); code != 0 {
 			os.Exit(code)
 		}
+	case "skills-update":
+		if code := installer.RunSkillsUpdate(EmbeddedAssets, opts, os.Args[2:], os.Stdout, os.Stderr); code != 0 {
+			os.Exit(code)
+		}
 	case "harness":
 		if err := installer.InstallHarness(opts.LocalBinDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error generando harness launcher: %v\n", err)
@@ -344,6 +348,9 @@ func printHelp() {
 	fmt.Println("  pi-gomemory-setup skills-sync Sincroniza el repositorio central y purga copias legadas")
 	fmt.Println("  pi-gomemory-setup skills-sync --check  Solo comprueba: sale con 10 si hay skills desfasadas (p. ej. tras mem update)")
 	fmt.Println("  pi-gomemory-setup skills-sync --restore <skill>…  Repone skills de gomemory editadas localmente")
+	fmt.Println("  pi-gomemory-setup skills-update [--if-due]  Instala o actualiza desde skills.sh (npx skills) las skills externas")
+	fmt.Println("                                " + strings.Join(installer.ExternalSkillNames(), ", ") + "; con --if-due, como mucho una vez cada 24 h (arranque de Pi)")
+	fmt.Println("                                gitlab-release viaja embebida junto a las skills de gomemory")
 	fmt.Println("  pi-gomemory-setup harness     Instala el launcher pi-gomemory en ~/.local/bin")
 	fmt.Println("  pi-gomemory-setup version     Muestra la versión instalada")
 	fmt.Println("  pi-gomemory-setup check-update  Avisa si hay una release nueva (caché de 24 h)")
@@ -426,6 +433,8 @@ type updateDeps struct {
 	run        func(exe string, env []string) error
 	// sync reconcilia los tool cuando pi-gomemory ya está al día (HCD-076).
 	sync func() error
+	// skills instala o actualiza las skills externas tras sync (HCD-084).
+	skills func() error
 	out  io.Writer
 }
 
@@ -440,6 +449,12 @@ func defaultUpdateDeps(opts *installer.Options) updateDeps {
 		sync: func() error {
 			if code := installer.RunSync(opts, []string{"--yes"}, os.Stdout, os.Stderr); code != 0 {
 				return fmt.Errorf("sync terminó con código %d", code)
+			}
+			return nil
+		},
+		skills: func() error {
+			if code := installer.RunSkillsUpdate(EmbeddedAssets, opts, nil, os.Stdout, os.Stdout); code != 0 {
+				return fmt.Errorf("skills-update terminó con código %d", code)
 			}
 			return nil
 		},
@@ -468,7 +483,13 @@ func runUpdateWith(opts *installer.Options, d updateDeps) error {
 	}
 	if !res.Newer {
 		fmt.Fprintf(d.out, "✓ pi-gomemory-setup ya está al día (%s). Reconciliando herramientas...\n", version)
-		return d.sync()
+		if err := d.sync(); err != nil {
+			return err
+		}
+		// HCD-084: las skills externas se revisan siempre; con una release
+		// nueva lo hace el install relanzado en su paso [6/9].
+		fmt.Fprintln(d.out, "==> Revisando las skills externas (skills.sh)...")
+		return d.skills()
 	}
 	env, err := childInstallEnv(opts.HomeDir)
 	if err != nil {

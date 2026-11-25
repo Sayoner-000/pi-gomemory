@@ -235,6 +235,7 @@ func RunDoctor(opts *Options) []CheckItem {
 		})
 	}
 	items = append(items, skillDriftItem(opts.HomeDir))
+	items = append(items, externalSkillsItem(opts.HomeDir))
 	items = append(items, CheckItem{
 		Name:    "Repositorio de skills",
 		Status:  "INFO",

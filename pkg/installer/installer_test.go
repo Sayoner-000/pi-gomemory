@@ -183,9 +183,11 @@ func TestInstallAllUsesEmbeddedAssetsAndLeavesCwdClean(t *testing.T) {
 		t.Errorf("launcher ausente o no ejecutable: %v", err)
 	}
 	skills, _ := os.ReadDir(SkillRepoDir(opts.HomeDir))
-	// 20 desde v1.28.0, que retiró la skill codebase-memory (HCD-079, Q1).
-	if len(skills) != 20 {
-		t.Errorf("skills instaladas = %d, se esperan 20", len(skills))
+	// 20 desde v1.28.0, que retiró la skill codebase-memory (HCD-079, Q1), y
+	// 21 con gitlab-release embebida (HCD-084). Sin npx en el PATH de la
+	// prueba no se añaden las externas.
+	if len(skills) != 21 {
+		t.Errorf("skills instaladas = %d, se esperan 21", len(skills))
 	}
 }
 

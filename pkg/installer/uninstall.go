@@ -1227,6 +1227,11 @@ func printToolsKept(w io.Writer) {
 	for _, c := range catalogTools() {
 		fmt.Fprintf(w, "  %-20s %s\n", c.Name+":", c.Uninstall)
 	}
+	// HCD-084: las skills externas son del anfitrión (~/.agents/skills).
+	fmt.Fprintf(w, "Se conservan las skills %s de skills.sh. Para quitarlas:\n", joinSpanish(externalSkillNames()))
+	for _, s := range ExternalSkills() {
+		fmt.Fprintf(w, "  %-20s %s\n", s.Name+":", s.RemoveCmd())
+	}
 }
 
 // UninstallLogPath es el log de --verbose; vive junto a la marca de desinstalado.

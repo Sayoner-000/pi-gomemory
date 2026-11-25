@@ -172,6 +172,21 @@ export default function (pi: ExtensionAPI) {
 		return skillsCheck;
 	}
 
+	/**
+	 * HCD-084: instala o actualiza impeccable y frontend-design desde skills.sh
+	 * (`skills-update --if-due`, una vez cada 24 h). Si algo cambió, el setup lo
+	 * dice en stdout y se avisa: Pi carga las skills al arrancar (/reload).
+	 */
+	async function updateExternalSkills(ctx: any): Promise<void> {
+		try {
+			const r = await pi.exec("pi-gomemory-setup", ["skills-update", "--if-due"], { timeout: 600_000 });
+			const msg = String(r.stdout ?? "").trim();
+			if (r.code === 0 && msg) ctx.ui?.notify?.(msg, "info");
+		} catch {
+			// setup ausente, antiguo o sin red: no se afirma nada
+		}
+	}
+
 	function setupFooter(ctx: any) {
 		if (!ctx.ui || !customFooterEnabled) return;
 
@@ -285,7 +300,9 @@ export default function (pi: ExtensionAPI) {
 		if (ctx.ui) void checkUpdates(ctx);
 		// Local y rápido, pero tampoco retrasa el arranque (HCD-080). Con
 		// PI_GOMEMORY_NO_UPDATE_CHECK no se consulta nada (HCD-037, C-02).
-		if (!updateCheckDisabled()) void syncSkills(ctx);
+		// HCD-084: después, las skills externas (skills.sh) en segundo plano,
+		// como mucho una vez cada 24 h; no se solapa con la sincronización local.
+		if (!updateCheckDisabled()) void syncSkills(ctx).then(() => updateExternalSkills(ctx));
 	});
 
 	// HCD-080: tras un `mem update` desde Pi, las skills de gomemory pueden haber cambiado.

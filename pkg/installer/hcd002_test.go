@@ -28,7 +28,9 @@ func TestInstallAllHostSkillsIdempotent(t *testing.T) {
 	opts := sandbox(t)
 	assets := repoAssets(t)
 	t.Chdir(t.TempDir())
-	host := filepath.Join(opts.HomeDir, ".claude", "skills", "gitlab-release", "SKILL.md")
+	// gitlab-release es embebida desde HCD-084: se usa una skill que solo
+	// tiene el anfitrión.
+	host := filepath.Join(opts.HomeDir, ".claude", "skills", "skill-propia", "SKILL.md")
 	writeFile(t, host, "original")
 	old := time.Now().Add(-time.Hour).Truncate(time.Second)
 	os.Chtimes(host, old, old)
@@ -41,8 +43,8 @@ func TestInstallAllHostSkillsIdempotent(t *testing.T) {
 	if got := readSettingsSkills(t, opts.PiAgentDir); len(got) != 1 || got[0] != SkillRepoSetting {
 		t.Fatalf("skills = %v, se espera solo el repositorio central", got)
 	}
-	if target, err := os.Readlink(filepath.Join(SkillRepoDir(opts.HomeDir), "gitlab-release")); err != nil || target != filepath.Dir(host) {
-		t.Fatalf("gitlab-release debe enlazarse desde Claude: %q %v", target, err)
+	if target, err := os.Readlink(filepath.Join(SkillRepoDir(opts.HomeDir), "skill-propia")); err != nil || target != filepath.Dir(host) {
+		t.Fatalf("skill-propia debe enlazarse desde Claude: %q %v", target, err)
 	}
 	info, _ := os.Stat(host)
 	if readFile(t, host) != "original" || !info.ModTime().Equal(old) {
@@ -52,7 +54,7 @@ func TestInstallAllHostSkillsIdempotent(t *testing.T) {
 
 func TestDoctorHostSkills(t *testing.T) {
 	opts := sandbox(t)
-	for _, n := range []string{"impeccable", "gitlab-release"} {
+	for _, n := range []string{"impeccable", "skill-propia"} {
 		writeFile(t, filepath.Join(opts.HomeDir, ".config", "opencode", "skills", n, "SKILL.md"), "x")
 	}
 	if _, err := InstallSkills(repoAssets(t), opts); err != nil {
