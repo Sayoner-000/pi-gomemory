@@ -4,6 +4,13 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.30.0] - 2026-11-25
+
+### Added
+- Skills externas `impeccable` (`pbakaus/impeccable`), `frontend-design` (`anthropics/skills`) y `playwright-cli` (`microsoft/playwright-cli`) desde su fuente oficial en skills.sh. `install` las instala con `npx skills add <fuente> -g -a pi -s <skill> -y` y actualiza las presentes con `npx skills update`; `update` las revisa también cuando pi-gomemory ya está al día, y Pi las revisa en segundo plano al arrancar una vez cada 24 h. Quedan en `~/.agents/skills` y se enlazan en `~/.pi-gomemory/skills`. Las copias manuales o registradas en el lockfile bajo otro repositorio se adoptan desde la fuente oficial. Cada llamada a `npx` tiene un límite de 2 minutos y la pasada completa de 8 minutos; si falla con `--if-due`, la marca de 24 h se limpia para reintentar en el siguiente arranque. Sin `npx`, con `PI_GOMEMORY_SKIP_DEPS` o en modo lite avisa con el comando manual y sigue (HCD-084).
+- Subcomando `pi-gomemory-setup skills-update [--if-due]`, comprobación «Skills externas» en `doctor` y comandos de retirada en `uninstall` (que conserva las skills instaladas por el usuario).
+- Skill `gitlab-release` embebida junto a las de gomemory (21 skills embebidas).
+
 ## [v1.29.3] - 2026-11-25
 
 ### Fixed

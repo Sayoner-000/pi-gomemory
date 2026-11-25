@@ -27,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/instal
 Desde v1.26.0 el script no lleva una versión fija. Lee la etiqueta de la redirección de `https://github.com/Sayoner-000/pi-gomemory/releases/latest` y verifica el binario con `SHA256SUMS`, como antes. Para instalar una versión concreta:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | PI_GOMEMORY_VERSION=v1.29.3 bash
+curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | PI_GOMEMORY_VERSION=v1.30.0 bash
 ```
 
 Si la etiqueta no se puede resolver, el script se detiene y sugiere `PI_GOMEMORY_VERSION`. Al compilar desde el código fuente no consulta la red.
@@ -76,22 +76,22 @@ El comando compila `bin/pi-gomemory-setup` sin símbolos de depuración (`-ldfla
 Los binarios de cada versión se publican en [GitHub Releases](https://github.com/Sayoner-000/pi-gomemory/releases):
 
 1. Descarga el archivo `.tar.gz` para tu sistema y `SHA256SUMS`:
-   * `pi-gomemory-setup_v1.29.3_darwin_arm64.tar.gz` (Apple Silicon)
-   * `pi-gomemory-setup_v1.29.3_darwin_amd64.tar.gz` (Intel Mac)
-   * `pi-gomemory-setup_v1.29.3_linux_amd64.tar.gz` (Linux x86_64)
-   * `pi-gomemory-setup_v1.29.3_linux_arm64.tar.gz` (Linux ARM64)
+   * `pi-gomemory-setup_v1.30.0_darwin_arm64.tar.gz` (Apple Silicon)
+   * `pi-gomemory-setup_v1.30.0_darwin_amd64.tar.gz` (Intel Mac)
+   * `pi-gomemory-setup_v1.30.0_linux_amd64.tar.gz` (Linux x86_64)
+   * `pi-gomemory-setup_v1.30.0_linux_arm64.tar.gz` (Linux ARM64)
 
 2. Verifica la suma, extrae el binario y muévelo a tu carpeta de ejecutables:
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf pi-gomemory-setup_v1.29.3_darwin_arm64.tar.gz
+tar -xzf pi-gomemory-setup_v1.30.0_darwin_arm64.tar.gz
 mkdir -p ~/.local/bin
 mv pi-gomemory-setup ~/.local/bin/
 pi-gomemory-setup install
 ```
 
-Después de instalar, comprueba que `pi-gomemory-setup version` devuelve `v1.29.3` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas. Desde `v1.22.0`, `install` también activa `hideThinkingBlock: true` (`Ctrl+T`) en `~/.pi/agent/settings.json` cuando esa clave no existe, respetando cualquier preferencia previa del usuario.
+Después de instalar, comprueba que `pi-gomemory-setup version` devuelve `v1.30.0` y ejecuta `/reload` en Pi para cargar las extensiones actualizadas. Desde `v1.22.0`, `install` también activa `hideThinkingBlock: true` (`Ctrl+T`) en `~/.pi/agent/settings.json` cuando esa clave no existe, respetando cualquier preferencia previa del usuario.
 
 Si vienes de v1.12.0 o anterior, revisa los permisos de `~/.pi/agent` y los [problemas conocidos](known-issues.md). Desde v1.15.0, `install` no crea un protocolo en `AGENTS.md`: retira el bloque heredado sin modificar el texto propio. Conserva los permisos y los enlaces; si solo había protocolo, borra el archivo normal o vacía el destino enlazado. Desde v1.15.1, lo retira solo después de instalar `gomemory-context.ts`, quita a la vez el bloque marcado y las copias históricas sin marcas, y si los marcadores de pi-gomemory son ambiguos (huérfanos, repetidos o invertidos) conserva el archivo completo y avisa.
 
@@ -111,13 +111,16 @@ Después de instalar, usa `/reload` o abre una sesión nueva. `gomemory-context.
 
 ## Repositorio de skills
 
-`pi-gomemory-setup install` reúne las skills en `~/.pi-gomemory/skills` y registra solo esa carpeta en el array `skills` de `~/.pi/agent/settings.json`, sin tocar el resto de tu configuración. Las 20 skills de gomemory se copian adaptadas para Pi y siempre ganan; si `mem` instaló su propia copia de una skill en otro agente, se usa esa. Las de los demás agentes se enlazan, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. No se copia ni se modifica ninguna skill de otro agente. El launcher vuelve a sincronizar en cada arranque (`pi-gomemory-setup skills-sync`) y `pi-gomemory-setup doctor` muestra el total y las colisiones resueltas.
+`pi-gomemory-setup install` reúne las skills en `~/.pi-gomemory/skills` y registra solo esa carpeta en el array `skills` de `~/.pi/agent/settings.json`, sin tocar el resto de tu configuración. Las 21 skills embebidas (las 20 de gomemory y `gitlab-release`) se copian adaptadas para Pi y siempre ganan; si `mem` instaló su propia copia de una skill en otro agente, se usa esa. Las de los demás agentes se enlazan, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. No se copia ni se modifica ninguna skill de otro agente. El launcher vuelve a sincronizar en cada arranque (`pi-gomemory-setup skills-sync`) y `pi-gomemory-setup doctor` muestra el total y las colisiones resueltas.
+
+Desde v1.30.0, `install` y `update` también instalan o actualizan las skills externas `impeccable`, `frontend-design` y `playwright-cli` desde skills.sh con `npx skills` en `~/.agents/skills`, y las enlazan en `~/.pi-gomemory/skills`. Al arrancar Pi, `skills-update --if-due` las revisa en segundo plano como mucho una vez cada 24 h (respetando `PI_GOMEMORY_NO_UPDATE_CHECK`). Si falta `npx`, está activo `PI_GOMEMORY_SKIP_DEPS=1` o el modo lite, muestra el comando manual y sigue sin detener la instalación. `uninstall` conserva estas skills e indica cómo retirar cada una con `npx skills remove`.
 
 Desde v1.29.0, Pi comprueba las skills al iniciar cada sesión y después de un `mem update` lanzado desde Pi, así que no depende de arrancar con el launcher. Si `mem` trajo versiones nuevas, sincroniza y te avisa de que `/reload` las carga. Las copias que editaste a mano no se sobrescriben; si se quedaron atrás, Pi te avisa en amarillo y puedes reponerlas:
 
 ```bash
 pi-gomemory-setup skills-sync --check                 # sale con 10 si hay skills desfasadas o editadas que difieren
 pi-gomemory-setup skills-sync --restore hcd-verify    # repone una skill de gomemory editada
+pi-gomemory-setup skills-update                       # instala o actualiza impeccable, frontend-design y playwright-cli
 ```
 
 `--restore` se niega si la carpeta tiene otros archivos tuyos aparte de `SKILL.md`.

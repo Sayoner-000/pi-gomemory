@@ -19,6 +19,9 @@ Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Co
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
 Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
 
+[Notas de v1.30.0](releases/v1.30.0.md)
+Integra las skills externas `impeccable`, `frontend-design` y `playwright-cli` desde skills.sh (`npx skills`) en `install`, `update` y el arranque de Pi (`skills-update --if-due` cada 24 h), añade la comprobación de `doctor` y embebe `gitlab-release` (21 skills embebidas, HCD-084).
+
 [Notas de v1.29.3](releases/v1.29.3.md)
 Corrige siete hallazgos de validación y robustez (HCD-083): retira `codebase-memory-mcp` de `scripts/clean-install-check.sh`, respeta el modo `/plan` en el auto-refresh de `gomemory-context.ts`, reintenta `mem context` tras fallos transitorios, añade timeout a `pi install`, evita un pánico en `Sync` sin sondas, propaga errores de `lite.json` corrupto y valida la versión en `scripts/build-release.sh`.
 

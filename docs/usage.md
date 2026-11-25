@@ -69,6 +69,8 @@ Comandos:
   skills-sync   Sincroniza el repositorio central de skills y purga copias legadas
                 --check: solo comprueba; sale con 10 si hay skills desfasadas o editadas que difieren de mem
                 --restore <skill>…: repone skills de gomemory editadas localmente
+  skills-update Instala o actualiza impeccable, frontend-design y playwright-cli desde skills.sh (npx skills)
+                --if-due: solo actúa si pasaron 24 h desde la última revisión (respeta PI_GOMEMORY_NO_UPDATE_CHECK)
   harness       Genera el launcher pi-gomemory en ~/.local/bin (o PI_GOMEMORY_BIN_DIR)
   version       Muestra la versión instalada
   deps-status   Lista los componentes desactualizados frente a la versión instalada real (sale con 10)
