@@ -16,9 +16,9 @@ Este documento describe la estructura interna, los componentes y las decisiones 
 │  Servidores MCP  │       │  Tema gomemory   │       │  Plugins y TUI   │
 │  en mcp.json     │       │  themes/         │       │  settings.json   │
 ├──────────────────┤       ├──────────────────┤       ├──────────────────┤
-│ mem (gomemory)   │       │ Paleta 24-bit    │       │ pi-antigravity   │
-│ codegraph        │       │ Truecolor        │       │ pi-cc-extensions │
-│                  │       │                  │       │ gomemory-status  │
+│ mem (gomemory)   │       │ Paleta 24-bit    │       │ pi-cc-extensions │
+│ codegraph        │       │ Truecolor        │       │ gomemory-status  │
+│                  │       │                  │       │                  │
 └──────────────────┘       └──────────────────┘       └──────────────────┘
          │                           │                           │
          └───────────────────────────┼───────────────────────────┘
@@ -52,7 +52,7 @@ En `mcp.json` solo se actualizan las dos entradas propias, y se retira la entrad
 
 ## Herramientas externas
 
-Los componentes del meta-harness están declarados una sola vez en `Catalog()` (`pkg/installer/components.go`), con tres tipos: `self` (pi-gomemory), `tool` (`pi`, `mem`, `codegraph` y `herdr`; codebase-memory-mcp se retiró en v1.28.0) y `package` (`pi-antigravity` y `pi-cc-extensions`). De ahí salen las herramientas del paso de instalación, las sondas de versión de `deps-*`, los binarios que revisa `doctor`, lo que `uninstall` conserva y la salida de `components`.
+Los componentes del meta-harness están declarados una sola vez en `Catalog()` (`pkg/installer/components.go`), con tres tipos: `self` (pi-gomemory), `tool` (`pi`, `mem`, `codegraph` y `herdr`; codebase-memory-mcp se retiró en v1.28.0) y `package` (`pi-cc-extensions`; `pi-antigravity` se retiró en HCD-085). De ahí salen las herramientas del paso de instalación, las sondas de versión de `deps-*`, los binarios que revisa `doctor`, lo que `uninstall` conserva y la salida de `components`.
 
 `InstallAll` empieza por `Sync` (`pkg/installer/sync.go`). Antepone al `PATH` del proceso el directorio de binarios, `~/.local/bin`, `~/.pi/agent/bin`, `~/.gomemory/bin` y `/usr/local/bin`, consulta las versiones de todo el catálogo sin usar la caché y recorre los `tool`: instala con el script de su canal oficial los que faltan y actualiza con su comando oficial los que están desactualizados. Con terminal, antes muestra la lista de `selector.go`, que se lee de `/dev/tty`. `pi` y `mem` son obligatorias: si no se pueden instalar, `InstallAll` se detiene antes de retirar la marca de desinstalado o tocar `~/.pi/agent`. Cualquier otro fallo, incluido el de actualizar una obligatoria que ya estaba, solo genera un aviso. Al terminar, `Sync` reescribe la caché de versiones con lo que dejó instalado.
 
@@ -82,23 +82,13 @@ La función `InstallMCPServers` lee el archivo `mcp.json` existente y solo agreg
 
 `RetireLegacyInstructions` reconoce marcadores y variantes históricas publicadas, almacenadas en `pkg/installer/legacy/`. La migración conserva texto ajeno, permisos y enlaces. Si solo queda el bloque propio, borra el archivo normal o vacía el destino enlazado. `doctor` avisa si el protocolo sigue presente.
 
-## Google AI Pro y monitor de consumo
+## Retirada de Antigravity y de /tdd (HCD-085)
 
-### Plugin pi-antigravity
+pi-gomemory ya no instala `pi-antigravity`, ni consulta la cuota de Google con el token OAuth de la cuenta (`usage.go`, retirado), ni distribuye `antigravity-prompt-guard.js` o `gomemory-tdd.ts`. Usar la API interna de Google desde un cliente no oficial expone la cuenta a bloqueos.
 
-Para conectar Pi con los modelos de Google AI Pro mediante Antigravity, el instalador registra el paquete `npm:pi-antigravity@0.15.0` en `settings.json` (junto con `npm:pi-cc-extensions@1.0.22`). Ambos van fijados a una versión exacta, porque Pi no reinstala un paquete fijado así. `uninstall --packages` retira también las entradas de pins anteriores que escribió pi-gomemory (`historicPins` en `plugin.go`). Además, inyecta la dependencia `typebox: "*"` en la sección `peerDependencies` de la configuración para evitar avisos molestos de npm al resolver tipos.
-
-### Guard opcional de generación
-
-La [referencia del guard](../tests/antigravity-prompt-guard/guard.mjs) vive en `tests/`, fuera de los patrones de `embed.go` y de los recursos que instala `InstallAll`. Solo se carga si la persona la copia manualmente a las extensiones de Pi. Su hook `before_provider_request` actúa sobre peticiones `agent` de Antigravity con instrucciones textuales compatibles: clona el payload, conserva herramientas y metadatos, sustituye `systemInstruction` por un texto breve y antepone las instrucciones originales al primer turno de usuario. No cambia otros proveedores ni generación de imágenes y permite desactivación por entorno.
-
-Conservar el texto no conserva la jerarquía: las instrucciones trasladadas tienen menor prioridad. El [diagnóstico y procedimiento opt-in](antigravity.md) describen ese riesgo; la mitigación no sustituye las protecciones locales ni una corrección upstream. Las 22 pruebas offline se ejecutan también desde la suite de Go, que requiere Node.js.
-
-### Monitor de cuotas
-
-El archivo `pkg/installer/usage.go` lee la cuenta activa guardada en `~/.pi/agent/antigravity-accounts.json` y hace una llamada POST al endpoint `retrieveUserQuotaSummary`. Con la respuesta construye una barra de texto que muestra el porcentaje restante y el tiempo que falta para que se reinicien las cuotas semanal y de cinco horas.
-
-Las dos salidas, texto (`FetchAndFormatUsage`) y JSON para el panel lateral (`FetchQuotaSummary`), validan la respuesta con `parseQuotaResponse`. `json.Unmarshal` acepta `null` y `{}` sin error, así que la función exige al menos un bucket y fracciones entre 0 y 1. Si la respuesta no cumple, el bucle pasa al endpoint siguiente, y si ninguno responde con cuotas devuelve error. Cuando falta `planLabel`, la etiqueta es «Plan no informado» (`planLabelUnknown`).
+- `RetireAntigravityPackage` (`plugin.go`), paso [4/9] de `InstallAll`, quita de `settings.json` las entradas `npm:pi-antigravity@…` que coinciden con un pin que escribió pi-gomemory (`historicPins`), con `pi remove` si `pi` está disponible. Una fuente distinta la añadió la persona y se conserva con aviso. `antigravity-accounts.json` nunca se toca.
+- `RetireResources` (`extension.go`), tras `InstallTUIExtension` y antes de `WriteManifest`, borra cada archivo de `retiredResources` solo si su SHA256 coincide con el del manifiesto anterior; si no hay huella o no coincide, se conserva con aviso. `BuildUninstallPlan` aplica la misma regla con `planOwnedFile`.
+- `managedPackages` permite que `uninstall --packages` siga retirando los pins históricos de un paquete que ya no se fija.
 
 ## Límites del plan de OpenAI Codex
 
@@ -125,14 +115,7 @@ gomemory-suggest.ts:
 Pinta la sugerencia del siguiente comando en el input. Pi solo admite un editor a la vez y algunas extensiones, como el `PromptEditor` de pi-cc-extensions, lo reemplazan en su propio `session_start` sin envolver el anterior. Por eso la extensión no sustituye el editor: decora `render` y `handleInput` de la instancia que haya, y una comprobación idempotente vuelve a envolver la ranura si otra extensión la ocupó después (al arrancar y en cada frontera de turno, cuando el input está vacío). La sugerencia del motor sale de `next_action` en `mem hcd show --json`. La del modelo se pide con `ctx.modelRegistry.streamSimple` y `reasoning: "minimal"`, porque omitir el razonamiento no lo apaga en los modelos que piensan por defecto y el tope de tokens se gastaba antes de llegar al texto. Usa `disableContinuation` para no tocar el estado de la conversación real. Un contador de turno, que avanza al empezar o cerrar la sesión y en cada inicio y final de turno, descarta las respuestas que vuelven tarde, y `agent_end` lanza la petición al modelo sin esperarla.
 
 gomemory-sidebar.ts:
-Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral derecho (`anchor: "top-right"`, 36 cols, responsive) con la sesión/HCD activo, métricas de contexto en vivo (tokens, porcentaje y coste) y conectividad de servidores MCP. Se activa o desactiva con `/sidebar` y no captura el teclado (`nonCapturing`). Publica su altura en un estado compartido (`globalThis[Symbol.for("pi-gomemory.dock")]`) para que `/tdd` se apile debajo. En `fullscreen`, pi-tui entrega un clic como `press → release → click`; el panel alterna solo con el `click` de su cabecera.
-
-gomemory-tdd.ts:
-Extensión en TypeScript del TDD Live Inspector (`/tdd`, tool `run_test_suite`). `detectSuites` decide qué ejecutar según los archivos del proyecto. `streamLines` lanza cada comando con `spawn` (sin shell) y entrega la salida línea a línea, porque `pi.exec` solo la devuelve al terminar. Desde v1.13.8 acota la memoria: una línea pendiente de más de `MAX_LINE_CHARS` (64 Ki caracteres) termina el grupo de procesos y fuerza el código 1, y `tail`, que solo sirve de diagnóstico, guarda como mucho 40 extractos de 1 Ki y 64 KiB contados en UTF-8. El check `hcd` lee el JSON de `mem hcd show --json` de las líneas completas que recibe por `onLine`, no de `tail`. Los parsers de `go test -json` y del reporter `line` de Playwright llevan cada test al `TDDStore` en vivo, con su mensaje, archivo:línea y duración reales. Las ejecuciones se encadenan para no pisar el mismo store. El modo watch marca un cambio en `tool_execution_end` (`edit`, `write`, `bash`) y lanza una ejecución, sin esperarla, en `agent_settled`. No usa `turn_end` porque Pi espera ese evento en cada turno y bloquearía al agente entre tool calls. El estado final de Playwright sale de su informe JSON oficial; el flujo de líneas solo alimenta el progreso.
-
-Las verificaciones HCD lanzadas desde Bash se siguen por identificador de llamada: `tool_execution_start` abre las filas y `tool_execution_end` registra el resultado. Sus filas viven aparte de las suites para que Watch no las borre ni cambie sus totales.
-
-Los tests que el agente lanza por Bash se ingieren desde `tool_execution_update`. Pi entrega la salida acumulada con la cola truncada, así que cada entrega se procesa por número de línea absoluto (`totalLines` menos las líneas visibles) y la última línea, que puede estar a medias, se retiene hasta la siguiente. Si la cola salta líneas que no se vieron, la suite queda parcial. Al llegar `tool_result`, su texto (con su truncado) se reconcilia de la misma forma, porque trae lo que se imprimió después de la última entrega; si es más corto que lo ya visto, se conserva lo ingerido en vivo. Antes se quitan las líneas que Pi añade solo al resultado final y que no son salida del comando: el aviso de truncado (`[Showing lines a-b of N. …]`) y el estado de salida (`Command exited with code N`, aborto o timeout). Contarlas desplazaría la primera línea absoluta. `go test -v` se lee con un parser de texto (`=== RUN`, `--- PASS/FAIL`); sin `-v` ni `-json` el comando cuenta como un único resultado. Watch tiene su propio `AbortController`: una ejecución pedida lo cancela tanto si está en cola como si está en marcha, y la suite cortada queda como omitida, sin contar como fallo.
+Extensión en TypeScript inspirada en OpenCode que renderiza un overlay lateral derecho (`anchor: "top-right"`, 36 cols, responsive) con la sesión/HCD activo, métricas de contexto en vivo (tokens, porcentaje y coste) y conectividad de servidores MCP. Se activa o desactiva con `/sidebar` y no captura el teclado (`nonCapturing`). Publica su altura en un estado compartido (`globalThis[Symbol.for("pi-gomemory.dock")]`), que leía el panel `/tdd` retirado en HCD-085. En `fullscreen`, pi-tui entrega un clic como `press → release → click`; el panel alterna solo con el `click` de su cabecera.
 
 ## Riesgos y límites
 
@@ -150,5 +133,4 @@ El script `pi-gomemory` en `~/.local/bin/` prepara el entorno antes de invocar e
 
 * Establece `HERDR_ENV=1` y `COLORTERM=truecolor`.
 * Prioriza `~/.local/bin`, `~/.pi/agent/bin` y `~/.gomemory/bin` en el `PATH`.
-* Si el primer argumento es `usage`, delega en `pi-gomemory-setup usage`.
 * Comprueba si el directorio actual tiene una base de datos de gomemory (`.gomemory/memories.db`). Si existe, ejecuta `mem context` y pasa el resultado mediante `--append-system-prompt` para que el agente arranque con el historial reciente del proyecto.

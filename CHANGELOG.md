@@ -4,6 +4,24 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/).
 
+## [v1.31.0] - 2026-11-26
+
+Esta versión quita dos piezas: el inspector `/tdd` y la integración con Antigravity. La segunda consultaba la API interna de Google con el token OAuth de tu cuenta y un User-Agent copiado del cliente oficial, y Google bloquea o marca las cuentas que hacen eso.
+
+### Removed
+- `/tdd`, su panel y la tool `run_test_suite` (`extensions/gomemory-tdd.ts`). El progreso de las tareas HCD sigue en `/tasks`, y `/min` pasa a ser un atajo de `/sidebar min` (HCD-085).
+- El plugin `pi-antigravity`. `install` ya no lo instala ni lo fija, y `doctor`, `deps-status` y `pins-validate` dejan de comprobarlo (HCD-085).
+- La sección «Google AI Pro Quota» de `/sidebar` y los comandos `pi-gomemory-setup usage`, `quota` y `pi-gomemory usage` (HCD-085).
+- `antigravity-prompt-guard.js`, sus pruebas offline y `scripts/antigravity-pin-check.sh`, que probaba contra una cuenta real (HCD-085).
+
+### Changed
+- `install` y `update` limpian lo que dejaron versiones anteriores. Quitan de `settings.json` las entradas `npm:pi-antigravity@…` que escribió pi-gomemory (y llaman a `pi remove`) y borran `gomemory-tdd.ts` y `antigravity-prompt-guard.js` si su huella coincide con el manifiesto. Una copia editada o una entrada que añadiste tú se conserva con un aviso (HCD-085).
+- `uninstall` retira esas mismas extensiones, y `uninstall --packages` sigue reconociendo los pins antiguos de `pi-antigravity` (HCD-085).
+
+### Actualizar desde v1.30.0
+- Ejecuta `pi-gomemory-setup update` y luego `/reload` en Pi.
+- `~/.pi/agent/antigravity-accounts.json` no se borra porque es tu sesión de Google. `install` te avisa si existe; bórralo o revoca el acceso desde tu cuenta si ya no lo usas.
+
 ## [v1.30.0] - 2026-11-25
 
 ### Added

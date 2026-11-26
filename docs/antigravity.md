@@ -1,5 +1,7 @@
 # Antigravity: HTTP 429 y mitigación local
 
+> Documento histórico. Desde v1.31.0 (HCD-085), pi-gomemory ya no instala `pi-antigravity`, no consulta la cuota de Google y no distribuye `antigravity-prompt-guard.js`: usar la API interna de Google desde un cliente no oficial expone la cuenta a un bloqueo. Se conserva como registro de la investigación.
+
 ## Estado con pi-antigravity 0.15.0 (v1.21.1+)
 
 pi-antigravity 0.15.0 incluye la corrección upstream de [pi-antigravity#152](https://github.com/Rahularya01/pi-antigravity/issues/152), cerrado el 2026-11-20. Cuando las instrucciones del sistema superan 126 caracteres, el propio plugin las pliega al primer turno de usuario y omite `systemInstruction`; también neutraliza la frase inicial del prompt de Pi. Es el mismo efecto que el guard local. `ANTIGRAVITY_INLINE_SYSTEM=0` o `ANTIGRAVITY_PROMPT_GUARD=off` lo desactivan en el plugin.

@@ -1,12 +1,16 @@
 # Problemas conocidos
 
-## Antigravity: HTTP 429 con OAuth y cuota disponibles
+## Antigravity: retirado (HCD-085)
+
+pi-gomemory dejó de instalar `pi-antigravity`, de consultar la cuota de Google y de distribuir el guard `antigravity-prompt-guard.js`: usar la API interna de Google desde un cliente no oficial expone la cuenta a bloqueos. El historial siguiente queda como referencia.
+
+## Antigravity: HTTP 429 con OAuth y cuota disponibles (histórico)
 
 **Mitigación temporal desde v1.16.0.** En la instalación investigada, la comparación A/B/A con la misma credencial produjo 429 con las instrucciones originales de Pi, 200 al trasladarlas al primer mensaje de usuario y 429 al restaurarlas. También se reprodujo con versiones anteriores de Pi y del plugin; no se atribuye el fallo exclusivamente al pin 0.14.0 ni al hardening.
 
 La [guía de Antigravity](antigravity.md) explica la referencia publicada, su desactivación y el riesgo: conservar el texto no conserva su prioridad ni garantiza protección equivalente frente a inyección de instrucciones. La prueba real recuperó Hydrogen, Sonnet y un ciclo de herramientas; la persona confirmó el panel y las cuotas. Esto no demuestra que todos los HTTP 429 tengan la misma causa. Los pins ya publicados en v1.14.0 no equivalían a ese smoke real; HCD-040 se cerró después de completarlo y obtener aprobación.
 
-Desde v1.21.1 el pin es pi-antigravity 0.15.0, que corrige el problema upstream (pi-antigravity#152). En la prueba real sin el guard, 0.14.0 devolvió 429 en todos los casos y 0.15.0 respondió en todos. El guard local sigue instalado y es compatible con 0.15.0; retirarlo queda pendiente de decisión.
+Desde v1.21.1 el pin es pi-antigravity 0.15.0, que corrige el problema upstream (pi-antigravity#152). En la prueba real sin el guard, 0.14.0 devolvió 429 en todos los casos y 0.15.0 respondió en todos. HCD-085 retiró el guard junto con el resto de la integración.
 
 ## Atajo del modo plan en macOS
 

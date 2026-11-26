@@ -8,7 +8,7 @@
 <h3 align="center">Pi Coding Agent con memoria persistente y grafo de código, listo en un solo comando</h3>
 
 <p align="center">
-  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.30.0"><img src="https://img.shields.io/badge/version-1.30.0-blue" alt="Version 1.30.0"></a>
+  <a href="https://github.com/Sayoner-000/pi-gomemory/releases/tag/v1.31.0"><img src="https://img.shields.io/badge/version-1.31.0-blue" alt="Version 1.31.0"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/go-1.27+-00ADD8?logo=go&logoColor=white" alt="Go 1.27+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-darwin%20%7C%20linux-lightgrey" alt="Platform">
@@ -37,7 +37,7 @@ En macOS o Linux:
 curl -fsSL https://raw.githubusercontent.com/Sayoner-000/pi-gomemory/main/install.sh | bash
 ```
 
-El script resuelve la última release, descarga el binario de tu plataforma, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Para instalar una versión concreta, exporta antes `PI_GOMEMORY_VERSION=v1.30.0`.
+El script resuelve la última release, descarga el binario de tu plataforma, verifica su SHA256 contra `SHA256SUMS` y ejecuta la instalación. Para instalar una versión concreta, exporta antes `PI_GOMEMORY_VERSION=v1.31.0`.
 
 El primer paso deja cada herramienta del meta-harness instalada y en su última versión. Si falta, la trae de su canal oficial; si está vieja, la actualiza con su propio comando, sin preguntar una por una:
 
@@ -82,9 +82,10 @@ make install
 | **21 skills embebidas** | El ciclo HCD completo (`hcd`, `hcd-define` … `hcd-close`), verificación (`verify-loop`, `search-first`), revisión adversarial, auditoría defensiva y `gitlab-release` (commit, tag y changelog) | `~/.pi-gomemory/skills/` |
 | **Skills de skills.sh** | `impeccable` ([pbakaus/impeccable](https://www.skills.sh/pbakaus/impeccable/impeccable)), `frontend-design` ([anthropics/skills](https://www.skills.sh/anthropics/skills/frontend-design)) y `playwright-cli` ([microsoft/playwright-cli](https://www.skills.sh/microsoft/playwright-cli/playwright-cli)), instaladas y actualizadas con `npx skills` en `install`, `update` y al arrancar Pi (una vez cada 24 h) | `~/.agents/skills/`, enlazadas en `~/.pi-gomemory/skills/` |
 | **Contexto y protocolo** | Carga `mem context` por sesión y exige medir impacto con `codegraph` antes de editar o abrir un HCD | `~/.pi/agent/extensions/gomemory-context.ts` |
-| **Modelos de Google AI Pro** | Plugin `pi-antigravity` y el comando `pi-gomemory usage`, que consulta la cuota real de tu cuenta | `~/.pi/agent/settings.json` |
-| **Interfaz** | `pi-cc-extensions` (diffs laterales, `/context`), thinking colapsado por defecto (`Ctrl+T`) con indicador animado y etiqueta `(thinking...)`, barra de tokens y coste (`/tokens`), paneles `/tasks` y `/tdd`, sugerencia en el input (`Tab`) y el tema gomemory en Truecolor | `~/.pi/agent/` |
+| **Interfaz** | `pi-cc-extensions` (diffs laterales, `/context`), thinking colapsado por defecto (`Ctrl+T`) con indicador animado y etiqueta `(thinking...)`, barra de tokens y coste (`/tokens`), panel `/tasks`, sugerencia en el input (`Tab`) y el tema gomemory en Truecolor | `~/.pi/agent/` |
 | **Launcher** | `pi-gomemory` prepara el entorno de Herdr y carga el contexto del proyecto | `~/.local/bin/` |
+
+Retirado en HCD-085 (v1.31.0): el inspector `/tdd` y la integración con Antigravity, es decir, el plugin `pi-antigravity`, la cuota en `/sidebar`, el comando `usage` y el arreglo `antigravity-prompt-guard.js`. Consultar la API interna de Google con el token de tu cuenta la expone a un bloqueo. Al actualizar, `install` borra lo que dejaron versiones anteriores si nadie lo tocó y conserva con un aviso lo que editaste. Tu sesión de Google en `~/.pi/agent/antigravity-accounts.json` no se toca; bórrala o revoca el acceso desde tu cuenta si ya no la usas.
 
 `pi-gomemory-setup doctor` comprueba cada pieza y te dice qué falta.
 
@@ -128,7 +129,7 @@ mem setup-mcp --scope global --agents claude,codex,agy,opencode
 |---|:-:|:-:|:-:|:-:|:-:|
 | MCP gomemory y codegraph | pi-gomemory | gomemory | gomemory | gomemory | gomemory |
 | Skills | pi-gomemory | gomemory | gomemory | gomemory | gomemory |
-| Tema, launcher y `usage` | pi-gomemory | no aplica | no aplica | no aplica | no aplica |
+| Tema y launcher | pi-gomemory | no aplica | no aplica | no aplica | no aplica |
 
 `pi-gomemory-setup doctor` detecta qué agentes tienes instalados y te muestra el comando que corresponde a cada uno.
 
@@ -137,11 +138,10 @@ mem setup-mcp --scope global --agents claude,codex,agy,opencode
 ```text
 pi-gomemory-setup [install]   Instalación completa
 pi-gomemory-setup doctor      Diagnóstico de Pi, MCP, plugins, launcher y otros agentes
-pi-gomemory-setup usage       Cuota real de Google AI Pro / Antigravity
 pi-gomemory-setup mcp         Solo los servidores MCP
 pi-gomemory-setup codemode <on|off|status>  Activa o desactiva el modo codemode híbrido en Pi y MCP
 pi-gomemory-setup theme       Solo el tema
-pi-gomemory-setup plugin      Solo pi-antigravity y pi-cc-extensions
+pi-gomemory-setup plugin      Solo pi-cc-extensions
 pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills
 pi-gomemory-setup skills-sync Sincroniza el repositorio central de skills y purga copias legadas
 pi-gomemory-setup skills-sync --check  Solo comprueba; sale con 10 si hay skills desfasadas o editadas que difieren de mem
@@ -163,8 +163,6 @@ pi-gomemory-setup codex-usage      Límites del plan de OpenAI Codex (ventanas p
 pi-gomemory-setup uninstall [--dry-run] [--yes] [--verbose] [--packages] [--self]
                               Retira lo instalado por pi-gomemory; conserva la memoria de gomemory
 ```
-
-Con `usage`, si la API no responde o el token caducó, el comando termina con un error. Nunca muestra cifras aproximadas. Las respuestas de más de 1 MiB se rechazan.
 
 ### Codemode y contexto por sesión
 
@@ -193,43 +191,36 @@ La extensión de contexto ejecuta `mem context` una vez por sesión con un timeo
 | `Alt+P` (respaldo `Ctrl+Alt+P`) | Activa o desactiva el modo plan sin iniciar un turno. En Windows y WSL solo `Ctrl+Alt+P` |
 | `/tasks` | Muestra u oculta las tareas HCD y su árbol de actividad |
 | `/tasks expand [N]`, `/tasks collapse [N]`, `/tasks focus N` | Abre o cierra el detalle y elige la tarea que recibe las próximas llamadas |
-| `/sidebar` | Panel lateral: sesión/HCD, contexto, coste, cuotas (Google AI Pro, límites de Anthropic y OpenAI Codex) y servidores MCP |
+| `/sidebar` | Panel lateral: sesión/HCD, contexto, coste, límites de Anthropic y OpenAI Codex, y servidores MCP |
 | `/sidebar min` | Minimiza o restaura el panel lateral a una fila (también con clic en `[−]` / `[+]`) |
-| `/min` | Minimiza o restaura a la vez `/sidebar` y `/tdd` |
-| `/tdd` | TDD Live Inspector: ejecuta las pruebas reales del proyecto y muestra el recorrido en vivo |
-| `/tdd run [suite]` | Ejecuta `all`, `backend`, `frontend`, `playwright`, `ci` o `data`; si hay otra ejecución en curso, queda en cola |
-| `/tdd min` | Minimiza o restaura el inspector (también con clic en `[−]` / `[+]`) |
-| `/tdd watch` | Ejecuta las pruebas una vez cuando el agente termina, solo si cambió archivos (`edit`, `write` o `bash`); no bloquea al agente |
-| `/tdd report` | Publica en el chat, y en el contexto del modelo, el informe de la última ejecución con cada fallo |
+| `/min` | Atajo de `/sidebar min` |
 | `/tokens` | Muestra u oculta la barra de tokens y coste; el aviso de actualizaciones pasa al pie por defecto de Pi |
 | `/componentes` | Lista los componentes del meta-harness con su versión instalada y la publicada, y reconcilia los que marques |
 
-El agente dispone además de la tool `run_test_suite`, que devuelve cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia. Los paneles `/sidebar` y `/tdd` se apilan en la columna derecha sin solaparse; el clic funciona en el modo `fullscreen` de Pi (el predeterminado). Detalle en [docs/usage.md](docs/usage.md).
+El clic en `[−]` / `[+]` funciona en el modo `fullscreen` de Pi (el predeterminado). Detalle en [docs/usage.md](docs/usage.md).
 
 ### Banner, modo /plan y repositorio de skills
 
 - **Banner:** al abrir Pi, la cabecera muestra el logo de pi-gomemory en caracteres de color de alta resolución, «HCD · pi - gomemory», la versión de pi-gomemory (`PI_GOMEMORY_RUNNING_VERSION`) y la de gomemory instalada (`GOMEMORY_INSTALLED_VERSION`, leída de `mem --version`), junto con el lema HCD. Con `NO_COLOR` se dibuja sin colores.
 - **`/plan`:** activa el modo plan. Bloquea `edit`, `write` y los comandos de consola que modifican archivos (lista en `~/.pi/agent/extensions/gomemory-plan-patterns.json`), añade al contexto el método de `mem plan-context` y muestra «PLAN» en la barra. Usa `/plan on` para activarlo, `/plan off` para salir y `/plan status` para consultar el estado. `/plan` sin argumentos lo alterna y `/plan run` sigue desactivándolo sin ejecutar el plan. Con `/plan <petición>` activa el modo y envía la petición en el mismo paso. `Alt+P` lo alterna desde el teclado (`Ctrl+Alt+P` si la terminal de macOS no envía Option como Alt; en Windows y WSL solo `Ctrl+Alt+P`, porque Pi usa allí `Alt+P`). La cabecera muestra el estado: `◆ MODO PLAN ON · Alt+P` en ámbar o `○ plan off · Alt+P` atenuado. Es un bloqueo de las modificaciones comunes, no un aislamiento completo.
-- **Panel de tareas (`/tasks`):** encima del editor muestra las tareas de la unidad HCD activa, leídas de `mem hcd show --json`: `○` pendiente, `●`/`○` parpadeando en curso, `●` verificada (atenuado si caducó durante `implement`, que gomemory ≥ 2.59.0 cuenta como progreso), `↻` verificación caducada que hay que revalidar en `verify`, `✗` con fallo. La cabecera lleva una barra continua `━━━───` con el avance. El árbol de actividad muestra el estado y la duración de las llamadas de esta sesión. En `/tdd`, las verificaciones Bash tienen sus propias filas y Watch no las borra.
+- **Panel de tareas (`/tasks`):** encima del editor muestra las tareas de la unidad HCD activa, leídas de `mem hcd show --json`: `○` pendiente, `●`/`○` parpadeando en curso, `●` verificada (atenuado si caducó durante `implement`, que gomemory ≥ 2.59.0 cuenta como progreso), `↻` verificación caducada que hay que revalidar en `verify`, `✗` con fallo. La cabecera lleva una barra continua `━━━───` con el avance. El árbol de actividad muestra el estado y la duración de las llamadas de esta sesión.
 - **Repositorio de skills:** `~/.pi-gomemory/skills` reúne las 21 skills embebidas (las de gomemory, adaptadas para Pi, y `gitlab-release`; siempre ganan), las de skills.sh (`impeccable`, `frontend-design`, `playwright-cli`) y enlaces a las skills de los demás agentes, en este orden de prioridad: `~/.agents/skills`, `~/.config/opencode/skills`, `~/.claude/skills`, `~/.codex/skills` y `~/.gemini/skills`. Pi carga solo ese repositorio, así que no hay avisos de colisión. Se sincroniza al instalar y en cada arranque de `pi-gomemory`. Nunca modifica las carpetas de otros agentes ni las skills tuyas. Si `mem update` trae skills nuevas, Pi lo detecta al iniciar la sesión o justo después de un `mem update` lanzado desde Pi (`pi-gomemory-setup skills-sync --check`), sincroniza y avisa de que `/reload` las carga. Las copias de gomemory que se editaron a mano no se sobrescriben: Pi avisa en amarillo de las que quedaron desfasadas y `pi-gomemory-setup skills-sync --restore <skill>` las repone.
 
 ### Actualizaciones del meta-harness
 
-Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `herdr`, `pi-antigravity` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa la última publicada según la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`) y, desde v1.13.0, compara con la versión que tienes instalada ahora, así que no anuncia algo que ya actualizaste por otra vía. Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar.
+Cada vez que abres `pi-gomemory`, el launcher comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `herdr` y `pi-cc-extensions`. La consulta en red corre en segundo plano y no retrasa Pi; el aviso usa la última publicada según la consulta anterior (`~/.pi/agent/pi-gomemory-deps.json`) y, desde v1.13.0, compara con la versión que tienes instalada ahora, así que no anuncia algo que ya actualizaste por otra vía. Si hay algo desactualizado, lo lista con el comando de actualización y, en una terminal interactiva, pregunta `¿Actualizar ahora? [s/N]` durante 10 s. Sin respuesta, sigue sin actualizar.
 
 Dentro de Pi, el pie muestra **`↑ actualizaciones disponibles`** en su extremo derecho mientras haya algo desactualizado. Al abrir la sesión consulta el estado, refresca en segundo plano si la última consulta en red tiene más de una hora y vuelve a consultar, de modo que una release se anuncia como mucho una hora después de publicarse. El aviso solo informa: para instalar, responde a la pregunta del launcher, ejecuta `pi-gomemory-setup deps-update` o usa `/componentes` sin salir de Pi. Si se actualizó `pi`, `/componentes` te pide reiniciar Pi. Para desactivar el aviso y la pregunta, define `PI_GOMEMORY_NO_UPDATE_CHECK=1`. Vacía, `0` o `false` la dejan activa. `sync`, `update` y `/componentes` consultan igualmente, porque los pides tú.
 
 `pi-gomemory-setup sync` es la forma directa de dejar las herramientas al día. `update` lo ejecuta al terminar, y `deps-update` le pasa las herramientas desactualizadas en una sola llamada, así que ninguna se actualiza dos veces.
 
-`pi-antigravity` y `pi-cc-extensions` se instalan fijados a una versión exacta (`npm:pi-antigravity@0.15.0`, `npm:pi-cc-extensions@1.0.22`); cambian solo con una release nueva de pi-gomemory, que antes valida cada versión candidata contra lo que pi-gomemory necesita de ella. Si npm publica una versión más nueva que todavía no se ha validado, `pi-gomemory-setup doctor` lo avisa con `⚠`, pero `deps-update` sigue instalando solo la versión fijada.
+`pi-cc-extensions` se instala fijado a una versión exacta (`npm:pi-cc-extensions@1.0.22`); cambia solo con una release nueva de pi-gomemory, que antes valida cada versión candidata contra lo que pi-gomemory necesita de ella. Si npm publica una versión más nueva que todavía no se ha validado, `pi-gomemory-setup doctor` lo avisa con `⚠`, pero `deps-update` sigue instalando solo la versión fijada.
 
 ### Cuota de OpenAI Codex
 
 Desde v1.12.0, con el proveedor `openai-codex` activo, `/sidebar` muestra «▼ Codex Quota»: porcentaje **restante**, barras y tiempo hasta el reinicio de las ventanas primaria y secundaria. El comando `pi-gomemory-setup codex-usage` devuelve porcentaje **usado** en JSON. Ambos usan la sesión OAuth de Pi; no consultan la caché de la aplicación Codex ni renuevan tokens.
 
 ## Limitaciones conocidas
-
-**Antigravity y HTTP 429:** una sesión OAuth válida y cuota disponible no garantizan que Google acepte la petición de generación. v1.15.3 publica una regresión y una [mitigación local opcional](docs/antigravity.md) para el patrón reproducido con las instrucciones de Pi. El guard conserva el texto, pero reduce su prioridad al moverlo a un mensaje de usuario. No se instala por defecto; actualizar pi-gomemory no activa la mitigación.
 
 Desde v1.12.1 están corregidos los seis hallazgos de [HCD-027](hcd/HCD-027-cierre-de-los-seis-defectos-reproducidos.md) (permisos de configuración MCP, limpieza de skills legacy y resultados/terminación TDD), así como el bucle de `/tdd watch`. v1.13.0 corrige que `uninstall` con otro `HOME` borrara el launcher de la instalación real ([HCD-030](hcd/HCD-030-uninstall-no-debe-tocar-un-launcher-fuer.md)). `install`, `update` y `uninstall` conservan los permisos que tenga `~/.pi/agent/AGENTS.md` ([HCD-032](hcd/HCD-032-install-y-uninstall-conservan-los-permis.md)). v1.13.4 hace que `uninstall` conserve lo que cambió después del plan y falle si no pudo leer algo, y que `update` rechace un ejecutable incompleto ([HCD-034](hcd/HCD-034-uninstall-y-update-no-pierden-datos-ni-a.md)). v1.13.5 conserva el manifiesto si `uninstall` falla, mata los procesos de prueba que ignoran SIGTERM al cancelar `/tdd` y hace que `update` reinstale en el `BIN_DIR` de la instalación y consulte siempre ([HCD-035](hcd/HCD-035-cerrar-h-01-a-h-05-de-la-auditoria-acr-a.md)). v1.13.6 conserva los enlaces simbólicos de `mcp.json`, `settings.json`, `AGENTS.md` y `pi-cc-extensions.json`: escribe en el archivo de destino y rechaza los enlaces rotos sin tocar nada ([HCD-036](hcd/HCD-036-las-configuraciones-de-pi-enlazadas-con.md)). Los límites vigentes están en [problemas conocidos](docs/known-issues.md).
 
@@ -241,7 +232,7 @@ go test ./...   # pruebas del instalador en un HOME aislado
 make dist       # tarballs para darwin/linux × amd64/arm64 y SHA256SUMS
 ```
 
-La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.js; requiere `node` en el PATH y falla si falta. No accede a credenciales ni a Google. Puedes ejecutarlas por separado con `node --test tests/antigravity-prompt-guard/guard.test.mjs`.
+La suite de Go ejecuta las extensiones de Pi con Node.js; requiere `node` en el PATH y falla si falta.
 
 `install.sh` acepta `PI_GOMEMORY_VERSION`, `PI_GOMEMORY_BIN_DIR`, `PI_GOMEMORY_BASE_URL`, `PI_GOMEMORY_LATEST_URL` y `PI_GOMEMORY_SKIP_DEPS`. Sin `PI_GOMEMORY_VERSION` lee la etiqueta de la redirección de `PI_GOMEMORY_LATEST_URL` (por defecto, `releases/latest` del repositorio); si no la obtiene, se detiene y sugiere fijar la versión. `PI_GOMEMORY_BASE_URL` permite probar el instalador contra un `dist/` local, por ejemplo `file://$PWD/dist`. Al compilar desde el código fuente no consulta la red. `bash scripts/clean-install-check.sh` ejecuta la instalación completa en un HOME temporal con compilación local y comprueba que `pi`, `mem`, `codegraph` y `herdr` respondan (requiere red).
 
@@ -256,7 +247,7 @@ La suite de Go también ejecuta las 22 pruebas offline del guard mediante Node.j
 - [Notas de v1.24.0](docs/releases/v1.24.0.md): `install` y `update` dejan Pi en codemode híbrido por defecto (HCD-071)
 - [Notas de v1.15.4](docs/releases/v1.15.4.md): modo MCP directo (`codemode off`) por defecto y transición limpia desde v1.15.x (HCD-050)
 - [Notas de v1.15.3](docs/releases/v1.15.3.md): regresión de Antigravity, cierre verificado de HCD-040 y mitigación local opt-in
-- [Antigravity: HTTP 429 y mitigación local](docs/antigravity.md): diagnóstico, riesgo de prioridad, activación manual y reversión
+- [Antigravity: HTTP 429 y mitigación local](docs/antigravity.md): histórico; la integración se retiró en HCD-085
 - [Notas de v1.15.2](docs/releases/v1.15.2.md): cierre de cinco hallazgos ACR/ADM de v1.15.1 (HCD-048)
 - [Notas de v1.15.1](docs/releases/v1.15.1.md): corrección de los ocho hallazgos del ACR de v1.15.0
 - [Notas de v1.15.0](docs/releases/v1.15.0.md): contexto vivo, codemode por defecto y migración del protocolo

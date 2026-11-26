@@ -97,9 +97,11 @@ Si vienes de v1.12.0 o anterior, revisa los permisos de `~/.pi/agent` y los [pro
 
 **Configuración enlazada (dotfiles):** desde v1.13.6, si `~/.pi/agent/mcp.json`, `settings.json`, `AGENTS.md` o `pi-cc-extensions.json` son enlaces simbólicos, `install`, `update`, `uninstall` y los subcomandos escriben en el archivo de destino y conservan el enlace y sus permisos. Un enlace roto, un bucle o un enlace a un directorio hacen fallar el paso con «el enlace no apunta a un archivo», sin tocar nada. Si una versión anterior ya sustituyó alguno de tus enlaces, vuelve a crearlo a mano.
 
-## Mitigación temporal de Antigravity
+## Si venías usando Antigravity o /tdd
 
-Desde v1.16.0, el instalador incluye el guard de Antigravity. Este cambia la prioridad de las instrucciones y se puede desactivar con `ANTIGRAVITY_PROMPT_GUARD=off` al iniciar Pi. Consulta el [diagnóstico y los límites](antigravity.md).
+Desde v1.31.0, pi-gomemory ya no instala `pi-antigravity`, no consulta la cuota de Google y no incluye el inspector `/tdd`. Al actualizar, `install` quita de `settings.json` las entradas de `pi-antigravity` que había escrito y borra `gomemory-tdd.ts` y `antigravity-prompt-guard.js` si siguen como se instalaron. Si los editaste, se quedan donde están y verás un aviso; bórralos tú y ejecuta `/reload`.
+
+`~/.pi/agent/antigravity-accounts.json` guarda tu sesión de Google y no se toca. Si ya no lo usas, bórralo o revoca el acceso desde tu cuenta.
 
 ## Codemode y contexto
 
@@ -127,7 +129,7 @@ pi-gomemory-setup skills-update                       # instala o actualiza impe
 
 ## Actualización
 
-En cada arranque, el launcher `pi-gomemory` comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `herdr`, `pi-antigravity` y `pi-cc-extensions`. La consulta corre en segundo plano, vuelve a la red como mucho una vez por hora, y el aviso usa la última versión publicada según la consulta anterior, comparada con la que tienes instalada en ese momento. Una release nueva se anuncia, como mucho, una hora después de publicarse. En una terminal interactiva pregunta si quieres actualizar (10 s; sin respuesta, no actualiza).
+En cada arranque, el launcher `pi-gomemory` comprueba pi-gomemory, `pi`, `mem`, `codegraph`, `herdr` y `pi-cc-extensions`. La consulta corre en segundo plano, vuelve a la red como mucho una vez por hora, y el aviso usa la última versión publicada según la consulta anterior, comparada con la que tienes instalada en ese momento. Una release nueva se anuncia, como mucho, una hora después de publicarse. En una terminal interactiva pregunta si quieres actualizar (10 s; sin respuesta, no actualiza).
 
 Dentro de Pi, el pie muestra `↑ actualizaciones disponibles` abajo a la derecha mientras haya algo desactualizado; con `/tokens` apagado, el aviso pasa al pie por defecto de Pi. Solo informa: para instalar, responde a la pregunta del launcher, ejecuta `deps-update` o usa `/componentes`. Este comando muestra cada componente con su versión instalada y la publicada, deja marcar o desmarcar las herramientas opcionales y ejecuta `sync` con lo marcado (plazo de 60 minutos). Si se actualizó `pi`, te pide reiniciar Pi.
 
@@ -177,7 +179,7 @@ Nunca toca la memoria de gomemory (`mem`, su base de datos, `.gomemory/` ni `hcd
 | `--dry-run` | Lista el plan sin escribir nada. |
 | `--yes` | Omite la confirmación. Sin terminal interactiva es obligatoria. |
 | `--verbose` | Imprime cada acción y la guarda en `~/.pi-gomemory/uninstall.log`. |
-| `--packages` | Quita también `pi-antigravity` y `pi-cc-extensions` en su versión fijada, y `pi-cc-extensions.json` si no lo personalizaste. |
+| `--packages` | Quita también `pi-cc-extensions` en su versión fijada, las entradas de `pi-antigravity` que escribieron versiones anteriores y `pi-cc-extensions.json` si no lo personalizaste. |
 | `--self` | Borra también el binario `pi-gomemory-setup` si está en la carpeta de instalación. |
 
 Tras desinstalar queda la marca `~/.pi-gomemory/uninstalled`: un launcher que siga instalado ya no reinstala skills al arrancar, y `pi-gomemory-setup doctor` muestra «pi-gomemory no instalado». `install` retira la marca.
@@ -203,7 +205,6 @@ Deberías ver una salida como esta:
   ✓ Tema gomemory en Pi              /Users/usuario/.pi/agent/themes/gomemory.json
   ✓ MCP gomemory                     conectado
   ✓ MCP codegraph                    conectado
-  ✓ Plugin pi-antigravity (Google)   registrado en settings.json
   ✓ Claude Code TUI (pi-cc-extensions) activo (diffs, summaries, /context)
   ✓ Skills gomemory en Pi            20 skills cargadas
   ✓ TUI Status Bar & Tokens          extensión gomemory-status activa

@@ -12,40 +12,11 @@ pi-gomemory
 
 Si estás dentro de un proyecto donde ya ejecutaste `mem init` o existe `.gomemory/memories.db`, el lanzador inyecta las memorias más recientes con el parámetro `--append-system-prompt` de Pi.
 
-## Consulta de cuotas de Google AI Pro
+## Antigravity (Google AI Pro): retirado
 
-Para revisar el porcentaje de cuota restante y el tiempo hasta el reinicio de límites:
+HCD-085 retiró toda la integración con Antigravity: el plugin `pi-antigravity`, la cuota de `/sidebar`, los comandos `pi-gomemory usage` y `pi-gomemory-setup usage`, y el workaround `antigravity-prompt-guard.js`. Consultar la API interna de Google con el token OAuth de la cuenta expone esa cuenta a bloqueos y observaciones.
 
-```bash
-pi-gomemory usage
-```
-
-También funciona llamando al binario de configuración:
-
-```bash
-pi-gomemory-setup usage
-```
-
-Ejemplo de salida en terminal (los grupos y cifras los entrega la API de tu cuenta):
-
-```text
-Google AI Pro (g1-pro-tier)
-Cuenta: tu-cuenta@ejemplo.com
-
- Gemini Models
-   [################----] Weekly Limit Remaining: 80.0% left · resets 3d 21h
-   [################----] Five Hour Limit Remaining: 80.0% left · resets 4h 17m
-```
-
-Si la API no responde o el token caducó, el comando termina con código 1 y un mensaje de error. Nunca muestra cifras aproximadas. Abre `pi` una vez para renovar el token y vuelve a intentarlo.
-
-Desde v1.13.8, una respuesta 200 sin ningún límite (`null`, `{}` o grupos vacíos) o con un porcentaje fuera de rango cuenta como fallo de ese endpoint: el comando prueba el siguiente y, si ninguno trae cuotas, termina con código 1, y el panel lateral muestra el error en vez de «Cargando cuota...». Si Google envía cuotas pero no el nombre del plan, la primera línea dice «Plan no informado» en lugar de suponer «Google AI Pro (g1-pro-tier)».
-
-## Antigravity devuelve HTTP 429 con cuota disponible
-
-Si `/sidebar` o `pi-gomemory usage` muestran cuota, pero la generación termina con `Resource has been exhausted`, no des por probado un problema de login ni borres las credenciales. En HCD-040 se reprodujo un patrón asociado al contenido o ubicación de las instrucciones de Pi con la misma credencial.
-
-Consulta el [diagnóstico de Antigravity](antigravity.md) antes de aplicar la referencia local opt-in. El guard conserva el texto, pero baja su prioridad al trasladarlo a un turno de usuario; no se instala con `install` ni `update`. Para desactivar una copia instalada manualmente, inicia un proceso nuevo con `ANTIGRAVITY_PROMPT_GUARD=off pi`. La validación de `/sidebar` incluye la confirmación de la persona, no una inspección visual del agente.
+`install` y `update` retiran de `settings.json` las entradas de `pi-antigravity` que escribió pi-gomemory, y borran las copias intactas del guard. Si añadiste `pi-antigravity` por tu cuenta, con otra versión, se conserva con un aviso. `~/.pi/agent/antigravity-accounts.json` guarda tu sesión OAuth y no se toca: bórralo o revoca el acceso desde tu cuenta de Google si ya no lo usas. El [diagnóstico de Antigravity](antigravity.md) queda como referencia histórica.
 
 ## Referencia de comandos CLI
 
@@ -56,7 +27,6 @@ Uso: pi-gomemory-setup [comando]
 
 Comandos:
   install       Ejecuta la instalación completa (opción por defecto); su primer paso es sync
-  usage         Muestra cuotas y límites de consumo de Google AI Pro (--json disponible)
   claude-usage  Muestra telemetría agregada de tokens de Claude Code (hoy, semana, total)
   anthropic-usage  Devuelve los límites del plan de Anthropic en JSON
   codex-usage   Devuelve los límites del plan de OpenAI Codex en JSON
@@ -64,7 +34,7 @@ Comandos:
   mcp           Registra gomemory y codegraph en mcp.json
   codemode      Activa, desactiva o consulta el modo codemode híbrido (on | off | status)
   theme         Instala la paleta gomemory en ~/.pi/agent/themes/
-  plugin        Configura pi-antigravity y pi-cc-extensions en settings.json
+  plugin        Configura pi-cc-extensions en settings.json
   skills        Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills/
   skills-sync   Sincroniza el repositorio central de skills y purga copias legadas
                 --check: solo comprueba; sale con 10 si hay skills desfasadas o editadas que difieren de mem
@@ -154,7 +124,7 @@ La cabecera indica el estado en todo momento: `◆ MODO PLAN ON · Alt+P` en ám
 | `↻` | caducada en `verify`/`close`: el código cambió y hay que revalidarla con `mem hcd verify --stale` |
 | `✗` | fallida |
 
-Cada estado tiene también su color; el glifo se mantiene para quien no distingue colores o usa un tema monocromo. Debajo de cada tarea, el árbol (`├─`, `└─`) muestra las llamadas de la sesión con su estado y duración; la que está en marcha usa el mismo spinner que `/tdd`.
+Cada estado tiene también su color; el glifo se mantiene para quien no distingue colores o usa un tema monocromo. Debajo de cada tarea, el árbol (`├─`, `└─`) muestra las llamadas de la sesión con su estado y duración; la que está en marcha usa el spinner braille de Pi.
 
 Mientras está visible, el panel vuelve a consultar el motor cada 10 segundos. Si la unidad se cierra o se cancela, también desde otra sesión de Pi, el panel desaparece en ese plazo. Con todas las tareas verificadas pero la unidad aún abierta, sigue visible hasta el cierre.
 
@@ -171,7 +141,7 @@ Con el input vacío, Pi muestra en gris lo que probablemente quieras escribir a 
 La extensión `gomemory-suggest.ts` envuelve el editor que haya instalado otra extensión (por ejemplo, el `❯` de pi-cc-extensions) en lugar de sustituirlo.
 
 ### Panel lateral estilo OpenCode (`/sidebar`)
-Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), cuotas de Google AI Pro, límites de Anthropic u OpenAI Codex y telemetría de Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
+Alterna la visibilidad de la barra lateral en la esquina superior derecha (`anchor: "top-right"`). Muestra la sesión/HCD activo, el consumo de ventana de contexto en tiempo real (tokens, porcentaje y coste), límites de Anthropic u OpenAI Codex y telemetría de Claude Code, y los servidores MCP declarados en `mcp.json` con el estado `Configured` (no se comprueba la conexión en vivo; sin `mcp.json` válido la lista queda vacía). El panel flota sin capturar el teclado, así que puedes seguir escribiendo; el título incluye la versión instalada. Se oculta con `/sidebar` o automáticamente si el terminal mide menos de 100 columnas.
 
 **Límites del plan de Anthropic.** Si Pi está conectado a Anthropic con OAuth (suscripción Claude Pro/Max, `/login` en pi), el bloque «▼ Anthropic · plan» muestra el porcentaje usado de la **sesión** (ventana de 5 h) y de la **semana**, con el tiempo hasta cada reinicio. Si Anthropic los envía, añade también los límites semanales de Opus o Sonnet. Los límites se obtienen de forma pasiva a partir de las cabeceras `anthropic-ratelimit-unified-*` que llegan en cada respuesta del modelo (`after_provider_response`), recalculando la cuenta atrás en cada renderizado. Como respaldo inicial al abrir el panel sin respuesta previa, realiza una única consulta con `pi-gomemory-setup anthropic-usage` evitando saturar la cuota de la API (HTTP 429).
 
@@ -179,7 +149,7 @@ Si la consulta falla, el bloque muestra el error completo y nunca cifras viejas 
 
 - Clic en `[−]` de la cabecera: minimiza el panel a una sola fila (`[ HCD · ... [+] ]`); clic en `[+]`: lo restaura. El ratón solo funciona en el modo `fullscreen` de Pi (el predeterminado); en `--tui-mode regular` usa los comandos.
 - `/sidebar min` (o alias `/sidebar m`, `/sidebar -`): alterna el modo minimizado desde el teclado.
-- `/min`: minimiza o restaura a la vez `/sidebar` y `/tdd`. Si alguno está expandido, minimiza los dos; si los dos están minimizados, los restaura.
+- `/min`: atajo de `/sidebar min`.
 
 Con un título largo, el título se recorta con `…` y el control `[−]` sigue visible.
 
@@ -197,44 +167,9 @@ El comando no renueva tokens. Sin sesión OAuth, con token caducado, respuesta H
 
 El panel consulta al abrirse, al seleccionar modelo, al iniciar sesión, al terminar respuestas y mediante un heartbeat de 30 segundos mientras está abierto. Estas rutas fuerzan la consulta; el TTL no es un límite global de frecuencia. Una guarda evita consultas simultáneas. Si falla, se muestra el error en lugar de conservar cifras anteriores. Después de actualizar, usa `/reload` en Pi.
 
-### Inspector de pruebas en tiempo real (`/tdd`)
+### Inspector de pruebas: retirado
 
-Desde v1.12.1, las interrupciones y los timeouts se informan como fallos con su causa, cada prueba Playwright se identifica por proyecto y las recuperadas en un reintento se cuentan como `flaky` (véase [problemas conocidos](known-issues.md)).
-La sección «Verificaciones HCD · Bash» muestra una fila por tarea desde que empieza `mem hcd verify`. El glifo animado cambia a `✓` o `✗` al terminar. Watch conserva esas filas separadas de los resultados de las suites.
-
-Abre el overlay **TDD Live Inspector**. Se coloca debajo del panel lateral, en la misma columna derecha, sin solaparse, y ejecuta las pruebas **reales** del proyecto abierto.
-
-**Suites según el proyecto.** Cada suite se activa solo si el proyecto tiene lo que necesita; si no, aparece como «omitida» con su motivo, nunca como éxito ni como fallo:
-
-| Suite | Se activa con | Comando |
-|---|---|---|
-| Backend | `go.mod` | `go test -json ./...` |
-| Frontend | `package.json` con script `test` | `npm test` |
-| Playwright E2E | `playwright.config.*` | `npx playwright test --reporter=line` |
-| CI & Static | `go.mod` y/o `tsconfig.json` | `go vet ./...` y/o `npx tsc --noEmit` |
-| Data & Graph | unidad HCD activa | `mem hcd show --json` |
-
-**Recorrido en vivo.** Los procesos se ejecutan sin shell y su salida se lee línea a línea, así que el panel avanza test a test mientras corren. Muestra solo las suites habilitadas y, dentro de cada una:
-- los tests en curso, con el spinner braille de Pi (`⠋⠙⠹…`);
-- los fallidos (`✗`), con archivo:línea, el paso que falló (Playwright), el mensaje real (por ejemplo, `Expected 13 · Received 7`) y un diagnóstico;
-- los aprobados, resumidos en un conteo (`✓ 108 aprobados`).
-
-Las suites omitidas aparecen agrupadas al final, bajo «Omitidas (n)».
-
-**Límite por línea.** Cada línea de salida admite hasta 64 Ki caracteres. Una más larga (un JSON o un bundle minificado sin saltos de línea) termina el proceso y la ejecución falla con «Salida rechazada: una línea excede el límite de 64 Ki caracteres». Para el diagnóstico, el panel guarda las últimas 40 líneas, cada una recortada a 1 Ki caracteres y 64 KiB en total; el parser de cada suite sigue recibiendo las líneas completas.
-
-**Subcomandos:**
-- `/tdd`: muestra u oculta el panel y lanza todas las suites.
-- `/tdd run [suite]`: ejecuta `all` o una suite (`backend`, `frontend`, `playwright`, `ci`, `data`). Si ya hay una ejecución en curso, avisa y la nueva queda en cola; si lo que corre es watch, lo cancela en lugar de esperarlo.
-- `/tdd min` (o alias `/tdd m`, `/tdd -`), o clic en `[−]` / `[+]`: minimiza o restaura el panel.
-- `/tdd watch`: ejecuta las pruebas una vez cuando el agente termina el prompt (`agent_settled`), solo si cambió archivos con `edit`, `write` o `bash`. No bloquea al agente, no se dispara en prompts de solo lectura y no repite si el agente ya ejecutó `run_test_suite all` tras su último cambio. Los avisos que llegan durante una ejecución se agrupan en una sola pendiente.
-- `/tdd report`: publica en el chat el informe de la última ejecución (resultado por suite y cada fallo con mensaje, archivo:línea, paso, diagnóstico y sugerencia). Queda también en el contexto del modelo sin iniciar un turno, así que puedes pedir «corrige esos fallos» sin volver a ejecutar. Si aún no hubo ejecución, lo indica.
-
-**Herramienta del agente (`run_test_suite`).** Devuelve al modelo cada fallo con su suite, test, mensaje, ubicación, paso, diagnóstico y sugerencia, para que corrija y vuelva a ejecutar. Mientras corre, envía avances. Con `filter` ejecuta solo los tests que coinciden, para ver el rojo y luego el verde de un cambio sin esperar la suite entera; la suite queda marcada como «parcial». El filtro se traduce al ejecutor: `go test -run`, `pytest -k`, `vitest -t`, `playwright -g`, `phpunit --filter`, `mvn -Dtest` y `gradle --tests`. La suite completa queda para la regresión final.
-
-**Paralelismo.** Go, Vitest y Playwright ya reparten los tests entre núcleos. Si el proyecto tiene `pytest-xdist` (declarado o instalado en `.venv`), `/tdd` añade `-n auto`; si existe `vendor/bin/paratest`, lo usa en lugar de `phpunit`. No instala nada ni fuerza `mvn -T` o `gradle --parallel`.
-
-**Tests lanzados por el agente con Bash.** `/tdd` también muestra los tests que el agente ejecuta por su cuenta (`go test`, `pytest`, `vitest`, `phpunit`, `mvn`/`gradle test`, `playwright`), según van terminando y no solo al final. `go test` se lee test a test con `-json` o `-v`; sin ellos solo se conoce el resultado global. En `mem hcd verify`, también detrás de `cd sub &&`, el panel muestra los tests de la comprobación a partir de su evidencia, sin cambiar el veredicto del motor. Un Bash que ejecuta la suite completa deja a watch sin cambios pendientes solo si es la única suite de tests del proyecto: con Go y un frontend con tests, un `go test ./...` no cubre el frontend y watch sigue comprobándolo.
+HCD-085 retiró el TDD Live Inspector y su tool `run_test_suite`. El progreso de las tareas HCD y sus comprobaciones sigue en `/tasks`. Si una versión anterior dejó `~/.pi/agent/extensions/gomemory-tdd.ts` sin editar, `install` y `update` lo borran; si lo editaste, se conserva con un aviso y puedes borrarlo y ejecutar `/reload`.
 
 ### Barra de tokens (`/tokens`)
 Alterna la visibilidad de la barra inferior con el consumo acumulado de tokens de entrada, salida, lecturas de caché y coste estimado.
@@ -278,10 +213,6 @@ El instalador `pi-gomemory-setup` previene y elimina en origen las advertencias 
    - Si un archivo `SKILL.md` contiene caracteres de dos puntos (`:`) sin comillas en el campo `description:`, el analizador de YAML de Pi emite warnings o descarta la skill.
    - La función `SanitizeFrontmatter` del instalador detecta descripciones con `:` no entrecomilladas y las asegura automáticamente con comillas dobles.
 
-3. **Dependencias provistas por el host (`host-provided extension packages`):**
-   - Pi advierte si un paquete instalado (como `pi-antigravity`) lista librerías que el runtime de Pi ya provee (`typebox`) bajo `dependencies` en lugar de `peerDependencies`.
-   - El instalador parchea el `package.json` de `pi-antigravity` asegurando `"peerDependencies": { "typebox": "*" }` y retirándolo de `dependencies`.
-
-4. **Superposición de cabecera visual:**
+3. **Superposición de cabecera visual:**
    - Para impedir que `pi-cc-extensions` tape el banner de gomemory con su propia cabecera de inicio, `pi-gomemory-setup` impone `showStartupHeader: false` en `~/.pi/agent/pi-cc-extensions.json`.
 

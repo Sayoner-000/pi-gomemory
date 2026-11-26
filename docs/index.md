@@ -5,19 +5,22 @@ Esta carpeta contiene la documentación técnica de pi-gomemory, el instalador y
 ## Contenido
 
 [Guía del harness pi-gomemory (HTML)](Guia-PI-GOMEMORY-v1.15.html)
-Guía larga de uso, con el formato de la Guía SDD_HCD de gomemory: instalación, qué cambia en tu máquina, launcher, memoria y grafos, skills, comandos dentro de Pi, `/sidebar`, `/tdd`, HCD, revisión con Splash/ACR/ADM, una sesión de punta a punta y mantenimiento. Se puede imprimir o guardar como PDF.
+Guía larga de uso, con el formato de la Guía SDD_HCD de gomemory: instalación, qué cambia en tu máquina, launcher, memoria y grafos, skills, comandos dentro de Pi, `/sidebar`, `/tdd` (retirado en HCD-085), HCD, revisión con Splash/ACR/ADM, una sesión de punta a punta y mantenimiento. Se puede imprimir o guardar como PDF.
 
 [Arquitectura del sistema](architecture.md)
-Detalla el binario autocontenido con `embed.FS`, la integración de los servidores MCP, los ajustes del paquete Antigravity, la interfaz TUI y la sanitización de skills. El guard opcional de generación queda fuera del embebido.
+Detalla el binario autocontenido con `embed.FS`, la integración de los servidores MCP, la retirada de Antigravity y de `/tdd` (HCD-085), la interfaz TUI y la sanitización de skills.
 
 [Guía de instalación](installation.md)
 Instrucciones paso a paso para instalar con el script de una línea, compilar desde el código fuente o usar los binarios de release.
 
 [Guía de uso y comandos](usage.md)
-Referencia de comandos de la CLI, cuotas de Google AI Pro, Anthropic y OpenAI Codex y atajos en la terminal interactiva.
+Referencia de comandos de la CLI, límites de Anthropic y OpenAI Codex y atajos en la terminal interactiva.
 
 [Antigravity: HTTP 429 y mitigación temporal](antigravity.md)
-Diagnóstico reproducido, riesgo de prioridad de instrucciones, activación embebida temporal (desde v1.16.0) y reversión (`ANTIGRAVITY_PROMPT_GUARD=off`).
+Histórico: la integración con Antigravity se retiró en HCD-085.
+
+[Notas de v1.31.0](releases/v1.31.0.md)
+Retira `/tdd` y la integración con Antigravity (plugin, cuota de `/sidebar`, `usage` y guard), y limpia al actualizar lo que dejaron versiones anteriores sin tocar lo que editaste (HCD-085).
 
 [Notas de v1.30.0](releases/v1.30.0.md)
 Integra las skills externas `impeccable`, `frontend-design` y `playwright-cli` desde skills.sh (`npx skills`) en `install`, `update` y el arranque de Pi (`skills-update --if-due` cada 24 h), añade la comprobación de `doctor` y embebe `gitlab-release` (21 skills embebidas, HCD-084).
