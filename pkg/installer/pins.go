@@ -44,7 +44,6 @@ type PinnedPackage struct {
 // PinnedPackages devuelve los paquetes fijados en plugin.go, con su pin.
 func PinnedPackages() []PinnedPackage {
 	return []PinnedPackage{
-		{"pi-antigravity", AntigravityVersion},
 		{"pi-cc-extensions", CCExtensionsVersion},
 	}
 }

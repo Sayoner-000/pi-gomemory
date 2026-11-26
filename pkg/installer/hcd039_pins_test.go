@@ -120,18 +120,16 @@ exit 0`)
 // deja en la salida lo que se aceptó.
 func TestHCD039PinsCheckReport(t *testing.T) {
 	join := func(lines []string) string { return strings.Join(lines, "\n") }
-	hcd039Registry(t, map[string]string{
-		"pi-antigravity":   hcd039Doc(AntigravityVersion, "99.0.0"),
-		"pi-cc-extensions": hcd039Doc(CCExtensionsVersion),
-	})
+	// Desde HCD-085 pi-cc-extensions es el único paquete fijado.
+	hcd039Registry(t, map[string]string{"pi-cc-extensions": hcd039Doc(CCExtensionsVersion, "99.0.0")})
 	checks := CheckPins(context.Background())
 	lines, fail := FormatPinChecks(checks, false)
 	out := join(lines)
-	if !fail || !strings.Contains(out, "pi-antigravity: fijado "+AntigravityVersion+" · npm publica 99.0.0") {
+	if !fail || !strings.Contains(out, "pi-cc-extensions: fijado "+CCExtensionsVersion+" · npm publica 99.0.0") {
 		t.Errorf("C-01: el desfase debe fallar y nombrar paquete, pin y publicada:\n%s", out)
 	}
-	if !strings.Contains(out, "pi-cc-extensions: al día ("+CCExtensionsVersion+")") {
-		t.Errorf("C-02: el paquete al día debe decirlo:\n%s", out)
+	if strings.Contains(out, "pi-antigravity") {
+		t.Errorf("HCD-085: pi-antigravity ya no se comprueba:\n%s", out)
 	}
 	if !strings.Contains(out, "PI_GOMEMORY_ALLOW_STALE_PINS=1") || !strings.Contains(out, "TestPinsValidate") || !strings.Contains(out, "RejectedVersions") {
 		t.Errorf("C-09: ante un fallo debe decir cómo seguir:\n%s", out)
@@ -140,19 +138,17 @@ func TestHCD039PinsCheckReport(t *testing.T) {
 		t.Error("C-11: con allowStale el desfase no debe fallar")
 	}
 	accepted, _ := FormatPinChecks(checks, true)
-	if !strings.Contains(join(accepted), "aceptado: pi-antigravity: fijado "+AntigravityVersion+" · npm publica 99.0.0") {
+	if !strings.Contains(join(accepted), "aceptado: pi-cc-extensions: fijado "+CCExtensionsVersion+" · npm publica 99.0.0") {
 		t.Errorf("C-11: con allowStale la salida debe dejar el desfase aceptado:\n%s", join(accepted))
 	}
 
-	hcd039Registry(t, map[string]string{
-		"pi-antigravity":   hcd039Doc(AntigravityVersion),
-		"pi-cc-extensions": hcd039Doc(CCExtensionsVersion),
-	})
-	if lines, fail := FormatPinChecks(CheckPins(context.Background()), false); fail {
-		t.Errorf("C-02: con todo al día no debe fallar:\n%s", join(lines))
+	hcd039Registry(t, map[string]string{"pi-cc-extensions": hcd039Doc(CCExtensionsVersion)})
+	lines, fail = FormatPinChecks(CheckPins(context.Background()), false)
+	if fail || !strings.Contains(join(lines), "pi-cc-extensions: al día ("+CCExtensionsVersion+")") {
+		t.Errorf("C-02: con todo al día no debe fallar y debe decirlo:\n%s", join(lines))
 	}
 
-	hcd039Registry(t, map[string]string{"pi-antigravity": hcd039Doc(AntigravityVersion)})
+	hcd039Registry(t, map[string]string{})
 	errChecks := CheckPins(context.Background())
 	lines, fail = FormatPinChecks(errChecks, false)
 	if !fail || !strings.Contains(join(lines), "pi-cc-extensions: error consultando npm") || strings.Contains(join(lines), "pi-cc-extensions: al día") {
@@ -210,7 +206,8 @@ func TestHCD039Rejected(t *testing.T) {
 	for _, p := range PinnedPackages() {
 		pinned[p.Name] = true
 	}
-	if !pinned["pi-antigravity"] || !pinned["pi-cc-extensions"] || len(pinned) != 2 {
+	// HCD-085: pi-antigravity ya no se fija.
+	if pinned["pi-antigravity"] || !pinned["pi-cc-extensions"] || len(pinned) != 1 {
 		t.Fatalf("PinnedPackages = %+v", PinnedPackages())
 	}
 	for _, r := range RejectedVersions {

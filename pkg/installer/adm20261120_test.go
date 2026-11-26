@@ -10,73 +10,7 @@ import (
 	"testing"
 )
 
-// ADM 2026-11-20, H-01: el texto final de Bash en Pi 1.5.2 añade, tras la
-// salida, "\n\n[Showing lines a-b of N. Full output: …]" si se truncó y
-// "\n\nCommand exited with code N" si falló (core/tools/bash.js, formatOutput y
-// appendStatus). Los updates en vivo no los traen: si end() cuenta esas líneas
-// al calcular la primera línea absoluta, la reconciliación se corre y salta las
-// líneas reales posteriores al último update.
-func TestADM20261120BashFinalSuffix(t *testing.T) {
-	t.Parallel()
-
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
-import { createTDDStore, createBashLiveIngest } from "./gomemory-tdd.ts";
-const fails = [];
-const upd = (lines, tr) => ({ content: [{ type: "text", text: lines.join("\n") }], details: tr ? { truncation: tr } : undefined });
-const suite = (s) => s.getState().suites.find((x) => x.id === "backend");
-const test = (s, n) => suite(s)?.tests.find((x) => x.name === n);
-const bashError = (s) => Boolean(suite(s)?.tests.some((x) => x.name.includes("error de ejecución")));
-// Formato real del resultado final de Bash en Pi 1.5.2 (datos sintéticos).
-const notice = (full, n) => "\n\n[Showing lines " + (full.length - n + 1) + "-" + full.length + " of " + full.length + ". Full output: /tmp/pi-bash-SYNTH-0001.log]";
-const exited = (code) => "\n\nCommand exited with code " + code;
-const pad = Array.from({ length: 3000 }, (_, i) => "noise " + i);
-const N = 2000;
-
-// 1) Truncado y con error: aviso + estado. TestB llegó tras el último update.
-{
-	const live = [...pad, "=== RUN   TestA", "--- PASS: TestA (0.00s)", "=== RUN   TestB"];
-	const full = [...live, "    b_test.go:7: boom", "--- FAIL: TestB (0.01s)", "FAIL", "FAIL\tdemo\t0.02s", ""];
-	const store = createTDDStore();
-	const ing = createBashLiveIngest(store, process.cwd());
-	ing.start("a", "go test -v ./...");
-	ing.update("a", upd(live.slice(-N), { truncated: true, totalLines: live.length, outputLines: N }));
-	ing.end("a", true, full.slice(-N).join("\n") + notice(full, N) + exited(1), { truncated: true, totalLines: full.length, outputLines: N });
-	if (test(store, "TestB")?.status !== "failed") fails.push("1: TestB debió fallar con su salida real: " + test(store, "TestB")?.status);
-	if (bashError(store)) fails.push("1: no debe sustituirse por bash-error");
-}
-
-// 2) Truncado y sin error: solo el aviso. TestC pasó tras el último update.
-{
-	const live = [...pad, "=== RUN   TestA", "--- PASS: TestA (0.00s)", "=== RUN   TestC"];
-	const full = [...live, "--- PASS: TestC (0.01s)", "PASS", "ok  \tdemo\t0.02s", ""];
-	const store = createTDDStore();
-	const ing = createBashLiveIngest(store, process.cwd());
-	ing.start("b", "go test -v ./...");
-	ing.update("b", upd(live.slice(-N), { truncated: true, totalLines: live.length, outputLines: N }));
-	ing.end("b", false, full.slice(-N).join("\n") + notice(full, N), { truncated: true, totalLines: full.length, outputLines: N });
-	if (test(store, "TestC")?.status !== "passed") fails.push("2: TestC debió pasar: " + test(store, "TestC")?.status);
-	if (suite(store)?.status === "failed") fails.push("2: la suite no debe fallar por el aviso de truncado");
-}
-
-// 3) Sin truncar y con error: el estado de salida no es una línea de test.
-{
-	const live = ["=== RUN   TestA", "--- PASS: TestA (0.00s)", "=== RUN   TestB"];
-	const full = [...live, "    b_test.go:7: boom", "--- FAIL: TestB (0.01s)", "FAIL", "FAIL\tdemo\t0.02s", ""];
-	const store = createTDDStore();
-	const ing = createBashLiveIngest(store, process.cwd());
-	ing.start("c", "go test -v ./...");
-	ing.update("c", upd(live));
-	ing.end("c", true, full.join("\n") + exited(1));
-	if (test(store, "TestB")?.status !== "failed") fails.push("3: TestB debió fallar: " + test(store, "TestB")?.status);
-	if (bashError(store)) fails.push("3: no debe sustituirse por bash-error");
-	if (suite(store)?.partial) fails.push("3: sin truncado la suite no es parcial");
-}
-console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
-`)
-	if !strings.Contains(out, "PASS") || strings.Contains(out, "FAIL ") {
-		t.Fatalf("TestADM20261120BashFinalSuffix: %s", out)
-	}
-}
+// ADM 2026-11-20, H-01 cubría la ingesta de Bash de /tdd y se retiró con él en HCD-085.
 
 // ADM 2026-11-20, H-02: si cp, chmod o mv fallan al colocar el binario
 // descargado, install.sh no debe dejar ${SETUP_BIN}.tmp.* en INSTALL_DIR.

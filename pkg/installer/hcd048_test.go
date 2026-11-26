@@ -79,59 +79,7 @@ process.exit(0);
 	}
 }
 
-func TestHCD048H02PlaywrightNonZeroExit(t *testing.T) {
-	project, bin := t.TempDir(), t.TempDir()
-	writeFile(t, filepath.Join(project, "playwright.config.ts"), "export default {}")
-	writeExec(t, filepath.Join(bin, "npx"), `
-if [ -n "$PLAYWRIGHT_JSON_OUTPUT_NAME" ]; then
-  cat << 'EOF' > "$PLAYWRIGHT_JSON_OUTPUT_NAME"
-{
-  "suites": [
-    {
-      "file": "tests/demo.spec.ts",
-      "line": 1,
-      "column": 1,
-      "specs": [
-        {
-          "title": "passes before teardown crash",
-          "file": "tests/demo.spec.ts",
-          "line": 1,
-          "column": 1,
-          "tests": [
-            {
-              "projectName": "chromium",
-              "status": "expected",
-              "results": [{"status": "passed", "duration": 12, "errors": []}]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-EOF
-fi
-echo "Error in globalTeardown: boom" >&2
-exit 1
-`)
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"},
-		`process.env.PATH = `+jsStr(bin)+` + ":" + process.env.PATH;
-`+tddToolHarness+`
-const result = await run("playwright", `+jsStr(project)+`);
-const suite = suiteOf(result.details, "playwright");
-if (!suite || suite.status !== "failed") {
-	console.log("FAIL status=" + (suite && suite.status));
-} else {
-	console.log("PASS");
-}
-process.exit(0);
-`)
-	if !strings.Contains(out, "PASS") {
-		t.Fatalf("TestHCD048H02PlaywrightNonZeroExit: %s", out)
-	}
-}
+// H-02 (Playwright con salida distinta de cero en /tdd) se retiró con /tdd en HCD-085.
 
 func TestHCD048H03UninstallMarkerOnFail(t *testing.T) {
 	t.Parallel()

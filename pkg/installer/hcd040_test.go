@@ -10,18 +10,19 @@ import (
 )
 
 // Reproductor de H-01 de la ACR/ADM 2026-11-17 (docs/audits/2026-11-17-acr-adm-repro_test.go.txt).
+// Desde HCD-085 el paquete fijado de la prueba es pi-cc-extensions.
 func TestACRADM01NewPinOverridesOldCache(t *testing.T) {
 	t.Parallel()
 
 	p := filepath.Join(t.TempDir(), "cache.json")
-	b, _ := json.Marshal(depsCache{CheckedAt: time.Now(), Deps: []DepState{{Name: "pi-antigravity", Current: "0.12.0", Latest: "0.12.0"}}})
+	b, _ := json.Marshal(depsCache{CheckedAt: time.Now(), Deps: []DepState{{Name: "pi-cc-extensions", Current: "1.0.16", Latest: "1.0.16"}}})
 	if err := os.WriteFile(p, b, 0600); err != nil {
 		t.Fatal(err)
 	}
-	probes := []DepProbe{{Name: "pi-antigravity", Current: fixedVersion("0.12.0"), Latest: fixedVersion(AntigravityVersion), Update: []string{"pi", "install", AntigravityPackageSource}}}
+	probes := []DepProbe{{Name: "pi-cc-extensions", Current: fixedVersion("1.0.16"), Latest: fixedVersion(CCExtensionsVersion), Update: []string{"pi", "install", CCExtensionsSource}}}
 	got := DepsStatusFor(p, probes)
-	if len(got) != 1 || got[0].Latest != AntigravityVersion {
-		t.Fatalf("old cache hides new approved pin %s: got %+v", AntigravityVersion, got)
+	if len(got) != 1 || got[0].Latest != CCExtensionsVersion {
+		t.Fatalf("old cache hides new approved pin %s: got %+v", CCExtensionsVersion, got)
 	}
 }
 
@@ -53,16 +54,14 @@ func TestHCD040StaleCacheOffersNewPin(t *testing.T) {
 			p := cache(t, checked,
 				DepState{Name: "pi-gomemory", Current: "v1.0.0", Latest: "v1.1.0"},
 				DepState{Name: "mem", Current: "1.0.0", Latest: "2.0.0"},
-				DepState{Name: "pi-antigravity", Current: "0.12.0", Latest: "0.12.0"},
 				DepState{Name: "pi-cc-extensions", Current: "1.0.16", Latest: "1.0.16"},
 			)
 			got := DepsStatusFor(p, []DepProbe{
 				{Name: "pi-gomemory", Current: fixedVersion("v1.0.0"), Update: []string{"pi-gomemory-setup", "update"}},
 				{Name: "mem", Current: fixedVersion("1.0.0"), Update: []string{"mem", "update", "-y"}},
-				probe("pi-antigravity", "0.12.0", AntigravityPackageSource),
 				probe("pi-cc-extensions", "1.0.16", CCExtensionsSource),
 			})
-			want := "pi-gomemory→v1.1.0,mem→2.0.0,pi-antigravity→" + AntigravityVersion + ",pi-cc-extensions→" + CCExtensionsVersion
+			want := "pi-gomemory→v1.1.0,mem→2.0.0,pi-cc-extensions→" + CCExtensionsVersion
 			if names(got) != want {
 				t.Fatalf("se ofrece el pin compilado y el resto no cambia:\n got %s\nwant %s", names(got), want)
 			}
@@ -77,11 +76,9 @@ func TestHCD040StaleCacheOffersNewPin(t *testing.T) {
 	// Instalado ya en el pin, o caché con una latest superior a la aprobada:
 	// no se ofrece nada por encima del pin.
 	p := cache(t, time.Now(),
-		DepState{Name: "pi-antigravity", Current: "0.12.0", Latest: "0.99.0"},
-		DepState{Name: "pi-cc-extensions", Current: "1.0.16", Latest: "1.0.16"},
+		DepState{Name: "pi-cc-extensions", Current: "1.0.16", Latest: "0.99.0"},
 	)
 	got := DepsStatusFor(p, []DepProbe{
-		probe("pi-antigravity", AntigravityVersion, AntigravityPackageSource),
 		probe("pi-cc-extensions", CCExtensionsVersion, CCExtensionsSource),
 	})
 	if len(got) != 0 {
@@ -125,7 +122,7 @@ func TestHCD040HistoricPins(t *testing.T) {
 		t.Errorf("una versión que pi-gomemory nunca fijó se conserva sin pi remove:\n%s\n%s", settings, calls)
 	}
 	for _, src := range historicPinnedSources() {
-		if src == AntigravityPackageSource || src == CCExtensionsSource {
+		if src == CCExtensionsSource {
 			t.Errorf("el pin actual no es histórico: %s", src)
 		}
 	}
@@ -139,11 +136,12 @@ func TestHCD040HistoricPins(t *testing.T) {
 func TestHCD040PinsBumped(t *testing.T) {
 	t.Parallel()
 
-	if AntigravityVersion != "0.15.0" || AntigravityPackageSource != "npm:pi-antigravity@0.15.0" {
-		t.Errorf("pi-antigravity: %s / %s, se espera 0.15.0", AntigravityVersion, AntigravityPackageSource)
-	}
-	if !isHistoricPin("pi-antigravity", "npm:pi-antigravity@0.14.0") {
-		t.Error("0.14.0 debe quedar como pin histórico para que uninstall --packages lo retire")
+	// HCD-085: todos los pins de pi-antigravity son históricos, para que install
+	// y uninstall --packages retiren las entradas que escribió pi-gomemory.
+	for _, v := range []string{"0.12.0", "0.14.0", "0.15.0"} {
+		if !isHistoricPin("pi-antigravity", "npm:pi-antigravity@"+v) {
+			t.Errorf("pi-antigravity %s debe quedar como pin histórico", v)
+		}
 	}
 	if CCExtensionsVersion != "1.0.22" || CCExtensionsSource != "npm:pi-cc-extensions@1.0.22" {
 		t.Errorf("pi-cc-extensions: %s / %s, se espera 1.0.22", CCExtensionsVersion, CCExtensionsSource)

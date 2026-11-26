@@ -1,16 +1,17 @@
 package installer
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// hcd022Panels abre /sidebar y /tdd en el mismo proceso (como en Pi: dos
-// extensiones, un globalThis) con ctx.ui.custom simulado.
-const hcd022Panels = `
+// Desde HCD-085 no hay panel /tdd: /min alterna solo el sidebar, y /tdd report
+// se retiró con /tdd.
+func TestHCD022MinBothPanels(t *testing.T) {
+	t.Parallel()
+
+	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import sidebarExt from "./gomemory-sidebar.ts";
-import tddExt from "./gomemory-tdd.ts";
 const commands = {}, notes = [], overlays = {};
 const pi = {
 	registerCommand: (n, d) => (commands[n] = d),
@@ -20,91 +21,30 @@ const pi = {
 	sendMessage: () => {},
 };
 sidebarExt(pi);
-tddExt(pi);
 const theme = { fg: (_c, s) => s, style: (s) => s };
 const tui = { terminal: { rows: 60, columns: 160 }, requestRender: () => {} };
-let opening = "";
 const ctx = {
 	hasUI: true, cwd: process.cwd(),
 	ui: {
 		notify: (m) => notes.push(m), setWidget: () => {},
-		custom: (factory, opts) => new Promise((resolve) => { overlays[opening] = factory(tui, theme, {}, resolve); }),
+		custom: (factory, opts) => new Promise((resolve) => { overlays.sidebar = factory(tui, theme, {}, resolve); }),
 	},
 };
-const rows = (name, w) => overlays[name].render(w).length;
-opening = "sidebar"; await commands.sidebar.handler("", ctx);
-opening = "tdd"; await commands.tdd.handler("min", ctx); await commands.tdd.handler("min", ctx); // abre y deja expandido
-await new Promise((r) => setTimeout(r, 20));
+const rows = (w) => overlays.sidebar.render(w).length;
 const fails = [];
-`
-
-func TestHCD022MinBothPanels(t *testing.T) {
-	t.Parallel()
-
-	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts", "extensions/gomemory-tdd.ts"}, hcd022Panels+`
-if (rows("sidebar", 36) < 3 || rows("tdd", 44) < 3) fails.push("al empezar ambos paneles deben estar expandidos");
-
+await commands.sidebar.handler("", ctx);
+await new Promise((r) => setTimeout(r, 20));
+if (commands.tdd) fails.push("HCD-085: /tdd ya no debe registrarse");
+if (rows(36) < 3) fails.push("al empezar el sidebar debe estar expandido");
 await commands.min.handler("", ctx);
-if (rows("sidebar", 36) !== 1) fails.push("/min debe minimizar el sidebar");
-if (rows("tdd", 44) !== 1) fails.push("/min debe minimizar también el panel TDD");
-
+if (rows(36) !== 1) fails.push("/min debe minimizar el sidebar");
 await commands.min.handler("", ctx);
-if (rows("sidebar", 36) < 3 || rows("tdd", 44) < 3) fails.push("con ambos minimizados, /min debe restaurar los dos");
-
-// Estados mezclados: si alguno está expandido, /min minimiza ambos.
-await commands.tdd.handler("min", ctx);
-await commands.min.handler("", ctx);
-if (rows("sidebar", 36) !== 1 || rows("tdd", 44) !== 1) fails.push("con uno expandido, /min debe dejar ambos minimizados");
+if (rows(36) < 3) fails.push("un segundo /min debe restaurarlo");
 console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 process.exit(0);
 `)
 	if !strings.Contains(out, "PASS") {
 		t.Fatalf("TestHCD022MinBothPanels: %s", out)
-	}
-}
-
-func TestHCD022TddReport(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "go.mod"), "module rep\n\ngo 1.22\n")
-	writeFile(t, filepath.Join(dir, "calc", "calc_test.go"), `package calc
-
-import "testing"
-
-func TestRoto(t *testing.T) { t.Fatalf("got 1, want 2") }
-`)
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
-import factory from "./gomemory-tdd.ts";
-const commands = {}, notes = [], sent = [];
-let tool;
-factory({
-	registerCommand: (n, d) => (commands[n] = d),
-	registerTool: (d) => (tool = d),
-	on: () => () => {},
-	exec: async () => { throw new Error("pi.exec no se usa"); },
-	sendMessage: (msg, opts) => sent.push({ msg, opts }),
-});
-const ctx = { hasUI: false, cwd: `+jsStr(dir)+`, ui: { notify: (m) => notes.push(m) } };
-const fails = [];
-
-await commands.tdd.handler("report", ctx);
-if (sent.length) fails.push("sin ejecución previa no debe enviar un informe vacío");
-if (!notes.some((m) => /tdd run/.test(m))) fails.push("sin ejecución previa debe indicar /tdd run: " + JSON.stringify(notes));
-
-await tool.execute("c1", { suite: "backend" }, undefined, undefined, ctx);
-await commands.tdd.handler("report", ctx);
-const r = sent[0];
-if (!r) fails.push("/tdd report no envió el informe");
-else {
-	if (r.msg.display !== true) fails.push("el informe debe mostrarse en el chat (display: true)");
-	if (r.opts?.triggerTurn === true) fails.push("el informe no debe disparar un turno del agente");
-	for (const want of ["TestRoto", "calc_test.go:", "want 2"]) if (!String(r.msg.content).includes(want)) fails.push("el informe no incluye " + want);
-}
-console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
-`)
-	if !strings.Contains(out, "PASS") {
-		t.Fatalf("TestHCD022TddReport: %s", out)
 	}
 }
 

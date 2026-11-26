@@ -31,7 +31,8 @@ func TestHCD011Options(t *testing.T) {
 	if err := Uninstall(repoAssets(t), opts, UninstallFlags{Yes: true}, &out); err != nil {
 		t.Fatal(err)
 	}
-	if len(settingsPackages(t, opts)) != 2 {
+	// Desde HCD-085 install solo registra pi-cc-extensions.
+	if len(settingsPackages(t, opts)) != 1 {
 		t.Errorf("sin --packages se tocaron los paquetes: %v", settingsPackages(t, opts))
 	}
 	if _, err := os.Stat(cc); err != nil {

@@ -88,41 +88,4 @@ process.exit(0);
 	}
 }
 
-// TestHCD019TDDClickToggleAndDock: el panel TDD alterna una vez por clic, se
-// minimiza a 1 fila y se coloca debajo del sidebar sin solaparse.
-func TestHCD019TDDClickToggleAndDock(t *testing.T) {
-	t.Parallel()
-
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
-import factory from "./gomemory-tdd.ts";
-`+hcd019Harness+`
-factory(fakePi);
-await commands.tdd.handler("", ctx);
-await new Promise((r) => setTimeout(r, 10));
-if (!overlay) { console.log("FAIL overlay no abierto"); process.exit(0); }
-
-const expanded = overlay.component.render(44);
-let e = click(1);
-if (e) fails.push(e);
-const min = overlay.component.render(44);
-if (min.length !== 1) fails.push("tras un clic en la cabecera debe quedar minimizado en 1 fila, tiene " + min.length);
-e = click(0);
-if (e) fails.push(e);
-if (overlay.component.render(44).length !== expanded.length) fails.push("un clic en [+] debe restaurar el panel");
-
-const o = overlay.opts.overlayOptions;
-globalThis[DOCK] = { sidebarVisible: false, sidebarHeight: 0 };
-if ((o.offsetY ?? 0) !== 0) fails.push("sin sidebar el TDD no debe desplazarse, offsetY=" + o.offsetY);
-globalThis[DOCK] = { sidebarVisible: true, sidebarHeight: 10 };
-if (o.offsetY !== 11) fails.push("con sidebar de 10 filas offsetY debe ser 11, es " + o.offsetY);
-if (!(typeof o.maxHeight === "number" && o.maxHeight <= 40 - 12)) fails.push("maxHeight debe dejar fuera las filas del sidebar, es " + o.maxHeight);
-globalThis[DOCK] = { sidebarVisible: true, sidebarHeight: 37 };
-if (o.visible(160, 40)) fails.push("sin hueco bajo el sidebar el TDD debe ocultarse, no solaparse");
-
-console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
-process.exit(0);
-`)
-	if !strings.Contains(out, "PASS") {
-		t.Fatalf("TestHCD019TDDClickToggleAndDock: %s", out)
-	}
-}
+// TestHCD019TDDClickToggleAndDock se retiró con /tdd en HCD-085.

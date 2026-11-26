@@ -100,8 +100,8 @@ func TestHCD041DepsUpdateUnknown(t *testing.T) {
 	writeExec(t, filepath.Join(bin, "pi"), `echo "$*" >> "`+log+`"`)
 	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-antigravity", "package.json"), `{"version":"0.0.1"}`)
-	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-cc-extensions", "package.json"), `{"version":"`+CCExtensionsVersion+`"}`)
+	// Desde HCD-085 pi-cc-extensions es el único paquete fijado: hace de atrasado.
+	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-cc-extensions", "package.json"), `{"version":"0.0.1"}`)
 	probes := append(hcd039PinnedProbes(dir), DepProbe{
 		Name:    "codebase-memory-mcp",
 		Current: func(context.Context) (string, error) { return "", os.ErrNotExist },
@@ -121,8 +121,7 @@ func TestHCD041DepsUpdateUnknown(t *testing.T) {
 		writeFile(t, p, body)
 		return p
 	}
-	healthy := `{"name":"pi-antigravity","current":"` + AntigravityVersion + `","latest":"` + AntigravityVersion + `"},` +
-		`{"name":"pi-cc-extensions","current":"` + CCExtensionsVersion + `","latest":"` + CCExtensionsVersion + `"}`
+	healthy := `{"name":"pi-cc-extensions","current":"` + CCExtensionsVersion + `","latest":"` + CCExtensionsVersion + `"}`
 
 	for name, cache := range map[string]string{
 		"ausente":        filepath.Join(t.TempDir(), "no-existe.json"),
@@ -141,13 +140,12 @@ func TestHCD041DepsUpdateUnknown(t *testing.T) {
 	}
 	t.Setenv("PI_GOMEMORY_NO_UPDATE_CHECK", "")
 
-	// Caché válida: pi-antigravity atrasado, codebase-memory-mcp en error.
+	// Caché válida: pi-cc-extensions atrasado, codebase-memory-mcp en error.
 	mixed := cacheWith(t, `{"checked_at":"2026-11-17T09:30:00Z","deps":[`+
-		`{"name":"pi-antigravity","current":"0.0.1","latest":"`+AntigravityVersion+`"},`+
-		`{"name":"pi-cc-extensions","current":"`+CCExtensionsVersion+`","latest":"`+CCExtensionsVersion+`"},`+
+		`{"name":"pi-cc-extensions","current":"0.0.1","latest":"`+CCExtensionsVersion+`"},`+
 		`{"name":"codebase-memory-mcp","error":"codebase-memory-mcp no está en PATH"}]}`)
 	rc, out, errOut, calls := run(t, mixed)
-	if rc != 1 || strings.Contains(out, "al día") || !strings.Contains(calls, "install "+AntigravityPackageSource) ||
+	if rc != 1 || strings.Contains(out, "al día") || !strings.Contains(calls, "install "+CCExtensionsSource) ||
 		!strings.Contains(errOut, "codebase-memory-mcp: estado desconocido (codebase-memory-mcp no está en PATH)") {
 		t.Errorf("actualiza lo conocido y lista lo desconocido con código 1: rc=%d out=%q err=%q calls=%q", rc, out, errOut, calls)
 	}
@@ -160,7 +158,7 @@ func TestHCD041DepsUpdateUnknown(t *testing.T) {
 
 	// Todo conocido y al día: también la versión instalada debe coincidir;
 	// DepsStatusFor relee el paquete local, no confía en Current de la caché.
-	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-antigravity", "package.json"), `{"version":"`+AntigravityVersion+`"}`)
+	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-cc-extensions", "package.json"), `{"version":"`+CCExtensionsVersion+`"}`)
 	full := cacheWith(t, `{"checked_at":"2026-11-17T09:30:00Z","deps":[`+healthy+`,{"name":"codebase-memory-mcp","current":"1.0.0","latest":"1.0.0"}]}`)
 	if rc, out, _, calls := run(t, full); rc != 0 || !strings.Contains(out, "están al día") || calls != "" {
 		t.Errorf("con todo conocido y al día dice «al día» y sale con 0: rc=%d out=%q calls=%q", rc, out, calls)

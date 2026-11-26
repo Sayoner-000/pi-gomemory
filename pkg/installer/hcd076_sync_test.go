@@ -231,8 +231,8 @@ func TestHCD076InstallAllUsesSync(t *testing.T) {
 		t.Fatalf("install debe actualizar codegraph sin preguntar: %q", data)
 	}
 	settings, _ := os.ReadFile(filepath.Join(opts.PiAgentDir, "settings.json"))
-	if !strings.Contains(string(settings), AntigravityPackageSource) {
-		t.Fatalf("el pin de pi-antigravity debe seguir instalándose en [4/9]:\n%s", settings)
+	if strings.Contains(string(settings), "pi-antigravity") {
+		t.Fatalf("HCD-085: pi-antigravity ya no se instala en [4/9]:\n%s", settings)
 	}
 	src, _ := os.ReadFile("installer.go")
 	if strings.Contains(string(src), "EnsureTools(") {

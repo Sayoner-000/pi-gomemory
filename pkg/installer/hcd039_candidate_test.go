@@ -78,41 +78,41 @@ func TestHCD039ValidateCandidate(t *testing.T) {
 	oldRoot := candidateTempRoot
 	candidateTempRoot = root
 	t.Cleanup(func() { candidateTempRoot = oldRoot })
+	// Desde HCD-085 pi-cc-extensions es el único paquete fijado (contrato C1).
 	good := hcd039Tarball(t,
-		hcd039Entry{name: "package/src/auth/accounts.ts", body: "\"antigravity-accounts.json\" activeAccountId accounts: Record<string, X>"},
-		hcd039Entry{name: "package/src/models/models.ts", body: `PROVIDER_ID = "antigravity"`},
+		hcd039Entry{name: "package/extensions/config/config.ts", body: "showStartupHeader: false"},
 	)
 	broken := hcd039Tarball(t,
-		hcd039Entry{name: "package/src/auth/accounts.ts", body: "\"antigravity-accounts.json\" activeAccountId accounts: Record<string, X>"},
-		hcd039Entry{name: "package/src/models/models.ts", body: `PROVIDER_ID = "otro"`},
+		hcd039Entry{name: "package/extensions/config/config.ts", body: "otraClave: false"},
 	)
 	goodURL, brokenURL := hcd039TarballServer(t, good), hcd039TarballServer(t, broken)
 	hcd039Registry(t, map[string]string{
-		"pi-antigravity": `{"versions":{` +
+		"pi-cc-extensions": `{"versions":{` +
 			`"9.9.9":{"dist":{"tarball":"` + goodURL + `","integrity":"` + hcd039Integrity(good) + `"}},` +
 			`"9.9.8":{"dist":{"tarball":"` + brokenURL + `","integrity":"` + hcd039Integrity(broken) + `"}}}}`,
 	})
 	ctx := context.Background()
 
-	rs, err := validateCandidate(ctx, "pi-antigravity@9.9.9")
-	lines, fail := FormatContracts("pi-antigravity@9.9.9", rs)
-	if err != nil || fail || len(rs) != 2 {
-		t.Fatalf("C-12: el candidato correcto debe cumplir A1 y A3: %v %v\n%s", rs, err, strings.Join(lines, "\n"))
+	rs, err := validateCandidate(ctx, "pi-cc-extensions@9.9.9")
+	lines, fail := FormatContracts("pi-cc-extensions@9.9.9", rs)
+	if err != nil || fail || len(rs) != 1 {
+		t.Fatalf("C-12: el candidato correcto debe cumplir C1: %v %v\n%s", rs, err, strings.Join(lines, "\n"))
 	}
-	if out := strings.Join(lines, "\n"); !strings.Contains(out, "A1: cumplido") || !strings.Contains(out, "A3: cumplido") {
+	if out := strings.Join(lines, "\n"); !strings.Contains(out, "C1: cumplido") {
 		t.Errorf("C-12: el informe nombra cada contrato por su id:\n%s", out)
 	}
 
-	rs, err = validateCandidate(ctx, "pi-antigravity@9.9.8")
-	lines, fail = FormatContracts("pi-antigravity@9.9.8", rs)
-	if err != nil || !fail || !strings.Contains(strings.Join(lines, "\n"), "A3: roto") {
-		t.Errorf("C-13: el candidato roto falla nombrando A3: %v\n%s", err, strings.Join(lines, "\n"))
+	rs, err = validateCandidate(ctx, "pi-cc-extensions@9.9.8")
+	lines, fail = FormatContracts("pi-cc-extensions@9.9.8", rs)
+	if err != nil || !fail || !strings.Contains(strings.Join(lines, "\n"), "C1: roto") {
+		t.Errorf("C-13: el candidato roto falla nombrando C1: %v\n%s", err, strings.Join(lines, "\n"))
 	}
 
 	for spec, want := range map[string]string{
-		"pi-antigravity":       "@<versión>",
-		"otro-paquete@1.0.0":   "no está fijado",
-		"pi-antigravity@1.2.3": "no aparece",
+		"pi-cc-extensions":       "@<versión>",
+		"otro-paquete@1.0.0":     "no está fijado",
+		"pi-antigravity@0.15.0":  "no está fijado",
+		"pi-cc-extensions@1.2.3": "no aparece",
 	} {
 		if _, err := validateCandidate(ctx, spec); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("C-14: %q debe fallar explicando «%s»: %v", spec, want, err)
@@ -138,8 +138,6 @@ func hcd039Tree(t *testing.T, files map[string]string) string {
 func TestHCD039Contracts(t *testing.T) {
 	t.Parallel()
 
-	accounts := "const ACCOUNTS_FILE = \"antigravity-accounts.json\";\ntype AccountsFile = {\n  activeAccountId?: string;\n  accounts: Record<string, StoredAccount>;\n};\n"
-	models := "export const PROVIDER_ID = \"antigravity\";\n"
 	byID := func(rs []ContractResult) map[string]ContractResult {
 		m := map[string]ContractResult{}
 		for _, r := range rs {
@@ -147,29 +145,18 @@ func TestHCD039Contracts(t *testing.T) {
 		}
 		return m
 	}
+	good := hcd039Tree(t, map[string]string{"package/extensions/config/config.ts": "showStartupHeader: false"})
 
-	good := hcd039Tree(t, map[string]string{"package/src/auth/accounts.ts": accounts, "package/src/models/models.ts": models})
-	rs, err := checkContracts("pi-antigravity", good)
-	if err != nil || len(rs) != 2 || !byID(rs)["A1"].OK || !byID(rs)["A3"].OK {
-		t.Fatalf("C-12: pi-antigravity correcto debe cumplir A1 y A3: %+v %v", rs, err)
+	// HCD-085: pi-antigravity ya no tiene contratos porque no se fija.
+	if _, err := checkContracts("pi-antigravity", good); err == nil {
+		t.Error("pi-antigravity ya no debe tener contratos definidos")
 	}
-
-	// «accounts» solo dentro del nombre del archivo no basta (Splash 3, H3).
-	onlyName := strings.Replace(accounts, "accounts: Record<", "cuentas: Record<", 1)
-	rs, _ = checkContracts("pi-antigravity", hcd039Tree(t, map[string]string{"package/src/auth/accounts.ts": onlyName, "package/src/models/models.ts": models}))
-	if a1 := byID(rs)["A1"]; a1.OK || !strings.Contains(a1.Detail, "accounts: Record<") {
-		t.Errorf("C-13: A1 debe fallar si falta la declaración de accounts: %+v", a1)
-	}
-	rs, _ = checkContracts("pi-antigravity", hcd039Tree(t, map[string]string{"package/src/auth/accounts.ts": accounts, "package/src/models/models.ts": `export const PROVIDER_ID = "otro";`}))
-	if a3 := byID(rs)["A3"]; a3.OK || !byID(rs)["A1"].OK {
-		t.Errorf("C-13: A3 debe fallar con otro PROVIDER_ID y A1 seguir cumplido: %+v", rs)
-	}
-	rs, _ = checkContracts("pi-antigravity", hcd039Tree(t, map[string]string{"package/src/models/models.ts": models}))
-	if a1 := byID(rs)["A1"]; a1.OK || !strings.Contains(a1.Detail, "falta") {
-		t.Errorf("C-13: sin el archivo que la regla cita, A1 falla diciendo que falta: %+v", a1)
+	rs, _ := checkContracts("pi-cc-extensions", hcd039Tree(t, map[string]string{"package/README.md": "x"}))
+	if c1 := byID(rs)["C1"]; c1.OK || !strings.Contains(c1.Detail, "falta") {
+		t.Errorf("C-13: sin el archivo que la regla cita, C1 falla diciendo que falta: %+v", c1)
 	}
 
-	rs, err = checkContracts("pi-cc-extensions", hcd039Tree(t, map[string]string{"package/extensions/config/config.ts": "showStartupHeader: false"}))
+	rs, err := checkContracts("pi-cc-extensions", hcd039Tree(t, map[string]string{"package/extensions/config/config.ts": "showStartupHeader: false"}))
 	if err != nil || len(rs) != 1 || !byID(rs)["C1"].OK {
 		t.Errorf("C-12: pi-cc-extensions correcto debe cumplir C1: %+v %v", rs, err)
 	}

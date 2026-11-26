@@ -2,6 +2,7 @@ package installer
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -48,8 +49,8 @@ func TestHCD083SyncMissingProbeNoPanic(t *testing.T) {
 	}
 }
 
-// H-04: InstallAntigravityPlugin e InstallCCExtensions deben ejecutar `pi install`
-// con CommandContext (timeout) y stdin aislado para no colgar indefinidamente.
+// H-04: InstallCCExtensions y RetireAntigravityPackage (HCD-085) deben ejecutar
+// pi con CommandContext (timeout) y stdin aislado para no colgar indefinidamente.
 func TestHCD083PluginInstallTimeout(t *testing.T) {
 	opts := sandbox(t)
 	binDir := t.TempDir()
@@ -63,12 +64,13 @@ func TestHCD083PluginInstallTimeout(t *testing.T) {
 	pluginInstallTimeout = 150 * time.Millisecond
 	t.Cleanup(func() { pluginInstallTimeout = prev })
 
+	writeFile(t, filepath.Join(opts.PiAgentDir, "settings.json"), `{"packages":["npm:pi-antigravity@0.15.0"]}`)
 	start := time.Now()
-	if err := InstallAntigravityPlugin(opts.PiAgentDir); err != nil {
-		t.Fatalf("InstallAntigravityPlugin: %v", err)
+	if err := RetireAntigravityPackage(opts.PiAgentDir, io.Discard); err != nil {
+		t.Fatalf("RetireAntigravityPackage: %v", err)
 	}
 	if elapsed := time.Since(start); elapsed < 100*time.Millisecond || elapsed > 3*time.Second {
-		t.Fatalf("InstallAntigravityPlugin tardó %v; debía cortar por timeout (~150ms)", elapsed)
+		t.Fatalf("RetireAntigravityPackage tardó %v; debía cortar pi remove por timeout (~150ms)", elapsed)
 	}
 
 	start = time.Now()

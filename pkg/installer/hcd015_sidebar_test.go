@@ -8,7 +8,8 @@ func TestHCD015SidebarUnicodeBars(t *testing.T) {
 	t.Parallel()
 
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
-import { renderSidebar, formatProgressBar, compactBucketName } from "./gomemory-sidebar.ts";
+import * as sidebar from "./gomemory-sidebar.ts";
+const { renderSidebar, formatProgressBar } = sidebar;
 
 const fails = [];
 
@@ -22,10 +23,10 @@ if (b50 !== "████░░░░") fails.push("barra 50% incorrecta: " + b5
 const b0 = formatProgressBar(0.0, 8);
 if (b0 !== "░░░░░░░░") fails.push("barra 0% incorrecta: " + b0);
 
-// 2. Nombres compactos
-if (compactBucketName("Weekly Limit Remaining") !== "Semanal") fails.push("compact semanal");
-if (compactBucketName("Five Hour Limit Remaining") !== "5 Horas") fails.push("compact 5 horas");
-if (compactBucketName("Gemini 4 Argon Weekly Limit") !== "Argon") fails.push("compact argon");
+// 2. HCD-085: la cuota Antigravity se retiró, y con ella sus nombres compactos.
+if ("compactBucketName" in sidebar) fails.push("compactBucketName debió retirarse con la cuota Antigravity");
+const agyState = { title: "x", tokens: 1, contextLimit: 10, cost: 0, servers: [], isAntigravityProvider: true, quota: { planLabel: "P", groups: [] } };
+if (renderSidebar(agyState, 36, { fg: (_c, s) => s, style: (s) => s }).join("\n").includes("Google AI Pro")) fails.push("el sidebar no debe mostrar la cuota Antigravity");
 
 const dummyTheme = {
 	fg: (color, text) => text,

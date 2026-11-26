@@ -2,6 +2,7 @@ package installer
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -256,9 +257,9 @@ func TestHCD036C15(t *testing.T) {
 		file string
 		run  func(t *testing.T, o *Options) error
 	}{
-		"antigravity con settings.json roto": {"settings.json", func(t *testing.T, o *Options) error { return InstallAntigravityPlugin(o.PiAgentDir) }},
-		"cc con settings.json roto":          {"settings.json", func(t *testing.T, o *Options) error { return InstallCCExtensions(repoAssets(t), o.PiAgentDir) }},
-		"cc con pi-cc-extensions.json roto":  {"pi-cc-extensions.json", func(t *testing.T, o *Options) error { return InstallCCExtensions(repoAssets(t), o.PiAgentDir) }},
+		"retirar antigravity con settings.json roto": {"settings.json", func(t *testing.T, o *Options) error { return RetireAntigravityPackage(o.PiAgentDir, io.Discard) }},
+		"cc con settings.json roto":                  {"settings.json", func(t *testing.T, o *Options) error { return InstallCCExtensions(repoAssets(t), o.PiAgentDir) }},
+		"cc con pi-cc-extensions.json roto":          {"pi-cc-extensions.json", func(t *testing.T, o *Options) error { return InstallCCExtensions(repoAssets(t), o.PiAgentDir) }},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

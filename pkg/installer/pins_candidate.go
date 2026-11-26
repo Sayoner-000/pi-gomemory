@@ -39,14 +39,18 @@ var (
 func validateCandidate(ctx context.Context, spec string) ([]ContractResult, error) {
 	pkg, version, ok := strings.Cut(spec, "@")
 	if !ok || pkg == "" || version == "" {
-		return nil, fmt.Errorf("PINS_CANDIDATE=%q: usa <paquete>@<versión>, por ejemplo pi-antigravity@0.15.0", spec)
+		return nil, fmt.Errorf("PINS_CANDIDATE=%q: usa <paquete>@<versión>, por ejemplo pi-cc-extensions@%s", spec, CCExtensionsVersion)
 	}
 	pinned := false
 	for _, p := range PinnedPackages() {
 		pinned = pinned || p.Name == pkg
 	}
 	if !pinned {
-		return nil, fmt.Errorf("%s no está fijado por pi-gomemory; solo se validan pi-antigravity y pi-cc-extensions", pkg)
+		var names []string
+		for _, p := range PinnedPackages() {
+			names = append(names, p.Name)
+		}
+		return nil, fmt.Errorf("%s no está fijado por pi-gomemory; solo se validan %s", pkg, strings.Join(names, ", "))
 	}
 	doc, err := fetchRegistryDoc(ctx, pkg)
 	if err != nil {
@@ -87,12 +91,7 @@ type contractRule struct {
 // packageContracts son los contratos de cada paquete fijado de los que depende
 // pi-gomemory. Detectan un renombre o una retirada, no un cambio de significado.
 var packageContracts = map[string][]contractRule{
-	"pi-antigravity": {
-		// usage.go lee activeAccountId y accounts.<id> de este archivo.
-		{"A1", "package/src/auth/accounts.ts", []string{`"antigravity-accounts.json"`, "activeAccountId", "accounts: Record<"}},
-		// El sidebar detecta el proveedor por este id.
-		{"A3", "package/src/models/models.ts", []string{`PROVIDER_ID = "antigravity"`}},
-	},
+	// pi-antigravity (A1, A3) dejó de fijarse en HCD-085.
 	"pi-cc-extensions": {
 		// managedCCKeys (plugin.go) impone esta clave de pi-cc-extensions.json.
 		{"C1", "package/extensions/**/*.ts", []string{"showStartupHeader"}},

@@ -73,9 +73,11 @@ func InstallAll(assets fs.FS, opts *Options) error {
 		return fmt.Errorf("paso Tema: %w", err)
 	}
 
-	fmt.Printf("%s==> [4/9] Configurando plugin pi-antigravity para conexión con Google...%s\n", ColorCyan, ColorReset)
-	if err := InstallAntigravityPlugin(opts.PiAgentDir); err != nil {
-		return fmt.Errorf("paso Plugin Antigravity: %w", err)
+	// HCD-085: pi-antigravity ya no se instala (riesgo de bloqueo de cuentas
+	// de Google); se retira la entrada que dejaron versiones anteriores.
+	fmt.Printf("%s==> [4/9] Retirando la integración Antigravity (pi-antigravity)...%s\n", ColorCyan, ColorReset)
+	if err := RetireAntigravityPackage(opts.PiAgentDir, os.Stdout); err != nil {
+		return fmt.Errorf("paso Retirar Antigravity: %w", err)
 	}
 
 	fmt.Printf("%s==> [5/9] Instalando paquete TUI Claude Code Style (pi-cc-extensions)...%s\n", ColorCyan, ColorReset)
@@ -94,6 +96,9 @@ func InstallAll(assets fs.FS, opts *Options) error {
 
 	fmt.Printf("%s==> [7/9] Instalando extensión TUI Status Bar y Monitor de Tokens gomemory...%s\n", ColorCyan, ColorReset)
 	if err := InstallTUIExtension(assets, opts.PiAgentDir); err != nil {
+		return fmt.Errorf("paso TUI Extension: %w", err)
+	}
+	if err := RetireResources(opts, os.Stdout); err != nil {
 		return fmt.Errorf("paso TUI Extension: %w", err)
 	}
 

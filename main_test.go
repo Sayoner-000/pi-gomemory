@@ -64,3 +64,33 @@ func TestHCD084Help(t *testing.T) {
 		}
 	}
 }
+
+// HCD-085: el CLI ya no consulta la cuota de Antigravity ni configura
+// pi-antigravity; ni la ayuda ni el despacho lo mencionan.
+func TestHCD085UsageCommandRemoved(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, gone := range []string{`case "usage"`, `"quota"`, `"antigravity.usage"`, "FetchQuotaSummary", "FetchAndFormatUsage", "InstallAntigravityPlugin"} {
+		if strings.Contains(string(src), gone) {
+			t.Errorf("main.go aún contiene %q", gone)
+		}
+	}
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stdout
+	os.Stdout = w
+	printHelp()
+	os.Stdout = old
+	_ = w.Close()
+	data, _ := io.ReadAll(r)
+	help := strings.ToLower(string(data))
+	for _, gone := range []string{"antigravity", "google ai pro", "pi-gomemory-setup usage "} {
+		if strings.Contains(help, gone) {
+			t.Errorf("la ayuda aún menciona %q", gone)
+		}
+	}
+}

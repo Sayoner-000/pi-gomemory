@@ -40,23 +40,6 @@ func main() {
 	switch cmd {
 	case "doctor", "status", "check":
 		installer.PrintDoctor(installer.RunDoctor(opts))
-	case "usage", "quota", "antigravity.usage":
-		if len(os.Args) > 2 && os.Args[2] == "--json" {
-			summary, err := installer.FetchQuotaSummary(opts.PiAgentDir)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "{\"error\": %q}\n", err.Error())
-				os.Exit(1)
-			}
-			data, _ := json.MarshalIndent(summary, "", "  ")
-			fmt.Println(string(data))
-			return
-		}
-		out, err := installer.FetchAndFormatUsage(opts.PiAgentDir)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%sError consultando cuota: %v%s\n", installer.ColorWarning, err, installer.ColorReset)
-			os.Exit(1)
-		}
-		fmt.Print(out)
 	case "claude-usage", "claude.usage":
 		summary, err := installer.FetchClaudeUsage("")
 		if err != nil {
@@ -139,15 +122,11 @@ func main() {
 			os.Exit(2)
 		}
 	case "plugin":
-		if err := installer.InstallAntigravityPlugin(opts.PiAgentDir); err != nil {
-			fmt.Fprintf(os.Stderr, "Error configurando plugin: %v\n", err)
-			os.Exit(1)
-		}
 		if err := installer.InstallCCExtensions(EmbeddedAssets, opts.PiAgentDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error configurando pi-cc-extensions: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println("✓ Plugins pi-antigravity y pi-cc-extensions configurados en Pi.")
+		fmt.Println("✓ Plugin pi-cc-extensions configurado en Pi.")
 	case "skills", "skills-sync":
 		if code := runSkillsSync(opts, cmd, os.Args[2:], os.Stdout, os.Stderr); code != 0 {
 			os.Exit(code)
@@ -336,14 +315,13 @@ func printHelp() {
 	fmt.Printf("%spi-gomemory-setup%s — Instalador de pi-gomemory para Pi Coding Agent\n\n", installer.ColorBrillo, installer.ColorReset)
 	fmt.Println("Uso:")
 	fmt.Println("  pi-gomemory-setup [install]   Instalación completa desde los recursos embebidos")
-	fmt.Println("  pi-gomemory-setup usage       Cuota real de Google AI Pro / Antigravity")
 	fmt.Println("  pi-gomemory-setup anthropic-usage  Límites del plan de Anthropic (sesión y semana) en JSON")
 	fmt.Println("  pi-gomemory-setup codex-usage      Límites del plan de OpenAI Codex (5 horas y semana) en JSON")
 	fmt.Println("  pi-gomemory-setup doctor      Diagnóstico de Pi, MCP, plugins, launcher y otros agentes")
 	fmt.Println("  pi-gomemory-setup mcp         Registra los servidores MCP (gomemory y codegraph)")
 	fmt.Println("  pi-gomemory-setup codemode <on|off|status>  Activa/desactiva el modo codemode híbrido en Pi y MCP")
 	fmt.Println("  pi-gomemory-setup theme       Instala y activa el tema gomemory en Pi")
-	fmt.Println("  pi-gomemory-setup plugin      Configura pi-antigravity y pi-cc-extensions")
+	fmt.Println("  pi-gomemory-setup plugin      Configura pi-cc-extensions")
 	fmt.Println("  pi-gomemory-setup skills      Reúne las skills de gomemory y del anfitrión en ~/.pi-gomemory/skills")
 	fmt.Println("  pi-gomemory-setup skills-sync Sincroniza el repositorio central y purga copias legadas")
 	fmt.Println("  pi-gomemory-setup skills-sync --check  Solo comprueba: sale con 10 si hay skills desfasadas (p. ej. tras mem update)")

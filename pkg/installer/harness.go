@@ -26,13 +26,6 @@ export GOMEMORY_CLIENT="pi"
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PATH="${SELF_DIR}:${HOME}/.local/bin:${HOME}/.pi/agent/bin:${HOME}/.gomemory/bin:${PATH}"
 
-# 3. Subcomando rápido para ver cuota y consumo de Google AI Pro / Antigravity
-if [ "${1:-}" = "usage" ] || [ "${1:-}" = "quota" ] || [ "${1:-}" = "/antigravity.usage" ]; then
-  if command -v pi-gomemory-setup &>/dev/null; then
-    exec pi-gomemory-setup usage
-  fi
-fi
-
 # 3b. Actualizaciones del meta-harness y sus dependencias. La consulta en red
 #     corre en segundo plano en cada arranque y nunca retrasa Pi; el aviso usa
 #     el resultado de la consulta anterior. Con TTY se pregunta si actualizar.

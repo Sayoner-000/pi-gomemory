@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -17,9 +18,14 @@ import (
 var pluginInstallTimeout = 2 * time.Minute
 
 func runPiInstall(piBin, pkgSource string) ([]byte, error) {
+	return runPi(piBin, "install", pkgSource)
+}
+
+// runPi ejecuta `pi <verb> <source>` acotado por pluginInstallTimeout.
+func runPi(piBin, verb, pkgSource string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), pluginInstallTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, piBin, "install", pkgSource)
+	cmd := exec.CommandContext(ctx, piBin, verb, pkgSource)
 	cmd.Stdin = nil
 	return cmd.CombinedOutput()
 }
@@ -27,19 +33,19 @@ func runPiInstall(piBin, pkgSource string) ([]byte, error) {
 // Paquetes soportados, fijados a la versión publicada en el catálogo oficial de
 // Pi (pi.dev/packages). Pi no reinstala un paquete fijado a una versión exacta.
 const (
-	AntigravityVersion       = "0.15.0"
-	CCExtensionsVersion      = "1.0.22"
-	AntigravityPackageSource = "npm:pi-antigravity@" + AntigravityVersion
-	CCExtensionsSource       = "npm:pi-cc-extensions@" + CCExtensionsVersion
+	CCExtensionsVersion = "1.0.22"
+	CCExtensionsSource  = "npm:pi-cc-extensions@" + CCExtensionsVersion
 )
 
 // historicPins son los pins que pi-gomemory escribió en versiones anteriores.
 // Al subir un pin, el anterior se añade aquí: uninstall --packages retira esas
 // entradas como el pin actual, porque solo pi-gomemory escribió esa fuente
-// exacta (HCD-040, Q1).
+// exacta (HCD-040, Q1). pi-antigravity dejó de distribuirse en HCD-085: todos
+// sus pins son históricos.
 var historicPins = []struct{ name, source string }{
 	{"pi-antigravity", "npm:pi-antigravity@0.12.0"},
 	{"pi-antigravity", "npm:pi-antigravity@0.14.0"},
+	{"pi-antigravity", "npm:pi-antigravity@0.15.0"},
 	{"pi-cc-extensions", "npm:pi-cc-extensions@1.0.16"},
 	{"pi-cc-extensions", "npm:pi-cc-extensions@1.0.20"},
 	{"pi-cc-extensions", "npm:pi-cc-extensions@1.0.21"},
@@ -70,8 +76,25 @@ var managedCCKeys = []string{"showStartupHeader"}
 
 // pinnedPackages relaciona cada paquete con su fuente fijada.
 var pinnedPackages = []struct{ name, source string }{
-	{"pi-antigravity", AntigravityPackageSource},
 	{"pi-cc-extensions", CCExtensionsSource},
+}
+
+// managedPackages son los paquetes cuyas entradas escribió pi-gomemory: los
+// fijados hoy y, sin fuente actual, los retirados que solo tienen pins
+// históricos (pi-antigravity desde HCD-085). uninstall --packages los recorre.
+func managedPackages() []struct{ name, source string } {
+	out := append([]struct{ name, source string }{}, pinnedPackages...)
+	seen := map[string]bool{}
+	for _, p := range pinnedPackages {
+		seen[p.name] = true
+	}
+	for _, h := range historicPins {
+		if !seen[h.name] {
+			seen[h.name] = true
+			out = append(out, struct{ name, source string }{h.name, ""})
+		}
+	}
+	return out
 }
 
 // npmPackageName devuelve el nombre de un paquete npm:<nombre>[@versión], o "".
@@ -148,70 +171,65 @@ func mustJSON(v any) []byte {
 	return b
 }
 
-// PatchAntigravityPackageJSON corrige el aviso de TypeBox como host-provided peerDependency en Pi.
-func PatchAntigravityPackageJSON(piAgentDir string) error {
-	pkgPath := filepath.Join(piAgentDir, "npm", "node_modules", "pi-antigravity", "package.json")
-	data, err := os.ReadFile(pkgPath)
+// antigravityAccountsFile guarda la sesión OAuth de Google de pi-antigravity.
+const antigravityAccountsFile = "antigravity-accounts.json"
+
+// RetireAntigravityPackage retira de settings.json las entradas de
+// pi-antigravity que escribió pi-gomemory (sus pins actuales o históricos) y,
+// si pi está disponible, se lo pide también a `pi remove` (HCD-085). Una entrada
+// de pi-antigravity con otra fuente la añadió la persona: se conserva con aviso.
+// Nunca toca antigravity-accounts.json: son credenciales de la persona.
+func RetireAntigravityPackage(piAgentDir string, out io.Writer) error {
+	settingsPath, err := configTarget(filepath.Join(piAgentDir, "settings.json"))
 	if err != nil {
-		return nil // No instalado todavía, nada que parchar
-	}
-
-	var pkg map[string]any
-	if err := json.Unmarshal(data, &pkg); err != nil {
 		return err
 	}
-
-	changed := false
-
-	// 1. Asegurar peerDependencies con typebox: "*"
-	peerDeps, ok := pkg["peerDependencies"].(map[string]any)
-	if !ok || peerDeps == nil {
-		peerDeps = make(map[string]any)
-		pkg["peerDependencies"] = peerDeps
+	settings, err := readJSONObject(settingsPath)
+	if err != nil {
+		return err
 	}
-	if peerDeps["typebox"] != "*" {
-		peerDeps["typebox"] = "*"
-		changed = true
-	}
-
-	// 2. Retirar typebox de dependencies
-	if deps, ok := pkg["dependencies"].(map[string]any); ok && deps != nil {
-		if _, exists := deps["typebox"]; exists {
-			delete(deps, "typebox")
-			changed = true
+	var packages []json.RawMessage
+	if raw, ok := settings["packages"]; ok {
+		if err := json.Unmarshal(raw, &packages); err != nil {
+			return fmt.Errorf("%s: packages no es una lista; no se modifica", settingsPath)
 		}
 	}
-
-	if changed {
-		out, err := json.MarshalIndent(pkg, "", "  ")
-		if err != nil {
+	kept := []json.RawMessage{}
+	var retired []string
+	for _, p := range packages {
+		var source string
+		_ = json.Unmarshal(p, &source)
+		if isHistoricPin("pi-antigravity", source) {
+			retired = append(retired, source)
+			continue
+		}
+		if npmPackageName(p) == "pi-antigravity" {
+			fmt.Fprintf(out, "%s    ⚠ %s no lo instaló pi-gomemory: se conserva en settings.json%s\n", ColorWarning, source, ColorReset)
+		}
+		kept = append(kept, p)
+	}
+	if len(retired) > 0 {
+		if piBin, err := exec.LookPath("pi"); err == nil {
+			for _, source := range retired {
+				_, _ = runPi(piBin, "remove", source)
+			}
+		}
+		// pi remove puede faltar o fallar: settings.json queda coherente siempre.
+		if settings, err = readJSONObject(settingsPath); err != nil {
 			return err
 		}
-		if err := writeFileAtomic(pkgPath, out, 0644); err != nil {
+		if err := setJSONField(settings, "packages", kept); err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// InstallAntigravityPlugin instala pi-antigravity en su versión fijada y corrige sus peerDependencies.
-func InstallAntigravityPlugin(piAgentDir string) error {
-	// Un settings.json enlazado que no lleva a un archivo se rechaza antes de
-	// que pi install pueda escribir en él (HCD-036, C-15).
-	if _, err := configTarget(filepath.Join(piAgentDir, "settings.json")); err != nil {
-		return err
-	}
-	if piBin, err := exec.LookPath("pi"); err == nil {
-		if out, err := runPiInstall(piBin, AntigravityPackageSource); err != nil {
-			fmt.Printf("%s    ⚠ pi install %s falló; se registra en settings.json: %s%s\n", ColorWarning, AntigravityPackageSource, strings.TrimSpace(firstLine(string(out))), ColorReset)
+		if err := writeJSONObject(settingsPath, settings); err != nil {
+			return err
 		}
+		fmt.Fprintf(out, "%s    ✓ retirado %s de settings.json%s\n", ColorMuted, strings.Join(retired, ", "), ColorReset)
 	}
-	// pi install puede dejar la entrada sin versión o duplicada: se normaliza siempre.
-	if err := EnsurePinnedPackages(piAgentDir); err != nil {
-		return err
+	accounts := filepath.Join(piAgentDir, antigravityAccountsFile)
+	if _, err := os.Stat(accounts); err == nil {
+		fmt.Fprintf(out, "%s    ⚠ %s guarda tu sesión OAuth de Google y no se toca: bórralo o revoca el acceso si ya no lo usas%s\n", ColorWarning, accounts, ColorReset)
 	}
-	_ = PatchAntigravityPackageJSON(piAgentDir)
 	return nil
 }
 

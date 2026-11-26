@@ -224,7 +224,7 @@ func TestHCD034C03(t *testing.T) {
 		"packages": {
 			flags: UninstallFlags{Packages: true},
 			setup: func(t *testing.T, o *Options) {
-				editJSONFile(t, settings(o), func(m map[string]any) { m["packages"] = []any{AntigravityPackageSource} })
+				editJSONFile(t, settings(o), func(m map[string]any) { m["packages"] = []any{"npm:pi-antigravity@0.15.0"} })
 				// Un `pi` falso deja constancia si se invoca.
 				bin := strings.Split(os.Getenv("PATH"), string(os.PathListSeparator))[0]
 				writeFile(t, filepath.Join(bin, "pi"), "#!/bin/sh\ntouch \""+filepath.Join(o.HomeDir, "pi-invocado")+"\"\n")

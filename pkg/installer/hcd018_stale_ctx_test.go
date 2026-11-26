@@ -11,9 +11,9 @@ import (
 func TestHCD018StaleCtxAndSessionShutdown(t *testing.T) {
 	t.Parallel()
 
-	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts", "extensions/gomemory-tdd.ts"}, `
+	// Desde HCD-085 no hay gomemory-tdd.ts: solo se comprueba el sidebar.
+	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
 import sidebarFactory, { detectProvider, collectContextMetrics } from "./gomemory-sidebar.ts";
-import tddFactory from "./gomemory-tdd.ts";
 
 const fails = [];
 
@@ -60,19 +60,6 @@ sidebarFactory(fakePiSidebar);
 
 if (!sidebarEvents.includes("session_shutdown")) {
 	fails.push("gomemory-sidebar debe suscribirse a session_shutdown para limpiar timer y overlays");
-}
-
-const tddEvents = [];
-const fakePiTDD = {
-	registerCommand: () => {},
-	registerTool: () => {},
-	on: (event, handler) => { tddEvents.push(event); return () => {}; },
-	exec: async () => ({ code: 0, stdout: "" }),
-};
-tddFactory(fakePiTDD);
-
-if (!tddEvents.includes("session_shutdown")) {
-	fails.push("gomemory-tdd debe suscribirse a session_shutdown para limpiar overlays");
 }
 
 console.log(fails.length ? "FAIL: " + fails.join(" | ") : "PASS");

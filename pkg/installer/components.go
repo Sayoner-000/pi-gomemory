@@ -121,17 +121,6 @@ func Catalog() []Component {
 			},
 		},
 		{
-			Name: "pi-antigravity", Kind: KindPackage,
-			probe: func(_ string, piAgentDir string) DepProbe {
-				return DepProbe{
-					Current:   npmPackageVersion(piAgentDir, "pi-antigravity"),
-					Latest:    fixedVersion(AntigravityVersion),
-					Update:    []string{"pi", "install", AntigravityPackageSource},
-					Published: npmPublished("pi-antigravity", AntigravityVersion),
-				}
-			},
-		},
-		{
 			Name: "pi-cc-extensions", Kind: KindPackage,
 			probe: func(_ string, piAgentDir string) DepProbe {
 				return DepProbe{

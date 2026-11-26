@@ -844,6 +844,11 @@ func BuildUninstallPlan(assets fs.FS, opts *Options, flags UninstallFlags) (*Uni
 		data, _ := fs.ReadFile(assets, r.source)
 		plan.planOwnedFile(m, filepath.Join(opts.PiAgentDir, "extensions", r.destination), data)
 	}
+	// Extensiones que ya no se distribuyen (HCD-085): solo el manifiesto prueba
+	// que son de pi-gomemory, porque este binario ya no las embebe.
+	for _, name := range retiredResources {
+		plan.planOwnedFile(m, filepath.Join(opts.PiAgentDir, "extensions", name), nil)
+	}
 	themeData, _ := fs.ReadFile(assets, "themes/gomemory.json")
 	themeFile := plan.planOwnedFile(m, filepath.Join(opts.PiAgentDir, "themes", "gomemory.json"), themeData)
 	dirs, foreign := launcherDirs(m, opts)
@@ -917,7 +922,7 @@ func (p *UninstallPlan) planPinnedPackages(settings string) {
 	} else {
 		var pkgs []string
 		_ = json.Unmarshal(obj["packages"], &pkgs)
-		for _, pp := range pinnedPackages {
+		for _, pp := range managedPackages() {
 			for _, s := range pkgs {
 				reason := "paquete fijado por pi-gomemory"
 				if s != pp.source {

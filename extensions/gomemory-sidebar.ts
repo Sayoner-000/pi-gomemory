@@ -20,14 +20,13 @@ const EXTENSION_NAME = "gomemory-sidebar";
 const OVERLAY_WIDTH = 36;
 
 /**
- * Estado compartido con el panel /tdd (otra extensión, otro módulo): el sidebar
- * publica si está visible y cuántas filas ocupa para que el TDD se apile debajo.
+ * Estado compartido entre extensiones (otro módulo, mismo globalThis): el sidebar
+ * publica si está visible y cuántas filas ocupa. Lo leía el panel /tdd, retirado
+ * en HCD-085; se conserva para que otro panel pueda apilarse debajo.
  */
 interface PanelDock {
 	sidebarVisible: boolean;
 	sidebarHeight: number;
-	/** Controles que publica gomemory-tdd.ts para que /min alterne ambos paneles. */
-	tdd?: { isVisible(): boolean; isMinimized(): boolean; setMinimized(minimized: boolean): void };
 }
 const DOCK_KEY = Symbol.for("pi-gomemory.dock");
 function panelDock(): PanelDock {
@@ -53,24 +52,6 @@ export function headerClickToggles(event: any, minimized: boolean): "toggle" | "
 export interface MCPServerInfo {
 	name: string;
 	status: "Configured";
-}
-
-export interface QuotaBucketInfo {
-	displayName: string;
-	remainingFraction: number;
-	remainingPercent: number;
-	resetIn: string;
-}
-
-export interface QuotaGroupInfo {
-	displayName: string;
-	buckets: QuotaBucketInfo[];
-}
-
-export interface QuotaSummaryInfo {
-	planLabel: string;
-	email?: string;
-	groups: QuotaGroupInfo[];
 }
 
 export interface ClaudeTokenBucketInfo {
@@ -191,9 +172,6 @@ export interface SidebarState {
 	cost: number;
 	servers: MCPServerInfo[];
 	providerName?: string;
-	quota?: QuotaSummaryInfo | null;
-	quotaError?: string;
-	isAntigravityProvider?: boolean;
 	claudeUsage?: ClaudeUsageInfo | null;
 	isClaudeProvider?: boolean;
 	/** Límites del plan de la conexión OAuth de Pi con Anthropic (sesión, semana…). */
@@ -228,14 +206,6 @@ export function formatCompactNumber(n: number): string {
 	if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
 	if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
 	return String(n);
-}
-
-export function compactBucketName(name: string): string {
-	const lower = name.toLowerCase();
-	if (lower.includes("five hour") || lower.includes("5h") || lower.includes("5 hour")) return "5 Horas";
-	if (lower.includes("argon") && lower.includes("weekly")) return "Argon";
-	if (lower.includes("weekly")) return "Semanal";
-	return name.replace("Limit Remaining", "").trim();
 }
 
 /**
@@ -352,45 +322,8 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 	const costLine = theme.fg("text", ` ${formatCost(state.cost)}`);
 	lines.push(border("│") + padLine(costLine) + border("│"));
 
-	// 3. Sección Antigravity Quotas (si el modelo o proveedor es antigravity / agy)
-	if (state.isAntigravityProvider) {
-		lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
-		const quotaHeader = theme.style("▼ Google AI Pro Quota", { fg: "success", bold: true });
-		lines.push(border("│") + padLine(` ${quotaHeader}`) + border("│"));
-
-		if (state.quotaError) {
-			const errLine = theme.fg("error", ` ${state.quotaError}`);
-			lines.push(border("│") + padLine(errLine) + border("│"));
-		} else if (!state.quota || !state.quota.groups || state.quota.groups.length === 0) {
-			const loadLine = theme.fg("dim", " Cargando cuota...");
-			lines.push(border("│") + padLine(loadLine) + border("│"));
-		} else {
-			for (const group of state.quota.groups) {
-				const gTitle = theme.fg("accent", ` ${group.displayName}`);
-				lines.push(border("│") + padLine(gTitle) + border("│"));
-
-				for (const bucket of group.buckets) {
-					const pct = bucket.remainingPercent;
-					const bar = formatProgressBar(bucket.remainingFraction, 8);
-					let barColor: "success" | "warning" | "error" = "success";
-					if (pct < 20) {
-						barColor = "error";
-					} else if (pct < 50) {
-						barColor = "warning";
-					}
-
-					const label = compactBucketName(bucket.displayName);
-					const labelStyled = theme.fg("text", label.padEnd(8, " "));
-					const barStyled = theme.fg(barColor, bar);
-					const pctStyled = theme.fg("text", `${pct.toFixed(0).padStart(3, " ")}%`);
-					const resetStyled = theme.fg("dim", bucket.resetIn ? `· ${bucket.resetIn}` : "");
-
-					const rowText = `  ${labelStyled} ${barStyled} ${pctStyled} ${resetStyled}`;
-					lines.push(border("│") + padLine(rowText) + border("│"));
-				}
-			}
-		}
-	}
+	// 3. La cuota de Antigravity se retiró en HCD-085: consultarla con el token
+	//    OAuth de Google exponía la cuenta a bloqueos.
 
 	// 4a. Límites del plan de Anthropic (conexión OAuth de Pi): % usado y reinicio.
 	if (state.isClaudeProvider && (state.anthropicPlan || state.anthropicPlanError)) {
@@ -477,8 +410,8 @@ export function renderSidebar(state: SidebarState, width: number, theme: Theme):
 		}
 	}
 
-	// 5. Sección Proveedor genérico (si no es Antigravity, Claude ni Codex, ej. OpenCode, etc.)
-	if (!state.isAntigravityProvider && !state.isClaudeProvider && !state.isCodexProvider && state.providerName) {
+	// 5. Sección Proveedor genérico (si no es Claude ni Codex, ej. OpenCode, etc.)
+	if (!state.isClaudeProvider && !state.isCodexProvider && state.providerName) {
 		lines.push(border("├") + border("─".repeat(innerW)) + border("┤"));
 		const provHeader = theme.style(`▼ ${state.providerName}`, { fg: "success", bold: true });
 		lines.push(border("│") + padLine(` ${provHeader}`) + border("│"));
@@ -566,7 +499,8 @@ export function detectProvider(ctx: any): "antigravity" | "claude" | "opencode" 
 
 export function formatProviderDisplayName(ctx: any): string {
 	const detected = detectProvider(ctx);
-	if (detected === "antigravity") return "Google AI Pro";
+	// Sin cuota desde HCD-085: Antigravity se muestra como proveedor genérico.
+	if (detected === "antigravity") return "Antigravity";
 	if (detected === "claude") return "Claude Code";
 	if (detected === "opencode") return "OpenCode";
 	if (detected === "codex") return "Codex";
@@ -592,20 +526,6 @@ export function parseCleanQuotaError(rawStderr: string): string {
 	return trimmed.split("\n")[0];
 }
 
-export function validateQuotaSummary(data: any): QuotaSummaryInfo | null {
-	if (!data || typeof data !== "object") return null;
-	if (!Array.isArray(data.groups)) return null;
-	for (const g of data.groups) {
-		if (!g || typeof g.displayName !== "string" || !Array.isArray(g.buckets)) return null;
-		for (const b of g.buckets) {
-			if (!b || typeof b.displayName !== "string" || typeof b.remainingFraction !== "number" || typeof b.remainingPercent !== "number") {
-				return null;
-			}
-		}
-	}
-	return data as QuotaSummaryInfo;
-}
-
 export default function (pi: ExtensionAPI) {
 	let visible = false;
 	let opening = false;
@@ -617,22 +537,12 @@ export default function (pi: ExtensionAPI) {
 	let cachedTitle = "Instalación de binario con componentes";
 	let activeCtx: any = null;
 
-	let cachedQuota: QuotaSummaryInfo | null = null;
-	let cachedQuotaError: string | undefined = undefined;
-	let lastQuotaFetchTime = 0;
-	let quotaInflight = false;
-	const QUOTA_TTL_MS = 30 * 1000;
-	const QUOTA_ERROR_BACKOFF_MS = 15 * 1000;
 	const HEARTBEAT_INTERVAL_MS = 30 * 1000;
 
 	let cachedClaudeUsage: ClaudeUsageInfo | null = null;
 	let lastClaudeFetchTime = 0;
 	let claudeInflight = false;
 	const CLAUDE_TTL_MS = 30 * 1000;
-
-	function isAntigravity(ctx: any): boolean {
-		return detectProvider(ctx) === "antigravity";
-	}
 
 	function isClaude(ctx: any): boolean {
 		return detectProvider(ctx) === "claude";
@@ -757,39 +667,6 @@ export default function (pi: ExtensionAPI) {
 		requestRender?.();
 	}
 
-	async function refreshQuotaIfNeeded(ctx: any, force = false) {
-		if (!isAntigravity(ctx) || quotaInflight) {
-			return;
-		}
-		const now = Date.now();
-		if (!shouldRefreshQuota(now, lastQuotaFetchTime, force, !!cachedQuotaError, QUOTA_TTL_MS, QUOTA_ERROR_BACKOFF_MS)) {
-			return;
-		}
-
-		quotaInflight = true;
-		try {
-			const r = await pi.exec("pi-gomemory-setup", ["usage", "--json"], { timeout: 10000 });
-			lastQuotaFetchTime = Date.now();
-			if (r.code === 0 && r.stdout) {
-				const validated = validateQuotaSummary(JSON.parse(r.stdout));
-				if (validated) {
-					cachedQuota = validated;
-					cachedQuotaError = undefined;
-				} else {
-					cachedQuotaError = "Formato de cuota inválido";
-				}
-			} else {
-				cachedQuotaError = parseCleanQuotaError(r.stderr);
-			}
-		} catch (err: any) {
-			lastQuotaFetchTime = Date.now();
-			cachedQuotaError = err?.message || "No disponible";
-		} finally {
-			quotaInflight = false;
-		}
-		requestRender?.();
-	}
-
 	async function fetchTitle(ctx: any): Promise<string> {
 		let version = (process.env.PI_GOMEMORY_RUNNING_VERSION || "").trim();
 		if (!version) {
@@ -839,7 +716,6 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 		opening = false;
-		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
 		void refreshAnthropicPlanIfNeeded(ctx); // respaldo de una sola consulta; luego mandan las cabeceras
 		void refreshCodexQuotaIfNeeded(ctx, true);
@@ -854,7 +730,6 @@ export default function (pi: ExtensionAPI) {
 			if (!visible) return;
 			try {
 				// Heartbeat forzado para mantener actualizados los % y tiempos de reinicio sin bloqueo de TTL
-				await refreshQuotaIfNeeded(activeCtx || ctx, true);
 				await refreshClaudeUsageIfNeeded(activeCtx || ctx, true);
 				await refreshCodexQuotaIfNeeded(activeCtx || ctx, true);
 			} catch {
@@ -887,7 +762,6 @@ export default function (pi: ExtensionAPI) {
 					render(width: number): string[] {
 						const metrics = collectContextMetrics(ctx);
 						const servers = getRegisteredMCPServers();
-						const antigravityActive = isAntigravity(ctx);
 						const claudeActive = isClaude(ctx);
 						const codexActive = isCodex(ctx);
 						const providerName = formatProviderDisplayName(ctx);
@@ -898,9 +772,6 @@ export default function (pi: ExtensionAPI) {
 							cost: metrics.cost,
 							servers,
 							providerName,
-							isAntigravityProvider: antigravityActive,
-							quota: cachedQuota,
-							quotaError: cachedQuotaError,
 							isClaudeProvider: claudeActive,
 							claudeUsage: cachedClaudeUsage,
 							anthropicPlan: cachedAnthropicPlan,
@@ -981,30 +852,22 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("min", {
-		description: "Minimiza o restaura a la vez /sidebar y /tdd (/min)",
+		description: "Minimiza o restaura el panel lateral (/min)",
 		handler: async (_args, ctx) => {
-			// El TDD publica sus controles en el dock (otra extensión, otro módulo).
-			const tdd = panelDock().tdd;
-			const tddShown = Boolean(tdd?.isVisible());
-			// Si alguno está expandido se minimizan todos; si todos están minimizados se restauran.
-			const anyExpanded = !overlayMinimized || (tddShown && !tdd.isMinimized());
-			const minimize = anyExpanded;
-
-			overlayMinimized = minimize;
+			// Desde HCD-085 no hay panel /tdd: /min alterna solo el sidebar.
+			overlayMinimized = !overlayMinimized;
 			if (!visible) {
 				await openSidebar(ctx);
 			} else if (requestRender) {
 				requestRender(true);
 			}
-			if (tddShown) tdd.setMinimized(minimize);
-			ctx.ui?.notify?.(`Paneles ${minimize ? "minimizados" : "restaurados"}`, "info");
+			ctx.ui?.notify?.(`Panel lateral ${overlayMinimized ? "minimizado" : "restaurado"}`, "info");
 		},
 	});
 
 	pi.on("session_start", async (_event: any, ctx: any) => {
 		shutDown = false;
 		cachedTitle = await fetchTitle(ctx);
-		void refreshQuotaIfNeeded(ctx);
 		void refreshClaudeUsageIfNeeded(ctx);
 	});
 
@@ -1028,7 +891,6 @@ export default function (pi: ExtensionAPI) {
 		activeCtx = ctx;
 		// Turno individual consumido: refresca con fuerza las cuotas y métricas de contexto
 		cachedTitle = await fetchTitle(ctx);
-		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
 		void refreshCodexQuotaIfNeeded(ctx, true);
 		requestRender?.();
@@ -1037,14 +899,12 @@ export default function (pi: ExtensionAPI) {
 	pi.on("agent_end", async (_event: any, ctx: any) => {
 		// Fin de corrida de agente: refresca con fuerza el balance final
 		cachedTitle = await fetchTitle(ctx);
-		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
 		void refreshCodexQuotaIfNeeded(ctx, true);
 		requestRender?.();
 	});
 
 	pi.on("model_select", async (_event: any, ctx: any) => {
-		void refreshQuotaIfNeeded(ctx, true);
 		void refreshClaudeUsageIfNeeded(ctx, true);
 		void refreshCodexQuotaIfNeeded(ctx, true);
 		requestRender?.();

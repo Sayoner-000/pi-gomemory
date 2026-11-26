@@ -18,10 +18,7 @@ func TestHCD027Reproductions(t *testing.T) {
 	}{
 		{"C001_marked_skill_preserves_added_file", hcd027ReproMarkedSkill},
 		{"C002_mcp_preserves_private_mode", hcd027ReproMCPMode},
-		{"C003_timeout_cannot_report_success", hcd027ReproTimeout},
-		{"C004_playwright_projects_stay_distinct", hcd027ReproPlaywrightProjects},
-		{"C005_interrupted_go_is_terminal", hcd027ReproGoInterrupted},
-		{"C006_interrupted_playwright_is_not_passed", hcd027ReproPlaywrightInterrupted},
+		// C003–C006 reproducían defectos de /tdd, retirado en HCD-085.
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, tc.run)
@@ -67,126 +64,6 @@ func hcd027ReproMCPMode(t *testing.T) {
 	if got := info.Mode().Perm(); got != 0600 {
 		t.Fatalf("C002: private MCP permissions widened: got %04o, want 0600", got)
 	}
-}
-
-func hcd027ReproTimeout(t *testing.T) {
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"}, `
-import assert from "node:assert/strict";
-import { streamLines } from "./gomemory-tdd.ts";
-const lines = [];
-const child = "process.on('SIGTERM', () => process.exit(0)); console.log('ready'); setInterval(() => {}, 1000);";
-const result = await streamLines(process.execPath, ["-e", child], { timeoutMs: 2000 }, line => lines.push(line));
-assert.ok(lines.includes("ready"), "fixture must install its SIGTERM handler before the deadline");
-assert.notEqual(result.code, 0, "C003: timeout was incorrectly accepted as success");
-console.log("C003: timeout is unsuccessful");
-`)
-	t.Log(out)
-}
-
-func hcd027ReproPlaywrightProjects(t *testing.T) {
-	project, bin := t.TempDir(), t.TempDir()
-	writeFile(t, filepath.Join(project, "playwright.config.ts"), "export default {}")
-	writeExec(t, filepath.Join(bin, "npx"), `printf '%s\n' \
-  '[1/2] [chromium] › tests/demo.spec.ts:1:1 › example' \
-  '[2/2] [firefox] › tests/demo.spec.ts:1:1 › example' \
-  '  2 passed (1s)'
-
-if [ -n "$PLAYWRIGHT_JSON_OUTPUT_NAME" ]; then
-  cat << 'EOF' > "$PLAYWRIGHT_JSON_OUTPUT_NAME"
-{
-  "suites": [
-    {
-      "file": "tests/demo.spec.ts",
-      "line": 1,
-      "column": 1,
-      "specs": [
-        {
-          "title": "example",
-          "file": "tests/demo.spec.ts",
-          "line": 1,
-          "column": 1,
-          "tests": [
-            {
-              "projectName": "chromium",
-              "status": "expected",
-              "results": [{"status": "passed", "duration": 10}]
-            },
-            {
-              "projectName": "firefox",
-              "status": "expected",
-              "results": [{"status": "passed", "duration": 12}]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  "stats": {"expected": 2}
-}
-EOF
-fi
-exit 0`)
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"},
-		`process.env.PATH = `+jsStr(bin)+` + ":" + process.env.PATH;
-import assert from "node:assert/strict";
-`+tddToolHarness+`
-const result = await run("playwright", `+jsStr(project)+`);
-const suite = suiteOf(result.details, "playwright");
-assert.ok(suite, "playwright suite must exist");
-assert.equal(suite.tests.length, 2, "C004: two projects at the same location collapsed into one result");
-assert.notEqual(suite.tests[0].id, suite.tests[1].id, "C004: projects must have distinct identities");
-assert.ok(suite.tests.every(test => test.status === "passed"), "C004: both completed projects must pass");
-console.log("C004: distinct projects retain their results");
-`)
-	t.Log(out)
-}
-
-func hcd027ReproGoInterrupted(t *testing.T) {
-	project, bin := t.TempDir(), t.TempDir()
-	writeFile(t, filepath.Join(project, "go.mod"), "module synthetic\n")
-	writeExec(t, filepath.Join(bin, "go"), `echo '{"Action":"run","Package":"synthetic","Test":"TestInterrupted"}'
-exit 1`)
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"},
-		`process.env.PATH = `+jsStr(bin)+` + ":" + process.env.PATH;
-import assert from "node:assert/strict";
-`+tddToolHarness+`
-const result = await run("backend", `+jsStr(project)+`);
-const state = result.details;
-const test = suiteOf(state, "backend")?.tests.find(test => test.name === "TestInterrupted");
-assert.ok(test, "started Go test must exist");
-assert.equal(test.status, "failed", "C005: interrupted Go test must not remain running");
-assert.equal(state.stats.running, 0, "C005: terminated suite must have no running tests");
-assert.equal(state.status, "failed", "C005: global state must reflect failure");
-assert.ok(test.failure?.message, "C005: interrupted test must have a diagnostic");
-console.log("C005: interrupted Go test is terminal");
-`)
-	t.Log(out)
-}
-
-func hcd027ReproPlaywrightInterrupted(t *testing.T) {
-	project, bin := t.TempDir(), t.TempDir()
-	writeFile(t, filepath.Join(project, "playwright.config.ts"), "export default {}")
-	writeExec(t, filepath.Join(bin, "npx"), `printf '%s\n' \
-  '[1/2] tests/demo.spec.ts:1:1 › fails' \
-  '[2/2] tests/demo.spec.ts:2:1 › interrupted' \
-  '  1) tests/demo.spec.ts:1:1 › fails ─────' \
-  '    Error: synthetic failure'
-exit 1`)
-	out := runNodeExt(t, []string{"extensions/gomemory-tdd.ts"},
-		`process.env.PATH = `+jsStr(bin)+` + ":" + process.env.PATH;
-import assert from "node:assert/strict";
-`+tddToolHarness+`
-const result = await run("playwright", `+jsStr(project)+`);
-const suite = suiteOf(result.details, "playwright");
-const interrupted = suite?.tests.find(test => test.name.includes("interrupted"));
-assert.ok(interrupted, "interrupted Playwright test must exist");
-assert.equal(interrupted.status, "failed", "C006: unfinished Playwright test was falsely approved");
-assert.equal(result.details.stats.running, 0, "C006: no tests may remain running");
-const failed = suite.tests.find(test => test.name === "fails");
-assert.ok(failed?.failure?.message.includes("synthetic failure"), "C006: original failure diagnostic must survive");
-console.log("C006: no approval without a terminal result");
-`)
-	t.Log(out)
 }
 
 func TestHCD027SkillCleanupCompatibility(t *testing.T) {

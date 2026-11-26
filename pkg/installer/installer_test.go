@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/fs"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -222,51 +220,5 @@ func TestSplashResourcesAreInstalledFromEmbeddedAssets(t *testing.T) {
 		if got := readFile(t, filepath.Join(opts.PiAgentDir, "extensions", destination)); got != string(want) {
 			t.Errorf("%s differs from embedded resource", destination)
 		}
-	}
-}
-
-// D1: si la API falla no se muestran cifras inventadas.
-func TestFetchAndFormatUsageNeverFabricates(t *testing.T) {
-	opts := sandbox(t)
-	writeFile(t, filepath.Join(opts.PiAgentDir, "antigravity-accounts.json"),
-		`{"activeAccountId":"a","accounts":{"a":{"access":"tok","email":"persona@example.com"}}}`)
-
-	failing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer failing.Close()
-
-	ok := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer tok" {
-			t.Errorf("Authorization = %q", r.Header.Get("Authorization"))
-		}
-		_, _ = w.Write([]byte(`{"planLabel":"Plan X","groups":[{"displayName":"Grupo real","buckets":[{"displayName":"Semanal","remainingFraction":0.42}]}]}`))
-	}))
-	defer ok.Close()
-
-	saved := endpoints
-	t.Cleanup(func() { endpoints = saved })
-
-	endpoints = []string{failing.URL}
-	out, err := FetchAndFormatUsage(opts.PiAgentDir)
-	if err == nil || out != "" {
-		t.Fatalf("con la API caída: out=%q err=%v; se esperaba error sin salida", out, err)
-	}
-
-	endpoints = []string{failing.URL, ok.URL}
-	out, err = FetchAndFormatUsage(opts.PiAgentDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(out, "Grupo real") || !strings.Contains(out, "42.0%") {
-		t.Errorf("salida sin los datos reales: %q", out)
-	}
-
-	clean, err := FetchQuotaSummary(opts.PiAgentDir)
-	if err != nil {
-		t.Fatalf("FetchQuotaSummary fallo: %v", err)
-	}
-	if clean.PlanLabel != "Plan X" || len(clean.Groups) != 1 || clean.Groups[0].Buckets[0].RemainingPercent != 42.0 {
-		t.Errorf("FetchQuotaSummary devolvio datos inesperados: %+v", clean)
 	}
 }

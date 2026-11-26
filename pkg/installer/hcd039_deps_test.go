@@ -10,16 +10,31 @@ import (
 	"time"
 )
 
+// Desde HCD-085 pi-cc-extensions es el único paquete fijado: pi-antigravity
+// dejó de distribuirse. Los casos que necesitaban un segundo paquete usan un
+// probe sintético con las mismas reglas (npmPackageVersion y npmPublished).
+
 // hcd039PinnedProbes devuelve solo los probes reales de los paquetes fijados:
 // los demás ejecutan comandos o consultan GitHub.
 func hcd039PinnedProbes(piAgentDir string) []DepProbe {
 	var out []DepProbe
 	for _, p := range DefaultDepProbes("v1.0.0", piAgentDir) {
-		if p.Name == "pi-antigravity" || p.Name == "pi-cc-extensions" {
+		if p.Name == "pi-cc-extensions" {
 			out = append(out, p)
 		}
 	}
 	return out
+}
+
+// hcd039SyntheticProbe es un paquete fijado sintético, con las reglas reales.
+func hcd039SyntheticProbe(piAgentDir, name, pin string) DepProbe {
+	return DepProbe{
+		Name:      name,
+		Current:   npmPackageVersion(piAgentDir, name),
+		Latest:    fixedVersion(pin),
+		Update:    []string{"pi", "install", "npm:" + name + "@" + pin},
+		Published: npmPublished(name, pin),
+	}
 }
 
 func hcd039StateOf(t *testing.T, states []DepState, name string) DepState {
@@ -41,14 +56,21 @@ func TestHCD039DepsUnchanged(t *testing.T) {
 	log := filepath.Join(bin, "pi.log")
 	writeExec(t, filepath.Join(bin, "pi"), `echo "$*" >> "`+log+`"`)
 	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+
+	// Al día con el pin y npm por encima: no cuenta como actualización.
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-cc-extensions", "package.json"), `{"version":"`+CCExtensionsVersion+`"}`)
 	cache := filepath.Join(t.TempDir(), "deps.json")
 	writeFile(t, cache, `{"checked_at":"2026-11-17T09:30:00Z","deps":[`+
-		`{"name":"pi-antigravity","current":"`+AntigravityVersion+`","latest":"`+AntigravityVersion+`","published":"99.0.0"},`+
-		`{"name":"pi-cc-extensions","current":"0.0.1","latest":"`+CCExtensionsVersion+`","published":"98.0.0"}]}`)
+		`{"name":"pi-cc-extensions","current":"`+CCExtensionsVersion+`","latest":"`+CCExtensionsVersion+`","published":"99.0.0"}]}`)
+	if status := DepsStatusFor(cache, hcd039PinnedProbes(dir)); len(status) != 0 {
+		t.Fatalf("C-23: npm por encima del pin no es una actualización: %+v", status)
+	}
 
-	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-antigravity", "package.json"), `{"version":"`+AntigravityVersion+`"}`)
+	// Por debajo del pin: cuenta, y hacia el pin.
 	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-cc-extensions", "package.json"), `{"version":"0.0.1"}`)
+	writeFile(t, cache, `{"checked_at":"2026-11-17T09:30:00Z","deps":[`+
+		`{"name":"pi-cc-extensions","current":"0.0.1","latest":"`+CCExtensionsVersion+`","published":"98.0.0"}]}`)
 	status := DepsStatusFor(cache, hcd039PinnedProbes(dir))
 	if len(status) != 1 || status[0].Name != "pi-cc-extensions" || status[0].Latest != CCExtensionsVersion {
 		t.Fatalf("C-23: solo cuenta lo que está por debajo del pin, y hacia el pin: %+v", status)
@@ -88,29 +110,28 @@ func TestHCD039Doctor(t *testing.T) {
 		t.Fatalf("doctor no tiene línea para %s: %+v", pkg, items)
 		return CheckItem{}
 	}
+	const pkg = "pi-cc-extensions"
 
-	items := pinsDoctorItems(write(t,
-		DepState{Name: "pi-antigravity", Latest: AntigravityVersion, Published: "99.0.0"},
-		DepState{Name: "pi-cc-extensions", Latest: CCExtensionsVersion, Published: CCExtensionsVersion},
-	))
-	if len(items) != 2 {
+	items := pinsDoctorItems(write(t, DepState{Name: pkg, Latest: CCExtensionsVersion, Published: "99.0.0"}))
+	if len(items) != 1 {
 		t.Fatalf("una línea por paquete fijado: %+v", items)
 	}
-	warn := itemOf(t, items, "pi-antigravity")
-	for _, want := range []string{AntigravityVersion, "99.0.0", "no validada por pi-gomemory", "2026-11-17 09:30"} {
+	warn := itemOf(t, items, pkg)
+	for _, want := range []string{CCExtensionsVersion, "99.0.0", "no validada por pi-gomemory", "2026-11-17 09:30"} {
 		if warn.Status != "WARN" || !strings.Contains(warn.Details, want) {
 			t.Errorf("C-19: WARN con pin, versión de npm y fecha de la consulta (falta %q): %+v", want, warn)
 		}
 	}
-	if ok := itemOf(t, items, "pi-cc-extensions"); ok.Status != "OK" || !strings.Contains(ok.Details, "2026-11-17 09:30") {
+	items = pinsDoctorItems(write(t, DepState{Name: pkg, Latest: CCExtensionsVersion, Published: CCExtensionsVersion}))
+	if ok := itemOf(t, items, pkg); ok.Status != "OK" || !strings.Contains(ok.Details, "2026-11-17 09:30") {
 		t.Errorf("C-21: published igual al pin es OK con la fecha: %+v", ok)
 	}
 
 	old := RejectedVersions
-	RejectedVersions = []RejectedVersion{{"pi-antigravity", "99.0.0", "rompe A1"}}
+	RejectedVersions = []RejectedVersion{{pkg, "99.0.0", "rompe C1"}}
 	t.Cleanup(func() { RejectedVersions = old })
-	items = pinsDoctorItems(write(t, DepState{Name: "pi-antigravity", Published: AntigravityVersion}))
-	if it := itemOf(t, items, "pi-antigravity"); it.Status != "INFO" || !strings.Contains(it.Details, "99.0.0 rechazada: rompe A1") {
+	items = pinsDoctorItems(write(t, DepState{Name: pkg, Published: CCExtensionsVersion}))
+	if it := itemOf(t, items, pkg); it.Status != "INFO" || !strings.Contains(it.Details, "99.0.0 rechazada: rompe C1") {
 		t.Errorf("C-20: lo rechazado se informa como INFO con su motivo, sin WARN: %+v", it)
 	}
 	RejectedVersions = old
@@ -118,25 +139,25 @@ func TestHCD039Doctor(t *testing.T) {
 	noData := "sin datos de npm; ejecuta pi-gomemory-setup deps-refresh"
 	for name, path := range map[string]string{
 		"caché ausente":        filepath.Join(t.TempDir(), "no-existe.json"),
-		"binario anterior":     write(t, DepState{Name: "pi-antigravity", Latest: AntigravityVersion}),
-		"solo published_error": write(t, DepState{Name: "pi-antigravity", PublishedError: "sin red"}),
+		"binario anterior":     write(t, DepState{Name: pkg, Latest: CCExtensionsVersion}),
+		"solo published_error": write(t, DepState{Name: pkg, PublishedError: "sin red"}),
 	} {
-		if it := itemOf(t, pinsDoctorItems(path), "pi-antigravity"); it.Status != "INFO" || !strings.Contains(it.Details, noData) {
+		if it := itemOf(t, pinsDoctorItems(path), pkg); it.Status != "INFO" || !strings.Contains(it.Details, noData) {
 			t.Errorf("C-22: %s → INFO «%s»: %+v", name, noData, it)
 		}
 	}
 	t.Setenv("PI_GOMEMORY_NO_UPDATE_CHECK", "1")
-	if it := itemOf(t, pinsDoctorItems(filepath.Join(t.TempDir(), "x.json")), "pi-antigravity"); !strings.Contains(it.Details, "comprobación desactivada") || strings.Contains(it.Details, "deps-refresh") {
+	if it := itemOf(t, pinsDoctorItems(filepath.Join(t.TempDir(), "x.json")), pkg); !strings.Contains(it.Details, "comprobación desactivada") || strings.Contains(it.Details, "deps-refresh") {
 		t.Errorf("C-22: con la comprobación desactivada no recomienda deps-refresh: %+v", it)
 	}
 
 	// RunDoctor añade estas líneas al final de la lista.
 	t.Setenv("PATH", t.TempDir())
 	opts := sandbox(t)
-	writeFile(t, DefaultDepsCachePath(opts.PiAgentDir), `{"checked_at":"2026-11-17T09:30:00Z","deps":[{"name":"pi-antigravity","published":"99.0.0"}]}`)
+	writeFile(t, DefaultDepsCachePath(opts.PiAgentDir), `{"checked_at":"2026-11-17T09:30:00Z","deps":[{"name":"pi-cc-extensions","published":"99.0.0"}]}`)
 	all := RunDoctor(opts)
-	if n := len(all); n < 2 || !strings.Contains(all[n-2].Name, "pi-antigravity") || !strings.Contains(all[n-1].Name, "pi-cc-extensions") {
-		t.Errorf("RunDoctor debe terminar con las líneas de los paquetes fijados: %+v", all)
+	if n := len(all); n < 1 || !strings.Contains(all[n-1].Name, pkg) {
+		t.Errorf("RunDoctor debe terminar con la línea del paquete fijado: %+v", all)
 	}
 }
 
@@ -146,9 +167,9 @@ func TestHCD039Doctor(t *testing.T) {
 func TestHCD039StaleCacheRefresh(t *testing.T) {
 	calls := 0
 	probe := DepProbe{
-		Name:      "pi-antigravity",
-		Current:   func(context.Context) (string, error) { return AntigravityVersion, nil },
-		Latest:    fixedVersion(AntigravityVersion),
+		Name:      "pi-cc-extensions",
+		Current:   func(context.Context) (string, error) { return CCExtensionsVersion, nil },
+		Latest:    fixedVersion(CCExtensionsVersion),
 		Published: func(context.Context) (string, error) { calls++; return "99.0.0", nil },
 	}
 	now := time.Now()
@@ -159,18 +180,18 @@ func TestHCD039StaleCacheRefresh(t *testing.T) {
 		writeFile(t, path, string(data))
 		return path
 	}
-	old := DepState{Name: "pi-antigravity", Current: AntigravityVersion, Latest: AntigravityVersion}
+	old := DepState{Name: "pi-cc-extensions", Current: CCExtensionsVersion, Latest: CCExtensionsVersion}
 
 	t.Setenv("PI_GOMEMORY_NO_UPDATE_CHECK", "")
 	path := write(t, old)
 	states := RefreshDeps([]DepProbe{probe}, path, now)
-	if calls != 1 || hcd039StateOf(t, states, "pi-antigravity").Published != "99.0.0" {
+	if calls != 1 || hcd039StateOf(t, states, "pi-cc-extensions").Published != "99.0.0" {
 		t.Errorf("C-24: la caché antigua debe refrescarse antes de la hora: llamadas=%d %+v", calls, states)
 	}
 
 	calls = 0
 	withPub := old
-	withPub.Published = AntigravityVersion
+	withPub.Published = CCExtensionsVersion
 	RefreshDeps([]DepProbe{probe}, write(t, withPub), now)
 	withErr := old
 	withErr.PublishedError = "sin red"
@@ -195,33 +216,34 @@ func TestHCD039StaleCacheRefresh(t *testing.T) {
 func TestHCD039DepsPublished(t *testing.T) {
 	t.Setenv("PI_GOMEMORY_NO_UPDATE_CHECK", "")
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-antigravity", "package.json"), `{"version":"0.0.1"}`)
-	probes := append(hcd039PinnedProbes(dir), DepProbe{
+	const missing = "paquete-sin-instalar"
+	writeFile(t, filepath.Join(dir, "npm", "node_modules", "pi-cc-extensions", "package.json"), `{"version":"0.0.1"}`)
+	probes := append(hcd039PinnedProbes(dir), hcd039SyntheticProbe(dir, missing, "1.0.0"), DepProbe{
 		Name:    "otro",
 		Current: func(context.Context) (string, error) { return "1.0.0", nil },
 		Latest:  func(context.Context) (string, error) { return "1.0.0", nil },
 	})
 
 	hcd039Registry(t, map[string]string{
-		"pi-antigravity":   hcd039Doc(AntigravityVersion, "99.0.0"),
-		"pi-cc-extensions": hcd039Doc(CCExtensionsVersion, "98.0.0"),
+		"pi-cc-extensions": hcd039Doc(CCExtensionsVersion, "99.0.0"),
+		missing:            hcd039Doc("1.0.0", "98.0.0"),
 	})
 	cache := filepath.Join(t.TempDir(), "deps.json")
 	states := RefreshDeps(probes, cache, time.Now())
-	ag := hcd039StateOf(t, states, "pi-antigravity")
-	if ag.Published != "99.0.0" || ag.Latest != AntigravityVersion || ag.Error != "" || !ag.Outdated() {
-		t.Errorf("pi-antigravity: published=99.0.0, latest=pin y sigue ofreciendo el pin: %+v", ag)
-	}
 	cc := hcd039StateOf(t, states, "pi-cc-extensions")
-	if cc.Published != "98.0.0" || cc.Error == "" {
-		t.Errorf("C-25: sin el paquete instalado la caché guarda igualmente published: %+v", cc)
+	if cc.Published != "99.0.0" || cc.Latest != CCExtensionsVersion || cc.Error != "" || !cc.Outdated() {
+		t.Errorf("pi-cc-extensions: published=99.0.0, latest=pin y sigue ofreciendo el pin: %+v", cc)
+	}
+	ms := hcd039StateOf(t, states, missing)
+	if ms.Published != "98.0.0" || ms.Error == "" {
+		t.Errorf("C-25: sin el paquete instalado la caché guarda igualmente published: %+v", ms)
 	}
 	if o := hcd039StateOf(t, states, "otro"); o.Published != "" || o.PublishedError != "" || o.Error != "" {
 		t.Errorf("un probe sin Published no debe ganar campos: %+v", o)
 	}
 	raw, _ := os.ReadFile(cache)
 	var onDisk depsCache
-	if err := json.Unmarshal(raw, &onDisk); err != nil || hcd039StateOf(t, onDisk.Deps, "pi-antigravity").Published != "99.0.0" {
+	if err := json.Unmarshal(raw, &onDisk); err != nil || hcd039StateOf(t, onDisk.Deps, "pi-cc-extensions").Published != "99.0.0" {
 		t.Errorf("la caché en disco debe llevar published: %s", raw)
 	}
 
@@ -229,8 +251,8 @@ func TestHCD039DepsPublished(t *testing.T) {
 	// pin se sigue ofreciendo a una instalación por debajo de él (C-18).
 	NPMRegistryURL = blockedNPMRegistry
 	states = RefreshDeps(probes, "", time.Now())
-	ag = hcd039StateOf(t, states, "pi-antigravity")
-	if ag.PublishedError == "" || ag.Published != "" || ag.Error != "" || !ag.Outdated() {
-		t.Errorf("C-18: sin npm, published_error y el pin se sigue ofreciendo: %+v", ag)
+	cc = hcd039StateOf(t, states, "pi-cc-extensions")
+	if cc.PublishedError == "" || cc.Published != "" || cc.Error != "" || !cc.Outdated() {
+		t.Errorf("C-18: sin npm, published_error y el pin se sigue ofreciendo: %+v", cc)
 	}
 }

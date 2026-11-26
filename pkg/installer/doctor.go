@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -144,31 +145,22 @@ func RunDoctor(opts *Options) []CheckItem {
 	// 3b. Exposición de tools: codemode parcial y tools duplicadas (HCD-070).
 	items = append(items, exposureDoctorItems(piAgentDir)...)
 
-	// 4. Plugin pi-antigravity
+	// 4. Ajustes de Pi. pi-antigravity ya no se distribuye (HCD-085): si sigue
+	// registrado, se avisa para que la persona lo retire.
 	settingsPath := filepath.Join(piAgentDir, "settings.json")
 	if data, err := os.ReadFile(settingsPath); err == nil {
 		var s map[string]any
 		_ = json.Unmarshal(data, &s)
 		pkgs, _ := s["packages"].([]any)
-		hasAntigravity := false
 		for _, p := range pkgs {
-			if str, ok := p.(string); ok && (str == AntigravityPackageSource || str == "npm:pi-antigravity") {
-				hasAntigravity = true
+			if str, ok := p.(string); ok && strings.HasPrefix(str, "npm:pi-antigravity") {
+				items = append(items, CheckItem{
+					Name:    "Plugin pi-antigravity (Google)",
+					Status:  "WARN",
+					Details: str + " sigue en settings.json; pi-gomemory ya no lo usa (riesgo de bloqueo de la cuenta): pi remove " + str,
+				})
 				break
 			}
-		}
-		if hasAntigravity {
-			items = append(items, CheckItem{
-				Name:    "Plugin pi-antigravity (Google)",
-				Status:  "OK",
-				Details: "registrado en settings.json",
-			})
-		} else {
-			items = append(items, CheckItem{
-				Name:    "Plugin pi-antigravity (Google)",
-				Status:  "WARN",
-				Details: "no encontrado en settings.json",
-			})
 		}
 		if hidden, ok := s["hideThinkingBlock"].(bool); ok && hidden {
 			items = append(items, CheckItem{

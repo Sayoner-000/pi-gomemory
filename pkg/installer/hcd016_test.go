@@ -145,19 +145,22 @@ console.log(unblocked.length ? "FAIL " + unblocked.join(" | ") : "PASS");
 	}
 }
 
-// H-08: gomemory-sidebar debe limpiar errores JSON de stderr y validar estructura defensivamente
+// H-08: gomemory-sidebar debe limpiar errores JSON de stderr (lo usan las cuotas
+// de Codex y Anthropic). validateQuotaSummary se retiró con la cuota Antigravity
+// en HCD-085.
 func TestH08SidebarErrorAndInflight(t *testing.T) {
 	t.Parallel()
 
 	out := runNodeExt(t, []string{"extensions/gomemory-sidebar.ts"}, `
-import { parseCleanQuotaError, validateQuotaSummary } from "./gomemory-sidebar.ts";
+import * as sidebar from "./gomemory-sidebar.ts";
+const { parseCleanQuotaError } = sidebar;
 
 const fails = [];
 
 // 1. Limpieza de error
-const jsonErr = JSON.stringify({ error: "no se encontró cuenta de Antigravity en /path/to/acc.json" });
+const jsonErr = JSON.stringify({ error: "Pi no tiene una sesión OAuth de openai-codex" });
 const clean = parseCleanQuotaError(jsonErr);
-if (clean !== "no se encontró cuenta de Antigravity en /path/to/acc.json") {
+if (clean !== "Pi no tiene una sesión OAuth de openai-codex") {
   fails.push("parseCleanQuotaError no extrajo campo error: " + clean);
 }
 
@@ -166,18 +169,7 @@ if (parseCleanQuotaError(plainErr) !== "error de conexion") {
   fails.push("parseCleanQuotaError no tomo primera linea en texto plano");
 }
 
-// 2. Validacion defensiva
-if (validateQuotaSummary(null) !== null) fails.push("null debe ser invalido");
-if (validateQuotaSummary({}) !== null) fails.push("{} sin groups debe ser invalido");
-if (validateQuotaSummary({ groups: [{ displayName: "G", buckets: [{ displayName: "B", remainingFraction: "no-num" }] }] }) !== null) {
-  fails.push("bucket con remainingFraction no numerico debe ser invalido");
-}
-
-const valid = {
-  planLabel: "Plan",
-  groups: [{ displayName: "G", buckets: [{ displayName: "B", remainingFraction: 0.5, remainingPercent: 50.0, resetIn: "1h" }] }]
-};
-if (validateQuotaSummary(valid) === null) fails.push("summary valido fue rechazado");
+if ("validateQuotaSummary" in sidebar) fails.push("validateQuotaSummary debió retirarse con la cuota Antigravity");
 
 console.log(fails.length ? "FAIL " + fails.join(" | ") : "PASS");
 `)

@@ -34,7 +34,6 @@ func TestHCD076CatalogOrder(t *testing.T) {
 		{"mem", KindTool, true},
 		{"codegraph", KindTool, false},
 		{"herdr", KindTool, false},
-		{"pi-antigravity", KindPackage, false},
 		{"pi-cc-extensions", KindPackage, false},
 	}
 	got := Catalog()
